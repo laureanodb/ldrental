@@ -1,0 +1,11 @@
+export const $ = s => document.querySelector(s);
+export const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+export const money = n => '$ ' + Math.round(n || 0).toLocaleString('es-AR');
+export const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+export const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+export const parse = s => { if (!s) return null; const p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); };
+export const days = (a, b) => Math.round((b - a) / 864e5);
+export const fdate = s => { if (!s) return ''; const p = s.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; };
+export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+export const num1 = n => (Math.round(n * 10) / 10).toLocaleString('es-AR');
+export const val = id => document.getElementById(id).value.trim();

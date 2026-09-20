@@ -1,0 +1,11 @@
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
+
+export const S = { cars: [], drivers: [], payments: [], ready: false, user: null, chan: null };
+export const ui = { tab: 'panel', qCars: '', qDrivers: '', filterCar: '' };
+
+export let sb = null, dl = null, as = null;
+export function setSb(v) { sb = v; }
+export function setAs(v) { as = v; }
+export function setDl(v) { dl = v; }
+
+export const configured = () => Boolean(SUPABASE_URL && SUPABASE_KEY);

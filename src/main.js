@@ -1,0 +1,28 @@
+import './styles.css';
+
+import { ui } from './state.js';
+import { init } from './session.js';
+import { go, render, renderList } from './nav.js';
+import { doLogin, logout } from './session.js';
+import { carForm, onTipo, autoCuota, saveCar, delCar } from './forms/car.js';
+import { driverForm, saveDriver, delDriver } from './forms/driver.js';
+import { payForm, onPayCar, savePay, delPay } from './forms/payment.js';
+import { closeModal, confirmDel } from './modal.js';
+import { attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile } from './files.js';
+import { backup, pickRestore, doRestore, exportCSV, cancelRestore } from './backup.js';
+
+/* Las plantillas HTML generadas usan atributos inline (onclick, oninput, …)
+   que se resuelven en el scope global, así que las funciones que referencian
+   necesitan quedar colgadas de window. */
+Object.assign(window, {
+  ui, go, render, renderList,
+  doLogin, logout,
+  carForm, onTipo, autoCuota, saveCar, delCar,
+  driverForm, saveDriver, delDriver,
+  payForm, onPayCar, savePay, delPay,
+  closeModal, confirmDel,
+  attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile,
+  backup, pickRestore, doRestore, exportCSV, cancelRestore,
+});
+
+init();
