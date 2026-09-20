@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Mi Flota</title>
+<title>Mi Flota v2</title>
 <meta name="theme-color" content="#222b33">
 <style>
 :root{
@@ -197,10 +197,10 @@ async function remove(col,id){
 
 /* --- sesión --- */
 function viewSetup(){
-  return '<div class="login"><h1>Mi Flota</h1><div class="card"><b>Falta configurar la conexión</b><p class="small muted">Abrí el archivo index.html y completá SUPABASE_URL y SUPABASE_KEY al principio del script, con los datos de tu proyecto de Supabase.</p></div></div>';
+  return '<div class="login"><h1>Mi Flota v2</h1><div class="card"><b>Falta configurar la conexión</b><p class="small muted">Abrí el archivo index.html y completá SUPABASE_URL y SUPABASE_KEY al principio del script, con los datos de tu proyecto de Supabase.</p></div></div>';
 }
 function viewLogin(){
-  return '<div class="login"><h1>Mi Flota</h1><p class="sub">Ingresá con tu usuario</p>'+
+  return '<div class="login"><h1>Mi Flota v2</h1><p class="sub">Ingresá con tu usuario</p>'+
   '<label class="f"><span>Email</span><input id="l_email" type="email" autocomplete="username" inputmode="email" autocapitalize="none"></label>'+
   '<label class="f"><span>Contraseña</span><input id="l_pass" type="password" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doLogin()"></label>'+
   '<button class="btn block" onclick="doLogin()">Entrar</button><div id="l_err" class="small" style="color:var(--bad);margin-top:10px"></div></div>';
@@ -255,7 +255,7 @@ function hydrateThumbs(root){
 async function init(){
   render();
   if(!configured())return;
-  if(!window.supabase){$('#app').innerHTML='<div class="login"><h1>Mi Flota</h1><div class="card">No se pudo cargar la conexión. Revisá tu internet y recargá la página.</div></div>';return;}
+  if(!window.supabase){$('#app').innerHTML='<div class="login"><h1>Mi Flota v2</h1><div class="card">No se pudo cargar la conexión. Revisá tu internet y recargá la página.</div></div>';return;}
   sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   as=makeStorage();
   const g=await sb.auth.getSession();
@@ -353,11 +353,11 @@ function viewPanel(){
   const saldoFin=S.cars.filter(c=>c.tipo==='financiado').reduce((a,c)=>a+(calc(c).saldo||0),0);
   const urg=urgent();
   if(!S.cars.length&&!S.drivers.length){
-    return '<h1>Mi Flota</h1><p class="sub">Autos, choferes, cobros y vencimientos en un solo lugar.</p>'+
+    return '<h1>Mi Flota v2</h1><p class="sub">Autos, choferes, cobros y vencimientos en un solo lugar.</p>'+
     '<div class="card empty"><b>Empecemos por lo básico</b>Cargá tus choferes y tus autos. Después registrás cada cobro semanal y la app te dice quién debe y qué vence.<div style="margin-top:16px" class="row" ><button class="btn grow" onclick="driverForm()">Cargar chofer</button><button class="btn grow" onclick="carForm()">Cargar auto</button></div></div>'+backupCard();
   }
   const morosos=infos.filter(x=>x.i.debt>0).sort((a,b)=>b.i.debt-a.i.debt).slice(0,5);
-  let h='<h1>Mi Flota</h1><p class="sub">'+t0.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})+'</p>';
+  let h='<h1>Mi Flota v2</h1><p class="sub">'+t0.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})+'</p>';
   h+='<div class="grid">'+
     '<div class="kpi"><div class="n">'+money(cobMes)+'</div><div class="l">Cobrado este mes</div></div>'+
     '<div class="kpi"><div class="n">'+money(esperado)+'</div><div class="l">Esperado por semana</div></div>'+
