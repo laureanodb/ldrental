@@ -1,7 +1,7 @@
 import { S, ui } from '../state.js';
 import { esc, money } from '../utils.js';
 import { isContract, calc, vs, driverName, plate, tipoBadge, badge, peorItemMantenimiento } from '../calc.js';
-import { VENC } from '../constants.js';
+import { VENC, MOTIVOS_REEMPLAZO } from '../constants.js';
 
 export function viewAutos() {
   const nVendidos = S.cars.filter(c => c.vendido).length;
@@ -22,6 +22,7 @@ export function listAutos() {
     if (!c.vendido && al && al.d <= 30) b += ' ' + badge(al.cls, 'Doc: ' + al.t.replace('Vence ', 'vence '));
     const serv = !c.vendido && peorItemMantenimiento(c);
     if (serv) b += ' ' + badge(serv.cls, serv.t);
+    if (c.aReemplazar) b += ' ' + badge('warn', 'A reemplazar: ' + (MOTIVOS_REEMPLAZO.find(x => x[0] === c.motivoReemplazo) || [0, 'motivo'])[1]);
     if (c.files && c.files.length) b += ' ' + badge('mute', c.files.length + (c.files.length === 1 ? ' archivo' : ' archivos'));
     return '<div class="card tap" onclick="carForm(\'' + c.id + '\')"><div class="row between"><div>' + plate(c.patente) + '</div>' + tipoBadge(c.tipo) + '</div>' +
     '<div class="small muted" style="margin-top:6px">' + esc([c.marca, c.modelo, c.anio].filter(Boolean).join(' ')) + '</div>' +

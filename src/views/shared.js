@@ -12,12 +12,28 @@ export function ajustesCard() {
   '<div class="two"><label class="f"><span>Aviso urgente (días)</span><input id="a_warn" inputmode="numeric" value="' + settings.avisoWarn + '"></label>' +
   '<label class="f"><span>Aviso próximo (días)</span><input id="a_soft" inputmode="numeric" value="' + settings.avisoSoft + '"></label></div>' +
   '<button class="btn sec block" onclick="saveAjustes()">Guardar ajustes</button></div>' +
+  (isAdmin() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Umbrales y políticas de la flota.</div>' +
+  '<div class="two"><label class="f"><span>Depósito: avisar si baja de <small>%</small></span><input id="a_depPct" inputmode="numeric" value="' + settings.depositoAvisoPct + '"></label>' +
+  '<label class="f"><span>Multas: límite acumulado</span><input id="a_multaUmbral" inputmode="numeric" value="' + settings.multaUmbral + '"></label></div>' +
+  '<div class="two"><label class="f"><span>Multas: plazo de pago <small>días</small></span><input id="a_multaPlazo" inputmode="numeric" value="' + settings.multaPlazoDias + '"></label>' +
+  '<label class="f"><span>Km esperados por semana</span><input id="a_kmSemana" inputmode="numeric" value="' + settings.kmSemanaEsperado + '"></label></div>' +
+  '<label class="f"><span>Fotos de control cada <small>días</small></span><input id="a_fotoDias" inputmode="numeric" value="' + settings.fotoControlDias + '"></label>' +
+  '<button class="btn sec block" onclick="saveAjustes()">Guardar ajustes</button></div>' : '') +
   '<div class="card"><div class="row between"><span>Proveedores y talleres de confianza</span><button class="btn sec sm" onclick="proveedoresView()">Ver</button></div></div>' +
   (isAdmin() ? '<div class="card"><div class="row between"><span>Usuarios y permisos</span><button class="btn sec sm" onclick="usuariosView()">Ver</button></div></div>' : '');
 }
 export function saveAjustes() {
   const w = +val('a_warn') || 15, s = +val('a_soft') || 30;
-  saveSettings({ avisoWarn: w, avisoSoft: Math.max(w, s) });
+  const patch = { avisoWarn: w, avisoSoft: Math.max(w, s) };
+  const depPct = document.getElementById('a_depPct');
+  if (depPct) Object.assign(patch, {
+    depositoAvisoPct: +depPct.value || settings.depositoAvisoPct,
+    multaUmbral: +val('a_multaUmbral') || settings.multaUmbral,
+    multaPlazoDias: +val('a_multaPlazo') || settings.multaPlazoDias,
+    kmSemanaEsperado: +val('a_kmSemana') || settings.kmSemanaEsperado,
+    fotoControlDias: +val('a_fotoDias') || settings.fotoControlDias,
+  });
+  saveSettings(patch);
   toast('Ajustes guardados'); render();
 }
 export function backupCard() {

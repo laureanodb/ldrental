@@ -16,13 +16,14 @@ export function gastoForm(carId) {
   '<label class="f"><span>Km (opcional)</span><input id="g_km" inputmode="numeric"></label></div>' +
   '<label class="f"><span>Proveedor / taller</span><input id="g_proveedor"></label>' +
   '<label class="f"><span>Descripción</span><textarea id="g_desc"></textarea></label>' +
+  '<label class="chk"><input type="checkbox" id="g_sinFactura"><span>Sin factura</span></label>' +
   '<div class="row"><button class="btn grow" onclick="saveGasto(\'' + c.id + '\')">Guardar</button><button class="btn sec" onclick="carForm(\'' + c.id + '\')">Cancelar</button></div>';
   openModal(h);
 }
 export async function saveGasto(carId) {
   const costo = +val('g_costo');
   if (!costo || costo <= 0) { toast('Poné el costo del gasto'); return; }
-  const o = { id: uid(), carId, categoria: val('g_cat'), fecha: val('g_fecha') || iso(today()), costo, km: val('g_km'), proveedor: val('g_proveedor'), descripcion: val('g_desc') };
+  const o = { id: uid(), carId, categoria: val('g_cat'), fecha: val('g_fecha') || iso(today()), costo, km: val('g_km'), proveedor: val('g_proveedor'), descripcion: val('g_desc'), sinFactura: document.getElementById('g_sinFactura').checked };
   if (await save('gastos', o)) { closeModal(); toast('Gasto registrado'); }
 }
 export async function delGasto(id) {

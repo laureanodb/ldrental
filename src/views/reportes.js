@@ -1,6 +1,7 @@
 import { S } from '../state.js';
 import { esc, money, today } from '../utils.js';
 import { plate, rentabilidadAuto, driverTotalPagado, activeCars, isContract, calc, cobradoDelMes, diasEnTaller, gastoMantenimientoAuto, rankingMultasChoferes } from '../calc.js';
+import { isAdmin } from '../roles.js';
 
 function cobrosPorMes(n) {
   const t = today();
@@ -26,6 +27,7 @@ function seccionGrafico() {
 }
 
 function seccionRentabilidad() {
+  if (!isAdmin()) return '';
   const rows = activeCars().map(c => Object.assign({ c }, rentabilidadAuto(c))).sort((a, b) => b.neta - a.neta);
   if (!rows.length) return '';
   let h = '<h2>Rentabilidad por auto</h2>';

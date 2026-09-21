@@ -1,12 +1,13 @@
 export const TIPOS = { alquiler: 'Alquilado', financiado: 'Financiado', disponible: 'Disponible', taller: 'En taller' };
 export const DOCS = [['dni', 'DNI (frente y dorso)'], ['lic', 'Licencia profesional'], ['dom', 'Comprobante de domicilio'], ['ant', 'Certificado de antecedentes'], ['app', 'Alta en la app (Uber, Cabify, etc.)'], ['contrato', 'Contrato firmado'], ['garante', 'Garante / aval']];
 export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuesto automotor (fecha de vencimiento)'], ['cedula', 'Cédula / tarjeta'], ['gnc', 'Revisión técnica GNC'], ['habilitacion', 'Licencia / habilitación de transporte']];
-export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas'];
+export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos'];
 
 export const COMBUSTIBLES = [['nafta', 'Nafta'], ['diesel', 'Diésel'], ['gnc', 'GNC'], ['electrico', 'Eléctrico'], ['hibrido', 'Híbrido']];
 export const RATINGS = [['bueno', 'Cumplidor'], ['regular', 'Regular'], ['malo', 'Problemático']];
 export const METODOS_PAGO = [['efectivo', 'Efectivo'], ['transferencia', 'Transferencia'], ['mercadopago', 'MercadoPago'], ['otro', 'Otro']];
-export const GASTO_CATS = [['service', 'Service / mantenimiento'], ['siniestro', 'Siniestro / choque'], ['multa', 'Multa'], ['combustible', 'Combustible'], ['otro', 'Otro gasto']];
+export const GASTO_CATS = [['service', 'Service / mantenimiento'], ['siniestro', 'Siniestro / choque'], ['multa', 'Multa'], ['combustible', 'Combustible'], ['seguro', 'Seguro (cuota)'], ['patente', 'Patente / impuesto automotor'], ['otro', 'Otro gasto']];
+export const MOTIVOS_REEMPLAZO = [['km', 'Mucho kilometraje'], ['gasto', 'Mucho gasto de mantenimiento'], ['antiguedad', 'Muy viejo'], ['otro', 'Otro motivo']];
 export const INSPECCION_ITEMS = [['carroceria', 'Carrocería sin daños nuevos'], ['limpieza', 'Interior limpio'], ['neumaticos', 'Neumáticos en buen estado'], ['documentos', 'Documentos en el auto'], ['auxilio', 'Rueda de auxilio y herramientas']];
 
 /* Catálogo de mantenimiento: [clave, etiqueta, intervalo en km u null, intervalo en meses u null] */

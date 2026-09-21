@@ -1,6 +1,6 @@
 import { S } from '../state.js';
 import { $, val, uid, iso, today, esc, fdate, money } from '../utils.js';
-import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS } from '../constants.js';
+import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS, MOTIVOS_REEMPLAZO } from '../constants.js';
 import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls } from '../calc.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
@@ -66,6 +66,15 @@ export function carForm(id) {
   '<div class="sec-t">Vencimientos</div><div class="two">' + VENC.map(v => '<label class="f"><span>' + v[1] + '</span><input id="v_' + v[0] + '" type="date" value="' + esc(c[v[0]]) + '"></label>').join('') + '</div>' +
   '<div class="two"><label class="f"><span>N° de póliza</span><input id="c_poliza" value="' + esc(c.polizaNumero) + '"></label>' +
   '<label class="f"><span>Aseguradora</span><input id="c_aseguradora" value="' + esc(c.aseguradora) + '"></label></div>' +
+  '<div class="sec-t">Ubicación y GPS</div>' +
+  '<div class="two"><label class="f"><span>Dónde duerme de noche</span><input id="c_dondeDuerme" value="' + esc(c.dondeDuerme) + '"></label>' +
+  '<label class="f"><span>Link de Google Maps <small>opcional</small></span><input id="c_dondeDuermeMaps" type="url" value="' + esc(c.dondeDuermeMaps) + '"></label></div>' +
+  '<label class="f"><span>Tipo de GPS</span><input id="c_gpsTipo" value="' + esc(c.gpsTipo) + '"></label>' +
+  '<label class="chk"><input type="checkbox" id="c_gpsAlerta"' + (c.gpsAlerta ? ' checked' : '') + '><span>GPS roto / con alerta' + (c.gpsAlerta ? '' : ' (pone el auto en taller al guardar)') + '</span></label>' +
+  '<div class="sec-t">Estado de flota</div>' +
+  '<label class="chk"><input type="checkbox" id="c_soloAlquiler"' + (c.soloAlquiler ? ' checked' : '') + '><span>Solo alquiler, nunca financiado</span></label>' +
+  '<label class="chk"><input type="checkbox" id="c_aReemplazar" onchange="document.getElementById(\'reemplazoBox\').style.display=this.checked?\'\':\'none\'"' + (c.aReemplazar ? ' checked' : '') + '><span>Marcar para reemplazar</span></label>' +
+  '<div id="reemplazoBox" style="display:' + (c.aReemplazar ? '' : 'none') + '"><label class="f"><span>Motivo</span><select id="c_motivoReemplazo">' + MOTIVOS_REEMPLAZO.map(x => '<option value="' + x[0] + '"' + (c.motivoReemplazo === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
   '<div class="sec-t">Archivos</div><div id="files"></div><div id="fstatus" class="small" style="margin:-4px 0 12px;overflow-wrap:anywhere"></div>' +
   '<label class="f"><span>Notas</span><textarea id="c_notas">' + esc(c.notas) + '</textarea></label>' +
   '<div class="row"><button class="btn grow" onclick="saveCar(' + (ex ? "'" + c.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
@@ -82,9 +91,9 @@ export function carForm(id) {
     if (c.tipo === 'taller') h += '<div class="row" style="margin-bottom:10px"><button class="btn sec grow" onclick="sacarDeTaller(\'' + c.id + '\')">Sacar de taller</button></div>';
     if (plan.length) h += plan.map(p => { const e = estadoPlanItem(c, p); return '<div class="row between small" style="padding:4px 0"><span>' + esc(p.label || p.item) + '</span><span>' + badge(e.cls, textoRestante(e)) + '</span></div>'; }).join('');
     h += '<div class="row" style="margin:8px 0"><button class="btn sec grow" onclick="mantenimientoForm(\'' + c.id + '\')">+ Registrar mantenimiento</button>' + (plan.length ? '<button class="btn sec" onclick="editarPlanMantenimiento(\'' + c.id + '\')">Editar plan</button>' : '') + '</div>';
-    if (MH.length) h += '<div class="sec-t">Historial de mantenimiento</div>' + MH.map(m => '<div class="card row"><div class="grow tap" onclick="mantenimientoForm(\'' + c.id + '\',\'' + m.id + '\')"><div>' + money(m.costo) + ' <span class="small muted">' + esc(m.label || m.item) + (m.tipo === 'correctivo' ? ' · correctivo' : '') + '</span></div><div class="small muted">' + fdate(m.fecha) + (m.km ? ' · ' + (+m.km).toLocaleString('es-AR') + ' km' : '') + '</div></div>' + (isAdmin() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delMantenimiento(\'' + m.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    if (MH.length) h += '<div class="sec-t">Historial de mantenimiento</div>' + MH.map(m => '<div class="card row"><div class="grow tap" onclick="mantenimientoForm(\'' + c.id + '\',\'' + m.id + '\')"><div>' + money(m.costo) + ' <span class="small muted">' + esc(m.label || m.item) + (m.tipo === 'correctivo' ? ' · correctivo' : '') + (m.sinFactura ? ' · sin factura' : '') + '</span></div><div class="small muted">' + fdate(m.fecha) + (m.km ? ' · ' + (+m.km).toLocaleString('es-AR') + ' km' : '') + '</div></div>' + (isAdmin() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delMantenimiento(\'' + m.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     h += '<div class="sec-t row between">Gastos<span class="small muted">' + money(totalGastos) + ' en total</span></div>';
-    if (G.length) h += G.map(g => '<div class="card row"><div class="grow"><div>' + money(g.costo) + ' <span class="small muted">' + esc(gastoCatLabel(g.categoria)) + '</span></div><div class="small muted">' + fdate(g.fecha) + (g.proveedor ? ' · ' + esc(g.proveedor) : '') + (g.descripcion ? ' · ' + esc(g.descripcion) : '') + '</div></div>' + (isAdmin() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delGasto(\'' + g.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    if (G.length) h += G.map(g => '<div class="card row"><div class="grow"><div>' + money(g.costo) + ' <span class="small muted">' + esc(gastoCatLabel(g.categoria)) + (g.sinFactura ? ' · sin factura' : '') + '</span></div><div class="small muted">' + fdate(g.fecha) + (g.proveedor ? ' · ' + esc(g.proveedor) : '') + (g.descripcion ? ' · ' + esc(g.descripcion) : '') + '</div></div>' + (isAdmin() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delGasto(\'' + g.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     h += '<button class="btn sec block" style="margin:8px 0 20px" onclick="gastoForm(\'' + c.id + '\')">+ Agregar gasto</button>';
     const I = S.inspecciones.filter(x => x.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     h += '<div class="sec-t">Inspecciones de entrega/recepción</div>';
@@ -134,6 +143,10 @@ export async function saveCar(id) {
     total: tipo === 'financiado' ? (+val('c_total') || 0) : 0, cuotas: tipo === 'financiado' ? (+val('c_cuotas') || 0) : 0, notas: val('c_notas'),
     numeroFlota: val('c_numflota'), combustible: val('c_combustible'), km: val('c_km'), costoCompra: +val('c_costocompra') || 0,
     polizaNumero: val('c_poliza'), aseguradora: val('c_aseguradora'),
+    dondeDuerme: val('c_dondeDuerme'), dondeDuermeMaps: val('c_dondeDuermeMaps'),
+    gpsTipo: val('c_gpsTipo'), gpsAlerta: document.getElementById('c_gpsAlerta').checked,
+    soloAlquiler: document.getElementById('c_soloAlquiler').checked,
+    aReemplazar: document.getElementById('c_aReemplazar').checked, motivoReemplazo: val('c_motivoReemplazo'),
     vendido: (ex || {}).vendido || false,
     files: (ex || {}).files || [],
     ajustesDeuda: (ex || {}).ajustesDeuda || [],
@@ -148,7 +161,9 @@ export async function saveCar(id) {
     if (!o.monto || !o.inicio) { toast('Completá el monto semanal y la fecha de inicio'); return; }
     if (tipo === 'financiado' && !o.cuotas) { toast('Completá la cantidad de cuotas'); return; }
   }
-  if (await save('cars', o)) { closeModal(); toast('Auto guardado'); }
+  if (!(await save('cars', o))) return;
+  if (o.gpsAlerta && !(ex && ex.gpsAlerta)) await marcarEnTaller(o.id);
+  closeModal(); toast('Auto guardado');
 }
 export async function toggleVendido(id) {
   const c = S.cars.find(x => x.id === id); if (!c) return;

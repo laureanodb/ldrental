@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { VENC, TIPOS, MANTENIMIENTO_ITEMS } from './constants.js';
-import { days, parse, today, iso, esc, fdate } from './utils.js';
+import { days, parse, today, iso, esc, fdate, money } from './utils.js';
 import { settings } from './settings.js';
 import { isSnoozed } from './snooze.js';
 
@@ -154,6 +154,43 @@ export function gastoMantenimientoDelMes(offsetMeses) {
   const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   return S.mantenimientos.filter(m => (m.fecha || '').slice(0, 7) === key).reduce((a, m) => a + (+m.costo || 0), 0);
 }
+export function saldoDeposito(driverId) {
+  return S.depositos.filter(x => x.driverId === driverId).reduce((a, x) => a + (+x.monto || 0), 0);
+}
+export function depositosDeChofer(driverId) {
+  return S.depositos.filter(x => x.driverId === driverId).sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+export function multasPendientesChofer(driverId) {
+  return S.multas.filter(m => m.choferId === driverId && (m.estado === 'pendiente' || m.estado === 'vencida')).reduce((a, m) => a + (+m.monto || 0), 0);
+}
+export function alertaFotoControl(c) {
+  const fotos = (c.files || []).filter(f => !f.link && f.cat === 'fotos');
+  if (!fotos.length) return null;
+  const ultima = fotos.reduce((a, f) => (f.fecha > a ? f.fecha : a), fotos[0].fecha);
+  const restante = settings.fotoControlDias - days(parse(ultima), today());
+  const cls = clasificarVencimiento(null, restante);
+  if (cls === 'ok') return null;
+  return { cls, restante };
+}
+export function kmUltimaSemana(c) {
+  const hist = (c.kmHistorial || []).slice().sort((a, b) => a.fecha.localeCompare(b.fecha));
+  if (hist.length < 2) return null;
+  const ultima = hist[hist.length - 1];
+  const dLimite = parse(ultima.fecha); dLimite.setDate(dLimite.getDate() - 7);
+  const fechaLimite = iso(dLimite);
+  const anterior = [...hist].reverse().find(h => h.fecha <= fechaLimite) || hist[0];
+  const dias = days(parse(anterior.fecha), parse(ultima.fecha));
+  if (dias <= 0) return null;
+  return Math.round(((+ultima.km || 0) - (+anterior.km || 0)) / dias * 7);
+}
+export function sugerirAptoFinanciar(driverId) {
+  const score = driverScore(driverId);
+  const hist = carHistoryForDriver(driverId);
+  const desde = hist.reduce((min, h) => (!min || h.desde < min ? h.desde : min), null);
+  const antiguedadDias = desde ? days(parse(desde), today()) : 0;
+  const sancionesRecientes = S.sanciones.some(s => s.driverId === driverId && days(parse(s.fecha), today()) <= 180);
+  return { cumple: score != null && score >= 80 && antiguedadDias >= 90 && !sancionesRecientes, score, antiguedadDias, sancionesRecientes };
+}
 export function alerts() {
   const out = [];
   activeCars().forEach(c => VENC.forEach(([k, l]) => {
@@ -180,6 +217,32 @@ export function alerts() {
     const key = 'multa:' + m.id; if (isSnoozed(key)) return;
     const auto = carById(m.carId);
     out.push(Object.assign({ who: (auto && auto.patente) || 'Auto', sub: 'Multa pendiente de pago', kind: 'multa', id: m.id, carId: m.carId, key }, s));
+  });
+  activeDrivers().forEach(d => {
+    const objetivo = +d.depositoObjetivo || 0; if (!objetivo) return;
+    const saldo = saldoDeposito(d.id);
+    const umbral = objetivo * (settings.depositoAvisoPct / 100);
+    if (saldo >= umbral) return;
+    const key = 'driver:' + d.id + ':deposito'; if (isSnoozed(key)) return;
+    out.push({ who: d.nombre, sub: 'Depósito de garantía bajo', kind: 'driver', id: d.id, key, d: 0, cls: saldo <= 0 ? 'bad' : 'warn', t: 'Depósito: ' + money(saldo) + ' de ' + money(objetivo) });
+  });
+  activeDrivers().forEach(d => {
+    const pend = multasPendientesChofer(d.id);
+    if (pend < settings.multaUmbral) return;
+    const key = 'driver:' + d.id + ':multaumbral'; if (isSnoozed(key)) return;
+    out.push({ who: d.nombre, sub: 'Multas acumuladas superan el límite', kind: 'driver', id: d.id, key, d: 0, cls: 'bad', t: money(pend) + ' en multas pendientes' });
+  });
+  activeCars().forEach(c => {
+    const f = alertaFotoControl(c); if (!f) return;
+    const key = 'car:' + c.id + ':foto'; if (isSnoozed(key)) return;
+    const d = f.cls === 'bad' ? -1 : f.restante;
+    out.push({ who: c.patente || 'Auto sin patente', sub: 'Fotos de control', kind: 'car', id: c.id, key, d, cls: f.cls, t: f.cls === 'bad' ? 'Sin fotos hace ' + (-f.restante) + ' d' : 'Actualizar fotos en ' + f.restante + ' d' });
+  });
+  activeCars().forEach(c => {
+    const semanal = kmUltimaSemana(c);
+    if (semanal == null || semanal <= settings.kmSemanaEsperado) return;
+    const key = 'car:' + c.id + ':sobrekm'; if (isSnoozed(key)) return;
+    out.push({ who: c.patente || 'Auto sin patente', sub: 'Sobrekilometraje', kind: 'car', id: c.id, key, d: 20, cls: 'warn', t: semanal.toLocaleString('es-AR') + ' km/semana (esperado ' + settings.kmSemanaEsperado.toLocaleString('es-AR') + ')' });
   });
   return out.sort((a, b) => a.d - b.d);
 }

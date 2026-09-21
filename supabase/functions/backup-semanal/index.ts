@@ -5,7 +5,7 @@
 // invocar a mano para probar: `supabase functions invoke backup-semanal`.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas'];
+const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos'];
 const BUCKET = 'backups';
 const KEEP = 8; // cuántas copias recientes conservar antes de borrar las viejas
 

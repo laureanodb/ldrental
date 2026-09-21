@@ -9,6 +9,7 @@ import { mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delManteni
 import { mantAtajoFecha } from './views/mantenimiento.js';
 import { multaForm, onMultaCar, onMultaFecha, saveMulta, delMulta } from './forms/multa.js';
 import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo } from './forms/driver.js';
+import { depositoForm, saveDeposito, delDeposito } from './forms/deposito.js';
 import { payForm, onPayCar, savePay, delPay } from './forms/payment.js';
 import { closeModal, confirmDel } from './modal.js';
 import { attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile } from './files.js';
@@ -38,6 +39,7 @@ Object.assign(window, {
   mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, mantAtajoFecha,
   multaForm, onMultaCar, onMultaFecha, saveMulta, delMulta,
   driverForm, saveDriver, delDriver, addTelRow, toggleInactivo,
+  depositoForm, saveDeposito, delDeposito,
   payForm, onPayCar, savePay, delPay,
   closeModal, confirmDel,
   attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile,

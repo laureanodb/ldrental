@@ -32,6 +32,7 @@ export function mantenimientoForm(carId, editId, presetItem) {
   '<div class="two"><label class="f"><span>Garantía <small>meses</small></span><input id="m_garMeses" inputmode="numeric" value="' + esc(ex ? ex.garantiaMeses || '' : '') + '"></label>' +
   '<label class="f"><span>Garantía <small>km</small></span><input id="m_garKm" inputmode="numeric" value="' + esc(ex ? ex.garantiaKm || '' : '') + '"></label></div>' +
   (c.tipo !== 'taller' ? '<label class="chk"><input type="checkbox" id="m_taller"><span>El auto queda parado en el taller</span></label>' : '') +
+  '<label class="chk"><input type="checkbox" id="m_sinFactura"' + (ex && ex.sinFactura ? ' checked' : '') + '><span>Sin factura</span></label>' +
   '<label class="f"><span>Notas</span><textarea id="m_notas">' + esc(ex ? ex.notas : '') + '</textarea></label>' +
   '<div class="sec-t">Archivos</div><div id="files"></div><div id="fstatus" class="small" style="margin:-4px 0 12px;overflow-wrap:anywhere"></div>' +
   '<div class="row"><button class="btn grow" onclick="saveMantenimiento(' + (ex ? "'" + ex.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="' + (carId ? "carForm('" + c.id + "')" : 'closeModal()') + '">Cancelar</button></div>';
@@ -67,6 +68,7 @@ export async function saveMantenimiento(editId) {
     id: editId || uid(), carId, item: itemKey, label, tipo: val('m_tipo'), fecha, km,
     proveedorId: val('m_proveedor'), costo: +val('m_costo') || 0, checklist,
     garantiaMeses: +val('m_garMeses') || 0, garantiaKm: +val('m_garKm') || 0,
+    sinFactura: document.getElementById('m_sinFactura').checked,
     notas: val('m_notas'), files: (editId && S.mantenimientos.find(x => x.id === editId) || {}).files || [],
   };
   if (!(await save('mantenimientos', o))) return;

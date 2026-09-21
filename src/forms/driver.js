@@ -1,7 +1,7 @@
 import { $, esc, val, uid, money, fdate } from '../utils.js';
 import { S } from '../state.js';
 import { DOCS, RATINGS, MULTA_ESTADOS } from '../constants.js';
-import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge } from '../calc.js';
+import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar } from '../calc.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -33,7 +33,21 @@ export function driverForm(id) {
   '<label class="f"><span>Teléfono <small>con código de país, ej: +5491155551234</small></span><input id="d_tel" type="tel" value="' + esc(d.tel) + '"></label>' +
   '<div class="two"><label class="f"><span>Fecha de nacimiento</span><input id="d_nac" type="date" value="' + esc(d.fechaNacimiento) + '"></label>' +
   '<label class="f"><span>Calificación</span><select id="d_rating"><option value="">Sin calificar</option>' + RATINGS.map(x => '<option value="' + x[0] + '"' + (d.rating === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
-  '<label class="f"><span>Domicilio</span><input id="d_dom" value="' + esc(d.domicilio) + '"></label>' +
+  '<div class="two"><label class="f"><span>Domicilio</span><input id="d_dom" value="' + esc(d.domicilio) + '"></label>' +
+  '<label class="f"><span>Link de Google Maps <small>opcional</small></span><input id="d_domMaps" type="url" value="' + esc(d.domicilioMaps) + '"></label></div>' +
+  '<div class="sec-t">Datos adicionales</div>' +
+  '<div class="two"><label class="f"><span>Nacionalidad</span><input id="d_nacionalidad" value="' + esc(d.nacionalidad) + '"></label>' +
+  '<label class="f"><span>Estado civil / familia</span><input id="d_estadoCivil" value="' + esc(d.estadoCivil) + '"></label></div>' +
+  '<div class="two"><label class="f"><span>Referencia personal <small>nombre</small></span><input id="d_refNombre" value="' + esc(d.referenciaNombre) + '"></label>' +
+  '<label class="f"><span>Referencia personal <small>teléfono</small></span><input id="d_refTel" type="tel" value="' + esc(d.referenciaTel) + '"></label></div>' +
+  '<div class="two"><label class="f"><span>Nivel de estudios</span><input id="d_estudios" value="' + esc(d.nivelEstudios) + '"></label>' +
+  '<label class="f"><span>Otros ingresos</span><input id="d_otrosIngresos" value="' + esc(d.otrosIngresos) + '"></label></div>' +
+  '<div class="two"><label class="f"><span>Ocupación anterior</span><input id="d_ocupacion" value="' + esc(d.ocupacionAnterior) + '"></label>' +
+  '<label class="f"><span>Experiencia previa como chofer</span><input id="d_experiencia" value="' + esc(d.experienciaChofer) + '"></label></div>' +
+  '<div class="sec-t">Financiación y depósito</div>' +
+  (ex ? (() => { const s = sugerirAptoFinanciar(d.id); return '<div class="small muted" style="margin-bottom:8px">Sugerido según puntualidad, antigüedad y sanciones: <b style="color:' + (s.cumple ? 'var(--ok)' : 'var(--muted)') + '">' + (s.cumple ? 'Calificaría' : 'Todavía no calificaría') + '</b></div>'; })() : '') +
+  '<label class="chk"><input type="checkbox" id="d_apto"' + (d.aptoFinanciar ? ' checked' : '') + '><span>Apto para financiar un auto (decisión final)</span></label>' +
+  '<label class="f"><span>Objetivo del depósito de garantía</span><input id="d_depositoObjetivo" inputmode="decimal" value="' + esc(d.depositoObjetivo || '') + '"></label>' +
   '<div class="sec-t">Contacto de emergencia</div><div class="two"><label class="f"><span>Nombre</span><input id="d_emerg_nombre" value="' + esc((d.contactoEmergencia || {}).nombre) + '"></label>' +
   '<label class="f"><span>Teléfono</span><input id="d_emerg_tel" type="tel" value="' + esc((d.contactoEmergencia || {}).tel) + '"></label></div>' +
   '<div class="sec-t">Teléfonos adicionales</div><div id="d_tels">' + (d.otrosTelefonos || []).map(telRow).join('') + '</div>' +
@@ -43,6 +57,11 @@ export function driverForm(id) {
   '<label class="f" style="margin-top:14px"><span>Notas</span><textarea id="d_notas">' + esc(d.notas) + '</textarea></label>' +
   '<div class="row"><button class="btn grow" onclick="saveDriver(' + (ex ? "'" + d.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
   if (ex) {
+    const DEP = depositosDeChofer(d.id);
+    const saldoDep = saldoDeposito(d.id);
+    h += '<div class="sec-t row between">Depósito de garantía<span class="small muted">' + money(saldoDep) + (d.depositoObjetivo ? ' de ' + money(d.depositoObjetivo) : '') + '</span></div>';
+    if (DEP.length) h += DEP.map(x => '<div class="card row"><div class="grow"><div>' + (x.monto >= 0 ? '+' + money(x.monto) : '-' + money(-x.monto)) + ' <span class="small muted">' + fdate(x.fecha) + '</span></div>' + (x.nota ? '<div class="small muted">' + esc(x.nota) + '</div>' : '') + '</div>' + (isAdmin() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delDeposito(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    h += '<button class="btn sec block" style="margin:8px 0 20px" onclick="depositoForm(\'' + d.id + '\')">+ Registrar pago de depósito</button>';
     const San = S.sanciones.filter(s => s.driverId === d.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     h += '<div class="sec-t">Sanciones</div>';
     if (San.length) h += San.map(s => '<div class="card row"><div class="grow"><div class="small muted">' + fdate(s.fecha) + '</div><div>' + esc(s.motivo) + '</div></div>' + (isAdmin() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delSancion(\'' + s.id + '\'))">Borrar</button>' : '') + '</div>').join('');
@@ -71,6 +90,10 @@ export async function saveDriver(id) {
   const o = {
     id: id || uid(), nombre, dni: val('d_dni'), licVenc: val('d_lic'), tel: val('d_tel'), domicilio: val('d_dom'), notas: val('d_notas'), docs,
     fechaNacimiento: val('d_nac'), rating: val('d_rating'),
+    domicilioMaps: val('d_domMaps'), nacionalidad: val('d_nacionalidad'), estadoCivil: val('d_estadoCivil'),
+    referenciaNombre: val('d_refNombre'), referenciaTel: val('d_refTel'), nivelEstudios: val('d_estudios'),
+    otrosIngresos: val('d_otrosIngresos'), ocupacionAnterior: val('d_ocupacion'), experienciaChofer: val('d_experiencia'),
+    aptoFinanciar: document.getElementById('d_apto').checked, depositoObjetivo: +val('d_depositoObjetivo') || 0,
     contactoEmergencia: { nombre: val('d_emerg_nombre'), tel: val('d_emerg_tel') },
     otrosTelefonos, inactivo: (ex || {}).inactivo || false, prospecto: document.getElementById('d_prospecto').checked,
     files: (ex || {}).files || []

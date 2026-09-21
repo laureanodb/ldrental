@@ -1,5 +1,5 @@
 const KEY = 'flota-settings';
-const DEFAULTS = { avisoWarn: 15, avisoSoft: 30 };
+const DEFAULTS = { avisoWarn: 15, avisoSoft: 30, depositoAvisoPct: 50, multaUmbral: 500000, multaPlazoDias: 7, kmSemanaEsperado: 1500, fotoControlDias: 30 };
 
 function read() {
   try {
