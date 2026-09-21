@@ -1,6 +1,6 @@
 import { S, ui } from '../state.js';
 import { esc, money } from '../utils.js';
-import { vs, driverDebt, plate, badge, isContract } from '../calc.js';
+import { vs, driverDebt, plate, badge, isContract, driverScore } from '../calc.js';
 import { DOCS, RATINGS } from '../constants.js';
 
 export function viewChoferes() {
@@ -28,6 +28,8 @@ export function listChoferes() {
     b += ' ' + badge(got === DOCS.length ? 'ok' : 'soft', 'Docs ' + got + '/' + DOCS.length);
     if (d.files && d.files.length) b += ' ' + badge('mute', d.files.length + (d.files.length === 1 ? ' archivo' : ' archivos'));
     if (lic && lic.d <= 30) b += ' ' + badge(lic.cls, 'Licencia: ' + lic.t.replace('Vence ', 'vence '));
+    const score = driverScore(d.id);
+    if (score != null) b += ' ' + badge(score >= 90 ? 'ok' : score >= 70 ? 'soft' : 'bad', score + '% puntual');
     return '<div class="card tap" onclick="driverForm(\'' + d.id + '\')"><div class="row between"><b>' + esc(d.nombre) + '</b><div>' + cars.map(c => plate(c.patente)).join(' ') + '</div></div>' +
     '<div class="small muted">' + esc(d.tel || 'Sin teléfono') + '</div><div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">' + b + '</div></div>';
   }).join('');

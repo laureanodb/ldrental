@@ -1,7 +1,7 @@
 import { S } from '../state.js';
 import { $, val, uid, iso, today, esc, fdate, money } from '../utils.js';
 import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS } from '../constants.js';
-import { isContract, calc, finFinanciado, driverName } from '../calc.js';
+import { isContract, calc, finFinanciado, driverName, diasEnTaller } from '../calc.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -17,6 +17,15 @@ function actualizarHistorialChoferes(ex, newChoferId) {
   if (newChoferId) historial = historial.concat([{ choferId: newChoferId, desde: hoy, hasta: null }]);
   return historial;
 }
+function actualizarHistorialTaller(ex, newTipo) {
+  const prevTipo = ex ? ex.tipo : '';
+  let historial = (ex && ex.historialTaller) || [];
+  if (prevTipo === newTipo) return historial;
+  const hoy = iso(today());
+  if (prevTipo === 'taller') historial = historial.map(h => !h.hasta ? Object.assign({}, h, { hasta: hoy }) : h);
+  if (newTipo === 'taller') historial = historial.concat([{ desde: hoy, hasta: null }]);
+  return historial;
+}
 
 export function carForm(id) {
   const ex = S.cars.find(x => x.id === id);
@@ -29,9 +38,12 @@ export function carForm(id) {
     h += '<div class="card"><div class="row between"><span class="muted">Pagado desde el inicio</span><b>' + money(i.paid) + '</b></div>' +
     '<div class="row between"><span class="muted">Debería haber pagado</span><b>' + money(i.due) + '</b></div>' +
     '<div class="row between"><span class="muted">Deuda</span><b style="color:' + (i.debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(i.debt) + '</b></div>' +
+    (i.ajustes > 0 ? '<div class="row between small muted"><span>Ajustes / condonaciones</span><span>-' + money(i.ajustes) + '</span></div>' : '') +
     (i.saldo != null ? '<div class="row between"><span class="muted">Saldo total de la financiación</span><b>' + money(i.saldo) + '</b></div>' : '') +
     (fin ? '<div class="row between"><span class="muted">Fin estimado de cuotas</span><b>' + fdate(iso(fin)) + '</b></div>' : '') +
-    '<button class="btn block" style="margin-top:10px" onclick="payForm(\'' + c.id + '\')">Registrar cobro</button></div>';
+    '<div class="row" style="margin-top:10px"><button class="btn grow" onclick="payForm(\'' + c.id + '\')">Registrar cobro</button><button class="btn sec" onclick="ajusteForm(\'' + c.id + '\')">Ajustar deuda</button></div></div>';
+    const AJ = (c.ajustesDeuda || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
+    if (AJ.length) h += '<div class="sec-t">Ajustes de deuda</div>' + AJ.map(x => '<div class="card row"><div class="grow"><div>-' + money(x.monto) + ' <span class="small muted">' + fdate(x.fecha) + '</span></div>' + (x.motivo ? '<div class="small muted">' + esc(x.motivo) + '</div>' : '') + '</div><button class="btn danger sm" onclick="confirmDel(this,()=>delAjuste(\'' + c.id + '\',\'' + x.id + '\'))">Borrar</button></div>').join('');
   }
   h += '<div class="two"><label class="f"><span>Patente</span><input id="c_patente" value="' + esc(c.patente) + '" autocapitalize="characters"></label>' +
   '<label class="f"><span>Año</span><input id="c_anio" inputmode="numeric" value="' + esc(c.anio) + '"></label></div>' +
@@ -60,7 +72,8 @@ export function carForm(id) {
     if (P.length) h += '<div class="sec-t">Últimos cobros</div>' + P.map(p => '<div class="row between small"><span class="muted">' + fdate(p.fecha) + '</span><span>' + money(p.monto) + '</span></div>').join('');
     const G = S.gastos.filter(g => g.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     const totalGastos = G.reduce((a, g) => a + (+g.costo || 0), 0);
-    h += '<div class="sec-t row between">Gastos y mantenimiento<span class="small muted">' + money(totalGastos) + ' en total</span></div>';
+    const diasTaller = diasEnTaller(c);
+    h += '<div class="sec-t row between">Gastos y mantenimiento<span class="small muted">' + money(totalGastos) + ' en total' + (diasTaller ? ' · ' + diasTaller + ' días parado' : '') + '</span></div>';
     if (G.length) h += G.map(g => '<div class="card row"><div class="grow"><div>' + money(g.costo) + ' <span class="small muted">' + esc(gastoCatLabel(g.categoria)) + '</span></div><div class="small muted">' + fdate(g.fecha) + (g.proveedor ? ' · ' + esc(g.proveedor) : '') + (g.descripcion ? ' · ' + esc(g.descripcion) : '') + '</div></div><button class="btn danger sm" onclick="confirmDel(this,()=>delGasto(\'' + g.id + '\'))">Borrar</button></div>').join('');
     h += '<button class="btn sec block" style="margin:8px 0 20px" onclick="gastoForm(\'' + c.id + '\')">+ Agregar gasto</button>';
     const I = S.inspecciones.filter(x => x.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
@@ -105,7 +118,9 @@ export async function saveCar(id) {
     polizaNumero: val('c_poliza'), aseguradora: val('c_aseguradora'),
     vendido: (ex || {}).vendido || false,
     files: (ex || {}).files || [],
-    historialChoferes: actualizarHistorialChoferes(ex, choferId)
+    ajustesDeuda: (ex || {}).ajustesDeuda || [],
+    historialChoferes: actualizarHistorialChoferes(ex, choferId),
+    historialTaller: actualizarHistorialTaller(ex, tipo)
   };
   VENC.forEach(v => { o[v[0]] = val('v_' + v[0]); });
   if (con) {

@@ -15,6 +15,8 @@ import { gastoForm, saveGasto, delGasto } from './forms/gasto.js';
 import { sancionForm, saveSancion, delSancion } from './forms/sancion.js';
 import { inspeccionForm, saveInspeccion, delInspeccion } from './forms/inspeccion.js';
 import { proveedoresView, saveProveedor, delProveedor } from './forms/proveedor.js';
+import { ajusteForm, saveAjuste, delAjuste } from './forms/ajuste.js';
+import { searchView, doSearch } from './forms/search.js';
 
 /* Las plantillas HTML generadas usan atributos inline (onclick, oninput, …)
    que se resuelven en el scope global, así que las funciones que referencian
@@ -33,6 +35,8 @@ Object.assign(window, {
   sancionForm, saveSancion, delSancion,
   inspeccionForm, saveInspeccion, delInspeccion,
   proveedoresView, saveProveedor, delProveedor,
+  ajusteForm, saveAjuste, delAjuste,
+  searchView, doSearch,
 });
 
 init();

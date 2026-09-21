@@ -2,6 +2,7 @@ import { val, uid, iso, today, esc } from '../utils.js';
 import { S } from '../state.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
+import { driverForm } from './driver.js';
 
 export function sancionForm(driverId) {
   const d = S.drivers.find(x => x.id === driverId);
@@ -18,4 +19,7 @@ export async function saveSancion(driverId) {
   const o = { id: uid(), driverId, fecha: val('s_fecha') || iso(today()), motivo };
   if (await save('sanciones', o)) { closeModal(); toast('Sanción registrada'); }
 }
-export async function delSancion(id) { if (await remove('sanciones', id)) toast('Sanción borrada'); }
+export async function delSancion(id) {
+  const s = S.sanciones.find(x => x.id === id);
+  if (await remove('sanciones', id)) { toast('Sanción borrada'); if (s) driverForm(s.driverId); }
+}

@@ -1,7 +1,7 @@
 import { $, esc, val, uid, money, fdate } from '../utils.js';
 import { S } from '../state.js';
 import { DOCS, RATINGS } from '../constants.js';
-import { plate, driverDebt, carHistoryForDriver } from '../calc.js';
+import { plate, driverDebt, carHistoryForDriver, driverScore } from '../calc.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -20,9 +20,10 @@ export function driverForm(id) {
   if (ex && d.inactivo) h += '<div class="card" style="margin-bottom:10px"><span class="badge b-mute">Inactivo</span></div>';
   if (ex && d.prospecto) h += '<div class="card" style="margin-bottom:10px"><span class="badge b-info">Prospecto</span></div>';
   if (ex) {
-    const cars = S.cars.filter(c => c.choferId === d.id); const debt = driverDebt(d.id);
+    const cars = S.cars.filter(c => c.choferId === d.id); const debt = driverDebt(d.id); const score = driverScore(d.id);
     h += '<div class="card"><div class="row between"><span class="muted">Autos</span><span>' + (cars.length ? cars.map(c => plate(c.patente)).join(' ') : 'Ninguno') + '</span></div>' +
-    '<div class="row between"><span class="muted">Deuda</span><b style="color:' + (debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(debt) + '</b></div></div>';
+    '<div class="row between"><span class="muted">Deuda</span><b style="color:' + (debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(debt) + '</b></div>' +
+    (score != null ? '<div class="row between"><span class="muted">Puntualidad</span><b>' + score + '%</b></div>' : '') + '</div>';
   }
   h += '<label class="f"><span>Nombre y apellido</span><input id="d_nombre" value="' + esc(d.nombre) + '"></label>' +
   '<label class="chk"><input type="checkbox" id="d_prospecto"' + (d.prospecto ? ' checked' : '') + '><span>Es un prospecto (todavía no firmó contrato)</span></label>' +

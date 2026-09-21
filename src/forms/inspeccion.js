@@ -1,8 +1,10 @@
 import { val, uid, iso, today, esc } from '../utils.js';
+import { S } from '../state.js';
 import { INSPECCION_ITEMS } from '../constants.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { carById } from '../calc.js';
+import { carForm } from './car.js';
 
 export function inspeccionForm(carId) {
   const c = carById(carId);
@@ -24,4 +26,7 @@ export async function saveInspeccion(carId) {
   const o = { id: uid(), carId, driverId: (c || {}).choferId || '', tipo: val('i_tipo'), fecha: val('i_fecha') || iso(today()), km: val('i_km'), combustible: val('i_combustible'), items, notas: val('i_notas') };
   if (await save('inspecciones', o)) { closeModal(); toast('Inspección guardada'); }
 }
-export async function delInspeccion(id) { if (await remove('inspecciones', id)) toast('Inspección borrada'); }
+export async function delInspeccion(id) {
+  const x = S.inspecciones.find(v => v.id === id);
+  if (await remove('inspecciones', id)) { toast('Inspección borrada'); if (x) carForm(x.carId); }
+}

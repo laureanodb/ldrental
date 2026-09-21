@@ -1,8 +1,10 @@
 import { val, uid, iso, today, esc } from '../utils.js';
+import { S } from '../state.js';
 import { GASTO_CATS } from '../constants.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { carById } from '../calc.js';
+import { carForm } from './car.js';
 
 export function gastoForm(carId) {
   const c = carById(carId);
@@ -23,4 +25,7 @@ export async function saveGasto(carId) {
   const o = { id: uid(), carId, categoria: val('g_cat'), fecha: val('g_fecha') || iso(today()), costo, km: val('g_km'), proveedor: val('g_proveedor'), descripcion: val('g_desc') };
   if (await save('gastos', o)) { closeModal(); toast('Gasto registrado'); }
 }
-export async function delGasto(id) { if (await remove('gastos', id)) toast('Gasto borrado'); }
+export async function delGasto(id) {
+  const g = S.gastos.find(x => x.id === id);
+  if (await remove('gastos', id)) { toast('Gasto borrado'); if (g) carForm(g.carId); }
+}

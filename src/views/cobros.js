@@ -1,13 +1,29 @@
 import { S, ui } from '../state.js';
-import { esc, money, fdate, num1 } from '../utils.js';
+import { esc, money, fdate, num1, parse, today } from '../utils.js';
 import { isContract, calc, carById, badge, plate, driverName } from '../calc.js';
 import { METODOS_PAGO } from '../constants.js';
 
 const metodoLabel = m => (METODOS_PAGO.find(x => x[0] === m) || [])[1];
+const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const ORDEN_SEMANA = [1, 2, 3, 4, 5, 6, 0];
+
+function calendarioCobros(act) {
+  const hoy = today().getDay();
+  const porDia = Array.from({ length: 7 }, () => []);
+  act.forEach(x => { if (!x.c.inicio) return; porDia[parse(x.c.inicio).getDay()].push(x); });
+  return '<h2>Calendario de la semana</h2><div class="scroll-x"><div class="row" style="gap:6px;padding-bottom:4px">' + ORDEN_SEMANA.map(wd => {
+    const items = porDia[wd], esHoy = wd === hoy;
+    return '<div class="card" style="min-width:78px;flex:none' + (esHoy ? ';border-color:var(--info)' : '') + '">' +
+      '<div class="small" style="text-align:center;font-weight:' + (esHoy ? '700' : '400') + (esHoy ? ';color:var(--info)' : ';color:var(--muted)') + '">' + DIAS[wd] + '</div>' +
+      (items.length ? items.map(x => '<div class="small tap" style="margin-top:4px;text-align:center;' + (x.i.debt > 0 ? 'color:var(--bad)' : '') + '" onclick="payForm(\'' + x.c.id + '\')">' + esc(x.c.patente) + '</div>').join('') : '<div class="small muted" style="text-align:center;margin-top:4px">–</div>') +
+      '</div>';
+  }).join('') + '</div></div>';
+}
 
 export function viewCobros() {
   const act = S.cars.filter(c => isContract(c) && c.choferId).map(c => ({ c, i: calc(c) })).sort((a, b) => b.i.debt - a.i.debt);
   let h = '<h1>Cobros</h1><p class="sub">Cobro semanal por auto</p><div class="bar"><button class="btn grow" onclick="payForm()">Registrar cobro</button>' + '<button class="btn sec" onclick="exportCSV()">Exportar</button>' + '</div>';
+  if (act.length) h += calendarioCobros(act);
   h += '<h2>Estado de cada auto</h2>';
   if (!act.length) h += '<div class="card empty">Cuando tengas autos alquilados o financiados con chofer, van a aparecer acá.</div>';
   act.forEach(x => {
