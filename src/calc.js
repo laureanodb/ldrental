@@ -1,8 +1,18 @@
 import { S } from './state.js';
 import { VENC, TIPOS } from './constants.js';
 import { days, parse, today, esc, fdate } from './utils.js';
+import { settings } from './settings.js';
 
 export const isContract = c => c.tipo === 'alquiler' || c.tipo === 'financiado';
+export const activeCars = () => S.cars.filter(c => !c.vendido);
+export const activeDrivers = () => S.drivers.filter(d => !d.inactivo);
+
+export function finFinanciado(c) {
+  if (c.tipo !== 'financiado' || !c.inicio || !c.cuotas) return null;
+  const d = parse(c.inicio);
+  d.setDate(d.getDate() + (+c.cuotas) * 7);
+  return d;
+}
 
 export function calc(c) {
   const r = { debt: 0, late: 0, paid: 0, due: 0, weeks: 0, saldo: null, total: 0 };
@@ -24,18 +34,18 @@ export function vs(f) {
   const d = days(today(), parse(f));
   if (d < 0) return { d, cls: 'bad', t: 'Vencido hace ' + (-d) + ' d' };
   if (d === 0) return { d, cls: 'bad', t: 'Vence hoy' };
-  if (d <= 15) return { d, cls: 'warn', t: 'Vence en ' + d + ' d' };
-  if (d <= 30) return { d, cls: 'soft', t: 'Vence en ' + d + ' d' };
+  if (d <= settings.avisoWarn) return { d, cls: 'warn', t: 'Vence en ' + d + ' d' };
+  if (d <= settings.avisoSoft) return { d, cls: 'soft', t: 'Vence en ' + d + ' d' };
   return { d, cls: 'ok', t: 'Vence ' + fdate(f) };
 }
 
 export function alerts() {
   const out = [];
-  S.cars.forEach(c => VENC.forEach(([k, l]) => { const s = vs(c[k]); if (s) out.push(Object.assign({ who: c.patente || 'Auto sin patente', sub: l, kind: 'car', id: c.id }, s)); }));
-  S.drivers.forEach(d => { const s = vs(d.licVenc); if (s) out.push(Object.assign({ who: d.nombre, sub: 'Licencia', kind: 'driver', id: d.id }, s)); });
+  activeCars().forEach(c => VENC.forEach(([k, l]) => { const s = vs(c[k]); if (s) out.push(Object.assign({ who: c.patente || 'Auto sin patente', sub: l, kind: 'car', id: c.id }, s)); }));
+  activeDrivers().forEach(d => { const s = vs(d.licVenc); if (s) out.push(Object.assign({ who: d.nombre, sub: 'Licencia', kind: 'driver', id: d.id }, s)); });
   return out.sort((a, b) => a.d - b.d);
 }
-export const urgent = () => alerts().filter(a => a.d <= 15);
+export const urgent = () => alerts().filter(a => a.d <= settings.avisoWarn);
 export const driverName = id => { const d = S.drivers.find(x => x.id === id); return d ? d.nombre : ''; };
 export const carById = id => S.cars.find(x => x.id === id);
 export function driverDebt(id) {

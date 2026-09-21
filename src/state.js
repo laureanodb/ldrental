@@ -1,7 +1,7 @@
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 
 export const S = { cars: [], drivers: [], payments: [], ready: false, user: null, chan: null };
-export const ui = { tab: 'panel', qCars: '', qDrivers: '', filterCar: '' };
+export const ui = { tab: 'panel', qCars: '', qDrivers: '', filterCar: '', showVendidos: false, showInactivos: false };
 
 export let sb = null, dl = null, as = null;
 export function setSb(v) { sb = v; }
