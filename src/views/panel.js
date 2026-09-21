@@ -14,11 +14,11 @@ export function viewPanel() {
   const saldoFin = S.cars.filter(c => c.tipo === 'financiado').reduce((a, c) => a + (calc(c).saldo || 0), 0);
   const urg = urgent();
   if (!S.cars.length && !S.drivers.length) {
-    return '<h1>Mi Flota v4</h1><p class="sub">Autos, choferes, cobros y vencimientos en un solo lugar.</p>' +
+    return '<h1>Mi Flota v5</h1><p class="sub">Autos, choferes, cobros y vencimientos en un solo lugar.</p>' +
     '<div class="card empty"><b>Empecemos por lo básico</b>Cargá tus choferes y tus autos. Después registrás cada cobro semanal y la app te dice quién debe y qué vence.<div style="margin-top:16px" class="row" ><button class="btn grow" onclick="driverForm()">Cargar chofer</button><button class="btn grow" onclick="carForm()">Cargar auto</button></div></div>' + backupCard();
   }
   const morosos = infos.filter(x => x.i.debt > 0).sort((a, b) => b.i.debt - a.i.debt).slice(0, 5);
-  let h = '<h1>Mi Flota v4</h1><p class="sub">' + t0.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) + '</p>';
+  let h = '<h1>Mi Flota v5</h1><p class="sub">' + t0.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) + '</p>';
   h += '<div class="grid">' +
     '<div class="kpi"><div class="n">' + money(cobMes) + '</div><div class="l">Cobrado este mes</div></div>' +
     '<div class="kpi"><div class="n">' + money(esperado) + '</div><div class="l">Esperado por semana</div></div>' +

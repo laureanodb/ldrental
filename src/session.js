@@ -8,10 +8,10 @@ import { render } from './nav.js';
 import { makeStorage } from './storage.js';
 
 export function viewSetup() {
-  return '<div class="login"><h1>Mi Flota v4</h1><div class="card"><b>Falta configurar la conexión</b><p class="small muted">Completá VITE_SUPABASE_URL y VITE_SUPABASE_KEY en el archivo .env, con los datos de tu proyecto de Supabase.</p></div></div>';
+  return '<div class="login"><h1>Mi Flota v5</h1><div class="card"><b>Falta configurar la conexión</b><p class="small muted">Completá VITE_SUPABASE_URL y VITE_SUPABASE_KEY en el archivo .env, con los datos de tu proyecto de Supabase.</p></div></div>';
 }
 export function viewLogin() {
-  return '<div class="login"><h1>Mi Flota v4</h1><p class="sub">Ingresá con tu usuario</p>' +
+  return '<div class="login"><h1>Mi Flota v5</h1><p class="sub">Ingresá con tu usuario</p>' +
   '<label class="f"><span>Email</span><input id="l_email" type="email" autocomplete="username" inputmode="email" autocapitalize="none"></label>' +
   '<label class="f"><span>Contraseña</span><input id="l_pass" type="password" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doLogin()"></label>' +
   '<button class="btn block" onclick="doLogin()">Entrar</button><div id="l_err" class="small" style="color:var(--bad);margin-top:10px"></div></div>';
