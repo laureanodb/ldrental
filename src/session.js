@@ -3,9 +3,10 @@ import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { S, sb, setSb, setAs, configured } from './state.js';
 import { $, val } from './utils.js';
 import { COLS } from './constants.js';
-import { load } from './data.js';
+import { load, flushQueue } from './data.js';
 import { render } from './nav.js';
 import { makeStorage } from './storage.js';
+import { loadOwnProfile } from './roles.js';
 
 export function viewSetup() {
   return '<div class="login"><h1>Mi Flota v5</h1><div class="card"><b>Falta configurar la conexión</b><p class="small muted">Completá VITE_SUPABASE_URL y VITE_SUPABASE_KEY en el archivo .env, con los datos de tu proyecto de Supabase.</p></div></div>';
@@ -27,7 +28,8 @@ export async function doLogin() {
 export async function logout() { await sb.auth.signOut(); }
 export async function start() {
   S.ready = false; render();
-  await Promise.all(COLS.map(load));
+  await flushQueue();
+  await Promise.all([...COLS.map(load), loadOwnProfile()]);
   S.ready = true; render();
   if (!S.chan) {
     S.chan = sb.channel('flota');
@@ -40,7 +42,7 @@ export async function start() {
 }
 export function stop() {
   if (S.chan) { try { sb.removeChannel(S.chan); } catch (e) {} S.chan = null; }
-  COLS.forEach(c => S[c] = []); S.ready = false;
+  COLS.forEach(c => S[c] = []); S.ready = false; S.profile = null; S.profilesEnabled = false;
 }
 
 export async function init() {

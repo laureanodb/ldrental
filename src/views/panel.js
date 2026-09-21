@@ -3,6 +3,7 @@ import { money, today, esc, num1 } from '../utils.js';
 import { isContract, calc, urgent, driverName, plate, activeCars, cobradoDelMes } from '../calc.js';
 import { settings } from '../settings.js';
 import { backupCard, alertRow, ajustesCard } from './shared.js';
+import { googleCard } from './google-ui.js';
 
 export function viewPanel() {
   const flota = activeCars();
@@ -40,5 +41,5 @@ export function viewPanel() {
   if (!urg.length) h += '<div class="card muted">Nada vence en los próximos ' + settings.avisoWarn + ' días.</div>';
   urg.slice(0, 6).forEach(a => { h += alertRow(a); });
   if (urg.length > 6) h += '<button class="btn sec block" onclick="go(\'venc\')">Ver los ' + urg.length + '</button>';
-  return h + ajustesCard() + backupCard();
+  return h + ajustesCard() + googleCard() + backupCard();
 }

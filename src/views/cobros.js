@@ -2,6 +2,7 @@ import { S, ui } from '../state.js';
 import { esc, money, fdate, num1, parse, today } from '../utils.js';
 import { isContract, calc, carById, badge, plate, driverName } from '../calc.js';
 import { METODOS_PAGO } from '../constants.js';
+import { isAdmin } from '../roles.js';
 
 const metodoLabel = m => (METODOS_PAGO.find(x => x[0] === m) || [])[1];
 const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -42,7 +43,7 @@ export function viewCobros() {
   if (!P.length) h += '<div class="card muted">Todavía no hay cobros registrados.</div>';
   P.slice(0, 40).forEach(p => {
     const c = carById(p.carId);
-    h += '<div class="card row"><div class="grow"><div>' + money(p.monto) + ' <span class="small muted">' + esc(p.tipo === 'alquiler' ? 'alquiler' : p.tipo === 'cuota' ? 'cuota' : 'otro') + '</span>' + (p.parcial ? ' ' + badge('warn', 'Parcial') : '') + '</div><div class="small muted">' + fdate(p.fecha) + ' · ' + esc(c ? c.patente : 'auto eliminado') + (p.choferId && driverName(p.choferId) ? ' · ' + esc(driverName(p.choferId)) : '') + (metodoLabel(p.metodo) ? ' · ' + esc(metodoLabel(p.metodo)) : '') + (p.nota ? ' · ' + esc(p.nota) : '') + '</div></div><button class="btn danger sm" onclick="confirmDel(this,()=>delPay(\'' + p.id + '\'))">Borrar</button></div>';
+    h += '<div class="card row"><div class="grow"><div>' + money(p.monto) + ' <span class="small muted">' + esc(p.tipo === 'alquiler' ? 'alquiler' : p.tipo === 'cuota' ? 'cuota' : 'otro') + '</span>' + (p.parcial ? ' ' + badge('warn', 'Parcial') : '') + '</div><div class="small muted">' + fdate(p.fecha) + ' · ' + esc(c ? c.patente : 'auto eliminado') + (p.choferId && driverName(p.choferId) ? ' · ' + esc(driverName(p.choferId)) : '') + (metodoLabel(p.metodo) ? ' · ' + esc(metodoLabel(p.metodo)) : '') + (p.nota ? ' · ' + esc(p.nota) : '') + '</div></div>' + (isAdmin() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delPay(\'' + p.id + '\'))">Borrar</button>' : '') + '</div>';
   });
   if (P.length > 40) h += '<div class="small muted" style="text-align:center">Se muestran los últimos 40. Exportá para ver todos.</div>';
   return h;

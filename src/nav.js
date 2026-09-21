@@ -8,6 +8,7 @@ import { viewChoferes, listChoferes } from './views/choferes.js';
 import { viewCobros } from './views/cobros.js';
 import { viewVenc } from './views/venc.js';
 import { viewReportes } from './views/reportes.js';
+import { queueLength } from './offline.js';
 
 const ICONS = {
   panel: '<path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-4H4zM14 8h6V4h-6z"/>',
@@ -24,6 +25,11 @@ export function renderNav() {
   $('#nav').innerHTML = items.map(([k, l]) => '<button class="' + (ui.tab === k ? 'on' : '') + '" onclick="go(\'' + k + '\')"><svg viewBox="0 0 24 24">' + ICONS[k] + '</svg>' + l + (k === 'venc' && n ? '<span class="dot">' + n + '</span>' : '') + '</button>').join('');
 }
 export function go(t) { ui.tab = t; render(); window.scrollTo(0, 0); }
+function offlineBar() {
+  const n = queueLength();
+  if (navigator.onLine && !n) return '';
+  return '<div class="offlinebar">' + (!navigator.onLine ? 'Sin conexión' : 'Conectado') + (n ? ' · ' + n + ' cambio' + (n === 1 ? '' : 's') + ' por sincronizar' : '') + '</div>';
+}
 export function render() {
   renderNav();
   const app = $('#app');
@@ -31,7 +37,7 @@ export function render() {
   if (!S.user) { app.innerHTML = viewLogin(); return; }
   if (!S.ready) { app.innerHTML = '<div class="loading">Cargando tu flota…</div>'; return; }
   const v = { panel: viewPanel, autos: viewAutos, choferes: viewChoferes, cobros: viewCobros, venc: viewVenc, reportes: viewReportes }[ui.tab]();
-  app.innerHTML = v;
+  app.innerHTML = offlineBar() + v;
   renderList();
 }
 export function renderList() {

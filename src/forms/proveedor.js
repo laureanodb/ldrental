@@ -2,11 +2,12 @@ import { S } from '../state.js';
 import { val, uid, esc } from '../utils.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
+import { isAdmin } from '../roles.js';
 
 export function proveedoresView() {
   const P = S.proveedores.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
   let h = '<h3>Proveedores y talleres</h3>';
-  h += P.length ? P.map(p => '<div class="card row"><div class="grow"><div>' + esc(p.nombre) + '</div><div class="small muted">' + esc([p.rubro, p.tel].filter(Boolean).join(' · ')) + '</div>' + (p.notas ? '<div class="small muted">' + esc(p.notas) + '</div>' : '') + '</div><button class="btn danger sm" onclick="confirmDel(this,()=>delProveedor(\'' + p.id + '\'))">Borrar</button></div>').join('') : '<div class="small muted" style="margin-bottom:8px">Todavía no cargaste proveedores.</div>';
+  h += P.length ? P.map(p => '<div class="card row"><div class="grow"><div>' + esc(p.nombre) + '</div><div class="small muted">' + esc([p.rubro, p.tel].filter(Boolean).join(' · ')) + '</div>' + (p.notas ? '<div class="small muted">' + esc(p.notas) + '</div>' : '') + '</div>' + (isAdmin() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delProveedor(\'' + p.id + '\'))">Borrar</button>' : '') + '</div>').join('') : '<div class="small muted" style="margin-bottom:8px">Todavía no cargaste proveedores.</div>';
   h += '<div class="sec-t">Agregar proveedor</div>' +
   '<label class="f"><span>Nombre</span><input id="pr_nombre"></label>' +
   '<div class="two"><label class="f"><span>Rubro</span><input id="pr_rubro" placeholder="Taller, gomería..."></label>' +
