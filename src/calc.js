@@ -2,6 +2,7 @@ import { S } from './state.js';
 import { VENC, TIPOS } from './constants.js';
 import { days, parse, today, esc, fdate } from './utils.js';
 import { settings } from './settings.js';
+import { isSnoozed } from './snooze.js';
 
 export const isContract = c => c.tipo === 'alquiler' || c.tipo === 'financiado';
 export const activeCars = () => S.cars.filter(c => !c.vendido);
@@ -41,8 +42,16 @@ export function vs(f) {
 
 export function alerts() {
   const out = [];
-  activeCars().forEach(c => VENC.forEach(([k, l]) => { const s = vs(c[k]); if (s) out.push(Object.assign({ who: c.patente || 'Auto sin patente', sub: l, kind: 'car', id: c.id }, s)); }));
-  activeDrivers().forEach(d => { const s = vs(d.licVenc); if (s) out.push(Object.assign({ who: d.nombre, sub: 'Licencia', kind: 'driver', id: d.id }, s)); });
+  activeCars().forEach(c => VENC.forEach(([k, l]) => {
+    const s = vs(c[k]); if (!s) return;
+    const key = 'car:' + c.id + ':' + k; if (isSnoozed(key)) return;
+    out.push(Object.assign({ who: c.patente || 'Auto sin patente', sub: l, kind: 'car', id: c.id, key }, s));
+  }));
+  activeDrivers().forEach(d => {
+    const s = vs(d.licVenc); if (!s) return;
+    const key = 'driver:' + d.id + ':lic'; if (isSnoozed(key)) return;
+    out.push(Object.assign({ who: d.nombre, sub: 'Licencia', kind: 'driver', id: d.id, key }, s));
+  });
   return out.sort((a, b) => a.d - b.d);
 }
 export const urgent = () => alerts().filter(a => a.d <= settings.avisoWarn);
@@ -50,6 +59,11 @@ export const driverName = id => { const d = S.drivers.find(x => x.id === id); re
 export const carById = id => S.cars.find(x => x.id === id);
 export function driverDebt(id) {
   return S.cars.filter(c => c.choferId === id && isContract(c)).reduce((a, c) => a + calc(c).debt, 0);
+}
+export function carHistoryForDriver(driverId) {
+  const out = [];
+  S.cars.forEach(c => (c.historialChoferes || []).forEach(h => { if (h.choferId === driverId) out.push({ patente: c.patente, desde: h.desde, hasta: h.hasta }); }));
+  return out.sort((a, b) => b.desde.localeCompare(a.desde));
 }
 export const plate = p => '<span class="plate">' + esc(p || 'Sin patente') + '</span>';
 export const badge = (cls, t) => '<span class="badge b-' + cls + '">' + esc(t) + '</span>';

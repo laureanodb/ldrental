@@ -29,6 +29,8 @@ export function renderFiles(col, id) {
   const label = k => (cats.find(c => c[0] === k) || [0, 'Archivo'])[1];
   const gallery = col === 'cars' ? F.filter(f => !f.link && f.cat === 'fotos' && (f.type || '').startsWith('image/')) : [];
   const rest = F.filter(f => !gallery.includes(f));
+  const catCounts = {}; rest.forEach(f => { catCounts[f.cat] = (catCounts[f.cat] || 0) + 1; });
+  const lastIdxByCat = {}; rest.forEach((f, i) => { lastIdxByCat[f.cat] = i; });
   let h = '';
   if (gallery.length) {
     h += '<div class="photogrid">' + gallery.map(f =>
@@ -36,12 +38,13 @@ export function renderFiles(col, id) {
       (as ? '<button class="btn danger sm" onclick="event.stopPropagation();confirmDel(this,()=>delFile(\'' + col + '\',\'' + id + '\',\'' + esc(f.id) + '\'))">Quitar</button>' : '') + '</div>'
     ).join('') + '</div>';
   }
-  h += rest.length ? rest.map(f => {
+  h += rest.length ? rest.map((f, i) => {
     const img = !f.link && (f.type || '').startsWith('image/');
     const open = f.link ? "window.open('" + esc(f.link) + "','_blank')" : "viewFile('" + esc(f.id) + "','" + esc(f.name) + "')";
+    const version = catCounts[f.cat] > 1 ? (i === lastIdxByCat[f.cat] ? ' <span class="badge b-ok">Vigente</span>' : ' <span class="badge b-mute">Anterior</span>') : '';
     return '<div class="card row"><div class="row grow tap" onclick="' + open + '">' +
     (img ? '<img class="fthumb" alt="" data-path="' + esc(f.id) + '">' : '<div class="fthumb fpdf">' + (f.link ? 'LINK' : 'PDF') + '</div>') +
-    '<div class="grow" style="overflow-wrap:anywhere"><div>' + esc(label(f.cat)) + '</div><div class="small muted">' + esc(f.name) + ' · ' + fdate(f.fecha) + '</div></div></div>' +
+    '<div class="grow" style="overflow-wrap:anywhere"><div>' + esc(label(f.cat)) + version + '</div><div class="small muted">' + esc(f.name) + ' · ' + fdate(f.fecha) + '</div></div></div>' +
     ((as || f.link) ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delFile(\'' + col + '\',\'' + id + '\',\'' + esc(f.id) + '\'))">Quitar</button>' : '') + '</div>';
   }).join('') : (gallery.length ? '' : '<div class="small muted" style="margin-bottom:8px">Todavía no hay archivos.</div>');
   h += '<label class="f"><span>Categoría</span><select id="f_cat">' + cats.map(c => '<option value="' + c[0] + '">' + esc(c[1]) + '</option>').join('') + '</select></label>';
