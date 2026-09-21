@@ -1,6 +1,6 @@
 import { $ } from './utils.js';
 import { S, ui, configured } from './state.js';
-import { urgent } from './calc.js';
+import { urgent, mantenimientoVencidosCount } from './calc.js';
 import { viewSetup, viewLogin } from './session.js';
 import { viewPanel } from './views/panel.js';
 import { viewAutos, listAutos } from './views/autos.js';
@@ -23,8 +23,9 @@ const ICONS = {
 export function renderNav() {
   if (!configured() || !S.user) { $('#nav').innerHTML = ''; return; }
   const n = urgent().length;
+  const nMant = mantenimientoVencidosCount();
   const items = [['panel', 'Panel'], ['autos', 'Autos'], ['choferes', 'Choferes'], ['cobros', 'Cobros'], ['venc', 'Vencimientos'], ['mantenimiento', 'Mantenimiento'], ['reportes', 'Reportes']];
-  $('#nav').innerHTML = items.map(([k, l]) => '<button class="' + (ui.tab === k ? 'on' : '') + '" onclick="go(\'' + k + '\')"><svg viewBox="0 0 24 24">' + ICONS[k] + '</svg>' + l + (k === 'venc' && n ? '<span class="dot">' + n + '</span>' : '') + '</button>').join('');
+  $('#nav').innerHTML = items.map(([k, l]) => '<button class="' + (ui.tab === k ? 'on' : '') + '" onclick="go(\'' + k + '\')"><svg viewBox="0 0 24 24">' + ICONS[k] + '</svg>' + l + (k === 'venc' && n ? '<span class="dot">' + n + '</span>' : '') + (k === 'mantenimiento' && nMant ? '<span class="dot">' + nMant + '</span>' : '') + '</button>').join('');
 }
 export function go(t) { ui.tab = t; render(); window.scrollTo(0, 0); }
 function offlineBar() {

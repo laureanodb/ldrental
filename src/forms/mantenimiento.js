@@ -7,14 +7,18 @@ import { carById } from '../calc.js';
 import { carForm, actualizarKm, marcarEnTaller } from './car.js';
 import { renderFiles } from '../files.js';
 
-export function mantenimientoForm(carId, editId) {
-  const c = carById(carId);
+export function mantenimientoForm(carId, editId, presetItem) {
+  const cars = S.cars.filter(x => !x.vendido).slice().sort((a, b) => String(a.patente).localeCompare(String(b.patente)));
+  const c = carById(carId) || (carId ? null : cars[0]);
   if (!c) { toast('Auto no encontrado'); return; }
   const ex = editId ? S.mantenimientos.find(x => x.id === editId) : null;
+  const elegido = ex ? ex.item : (presetItem || '');
   const plan = c.mantenimientoPlan || [];
-  const h = '<h3>Mantenimiento — ' + esc(c.patente) + '</h3>' +
+  const h = '<h3>' + (carId ? 'Mantenimiento — ' + esc(c.patente) : 'Nuevo mantenimiento') + '</h3>' +
+  '<input type="hidden" id="m_carid" value="' + esc(c.id) + '">' +
+  (carId ? '' : '<label class="f"><span>Auto</span><select id="m_car" onchange="onMantCar()">' + cars.map(x => '<option value="' + x.id + '"' + (x.id === c.id ? ' selected' : '') + '>' + esc(x.patente) + '</option>').join('') + '</select></label>') +
   '<label class="f"><span>Ítem</span><select id="m_item" onchange="onMantItem()">' +
-    plan.map(p => '<option value="' + esc(p.item) + '"' + ((ex ? ex.item : '') === p.item ? ' selected' : '') + '>' + esc(p.label || p.item) + '</option>').join('') +
+    plan.map(p => '<option value="' + esc(p.item) + '"' + (elegido === p.item ? ' selected' : '') + '>' + esc(p.label || p.item) + '</option>').join('') +
     (ex ? '' : '<option value="__custom__">+ Ítem personalizado…</option>') +
   '</select></label>' +
   (ex ? '' : '<div id="m_custom" style="display:none" class="two"><label class="f"><span>Nombre del ítem</span><input id="m_customLabel"></label>' +
@@ -30,16 +34,18 @@ export function mantenimientoForm(carId, editId) {
   (c.tipo !== 'taller' ? '<label class="chk"><input type="checkbox" id="m_taller"><span>El auto queda parado en el taller</span></label>' : '') +
   '<label class="f"><span>Notas</span><textarea id="m_notas">' + esc(ex ? ex.notas : '') + '</textarea></label>' +
   '<div class="sec-t">Archivos</div><div id="files"></div><div id="fstatus" class="small" style="margin:-4px 0 12px;overflow-wrap:anywhere"></div>' +
-  '<div class="row"><button class="btn grow" onclick="saveMantenimiento(\'' + c.id + '\'' + (ex ? ",'" + ex.id + "'" : '') + ')">Guardar</button><button class="btn sec" onclick="carForm(\'' + c.id + '\')">Cancelar</button></div>';
+  '<div class="row"><button class="btn grow" onclick="saveMantenimiento(' + (ex ? "'" + ex.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="' + (carId ? "carForm('" + c.id + "')" : 'closeModal()') + '">Cancelar</button></div>';
   openModal(h);
   onMantItem();
   renderFiles('mantenimientos', ex ? ex.id : null);
 }
+export function onMantCar() { mantenimientoForm(val('m_car')); }
 export function onMantItem() {
   const sel = $('#m_item'); if (!sel) return;
   const box = $('#m_custom'); if (box) box.style.display = sel.value === '__custom__' ? '' : 'none';
 }
-export async function saveMantenimiento(carId, editId) {
+export async function saveMantenimiento(editId) {
+  const carId = val('m_carid');
   const c = carById(carId);
   if (!c) return;
   let itemKey = val('m_item'), label = '';
@@ -74,4 +80,25 @@ export async function saveMantenimiento(carId, editId) {
 export async function delMantenimiento(id) {
   const m = S.mantenimientos.find(x => x.id === id);
   if (await remove('mantenimientos', id)) { toast('Mantenimiento borrado'); if (m) carForm(m.carId); }
+}
+export function editarPlanMantenimiento(carId) {
+  const c = carById(carId);
+  if (!c) { toast('Auto no encontrado'); return; }
+  const plan = c.mantenimientoPlan || [];
+  if (!plan.length) { toast('Este auto no tiene ítems en su plan'); return; }
+  const h = '<h3>Editar plan — ' + esc(c.patente) + '</h3>' +
+  '<div class="small muted" style="margin-bottom:12px">Dejá vacío el campo que no aplique para cada ítem. Se avisa cuando se cumpla cualquiera de los dos, lo que llegue primero.</div>' +
+  plan.map((p, i) => '<div class="sec-t">' + esc(p.label || p.item) + '</div><div class="two"><label class="f"><span>Cada cuántos km</span><input id="ep_km_' + i + '" inputmode="numeric" value="' + esc(p.intervaloKm || '') + '"></label>' +
+  '<label class="f"><span>Cada cuántos meses</span><input id="ep_meses_' + i + '" inputmode="numeric" value="' + esc(p.intervaloMeses || '') + '"></label></div>').join('') +
+  '<div class="row" style="margin-top:14px"><button class="btn grow" onclick="guardarPlanMantenimiento(\'' + c.id + '\')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
+  openModal(h);
+}
+export async function guardarPlanMantenimiento(carId) {
+  const c = carById(carId);
+  if (!c) return;
+  const plan = (c.mantenimientoPlan || []).map((p, i) => Object.assign({}, p, {
+    intervaloKm: +val('ep_km_' + i) || null,
+    intervaloMeses: +val('ep_meses_' + i) || null,
+  }));
+  if (await save('cars', Object.assign({}, c, { mantenimientoPlan: plan }))) { closeModal(); toast('Plan de mantenimiento actualizado'); }
 }

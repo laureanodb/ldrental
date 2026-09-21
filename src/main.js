@@ -5,7 +5,8 @@ import { init } from './session.js';
 import { go, render, renderList } from './nav.js';
 import { doLogin, logout } from './session.js';
 import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller } from './forms/car.js';
-import { mantenimientoForm, onMantItem, saveMantenimiento, delMantenimiento } from './forms/mantenimiento.js';
+import { mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento } from './forms/mantenimiento.js';
+import { mantAtajoFecha } from './views/mantenimiento.js';
 import { multaForm, onMultaCar, onMultaFecha, saveMulta, delMulta } from './forms/multa.js';
 import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo } from './forms/driver.js';
 import { payForm, onPayCar, savePay, delPay } from './forms/payment.js';
@@ -24,7 +25,7 @@ import { usuariosView, cambiarRol, toggleActivo } from './forms/usuarios.js';
 import { conectarGoogleUI } from './views/google-ui.js';
 import { googleConfigured, loadGis } from './google.js';
 import { syncCalendarUI } from './google-calendar.js';
-import { syncSheetsUI, syncMultasSheetsUI } from './google-sheets.js';
+import { syncSheetsUI, syncMultasSheetsUI, syncMantenimientoSheetsUI } from './google-sheets.js';
 import { syncDriveUI } from './google-drive.js';
 
 /* Las plantillas HTML generadas usan atributos inline (onclick, oninput, …)
@@ -34,7 +35,7 @@ Object.assign(window, {
   ui, go, render, renderList,
   doLogin, logout,
   carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller,
-  mantenimientoForm, onMantItem, saveMantenimiento, delMantenimiento,
+  mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, mantAtajoFecha,
   multaForm, onMultaCar, onMultaFecha, saveMulta, delMulta,
   driverForm, saveDriver, delDriver, addTelRow, toggleInactivo,
   payForm, onPayCar, savePay, delPay,
@@ -49,7 +50,7 @@ Object.assign(window, {
   ajusteForm, saveAjuste, delAjuste,
   searchView, doSearch,
   usuariosView, cambiarRol, toggleActivo,
-  conectarGoogleUI, syncCalendarUI, syncSheetsUI, syncMultasSheetsUI, syncDriveUI,
+  conectarGoogleUI, syncCalendarUI, syncSheetsUI, syncMultasSheetsUI, syncMantenimientoSheetsUI, syncDriveUI,
 });
 
 window.addEventListener('online', () => { flushQueue(); render(); });

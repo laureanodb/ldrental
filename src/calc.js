@@ -57,6 +57,12 @@ export function planMantenimientoDefault(km, fecha) {
     item, label, intervaloKm: intervaloKm || null, intervaloMeses: intervaloMeses || null, ultimoKm: +km || 0, ultimaFecha: fecha,
   }));
 }
+function clasificarVencimiento(restanteKm, restanteDias) {
+  if ((restanteKm != null && restanteKm <= 0) || (restanteDias != null && restanteDias <= 0)) return 'bad';
+  if ((restanteKm != null && restanteKm <= 1000) || (restanteDias != null && restanteDias <= settings.avisoWarn)) return 'warn';
+  if ((restanteKm != null && restanteKm <= 3000) || (restanteDias != null && restanteDias <= settings.avisoSoft)) return 'soft';
+  return 'ok';
+}
 export function estadoPlanItem(c, p) {
   const kmActual = +c.km || 0;
   let restanteKm = null, restanteDias = null;
@@ -65,10 +71,7 @@ export function estadoPlanItem(c, p) {
     const venc = parse(p.ultimaFecha); venc.setMonth(venc.getMonth() + (+p.intervaloMeses));
     restanteDias = days(today(), venc);
   }
-  if ((restanteKm != null && restanteKm <= 0) || (restanteDias != null && restanteDias <= 0)) return { cls: 'bad', restanteKm, restanteDias };
-  if ((restanteKm != null && restanteKm <= 1000) || (restanteDias != null && restanteDias <= settings.avisoWarn)) return { cls: 'warn', restanteKm, restanteDias };
-  if ((restanteKm != null && restanteKm <= 3000) || (restanteDias != null && restanteDias <= settings.avisoSoft)) return { cls: 'soft', restanteKm, restanteDias };
-  return { cls: 'ok', restanteKm, restanteDias };
+  return { cls: clasificarVencimiento(restanteKm, restanteDias), restanteKm, restanteDias };
 }
 export function textoRestante(e) {
   if (e.cls === 'ok') return 'Al día';
@@ -95,7 +98,61 @@ export function peorItemMantenimiento(c) {
     if (!peor || CLS_ORDEN[e.cls] < CLS_ORDEN[peor.e.cls]) peor = { p, e };
   });
   if (!peor) return null;
-  return { cls: peor.e.cls, t: textoEstadoItem(peor.p.label || peor.p.item, peor.e) };
+  return { cls: peor.e.cls, t: textoEstadoItem(peor.p.label || peor.p.item, peor.e), item: peor.p.item };
+}
+export function mantenimientoVencidosCount() {
+  let n = 0;
+  activeCars().forEach(c => (c.mantenimientoPlan || []).forEach(p => {
+    if (!p.intervaloKm && !p.intervaloMeses) return;
+    if (estadoPlanItem(c, p).cls === 'bad') n++;
+  }));
+  return n;
+}
+export function garantiasPorVencer() {
+  const out = [];
+  S.mantenimientos.forEach(m => {
+    if (!m.garantiaMeses && !m.garantiaKm) return;
+    const c = carById(m.carId);
+    if (!c || c.vendido) return;
+    let restanteDias = null, restanteKm = null;
+    if (m.garantiaMeses) { const venc = parse(m.fecha); venc.setMonth(venc.getMonth() + (+m.garantiaMeses)); restanteDias = days(today(), venc); }
+    if (m.garantiaKm) restanteKm = (+m.km || 0) + (+m.garantiaKm) - (+c.km || 0);
+    const cls = clasificarVencimiento(restanteKm, restanteDias);
+    if (cls === 'ok') return;
+    out.push({ m, c, cls, restanteKm, restanteDias });
+  });
+  return out.sort((a, b) => CLS_ORDEN[a.cls] - CLS_ORDEN[b.cls]);
+}
+export function rankingTalleresMantenimiento() {
+  const porTaller = {};
+  S.mantenimientos.filter(m => m.proveedorId).forEach(m => {
+    if (!porTaller[m.proveedorId]) porTaller[m.proveedorId] = { proveedorId: m.proveedorId, cantidad: 0, total: 0 };
+    porTaller[m.proveedorId].cantidad++; porTaller[m.proveedorId].total += (+m.costo || 0);
+  });
+  return Object.values(porTaller).map(x => {
+    const p = S.proveedores.find(v => v.id === x.proveedorId);
+    return Object.assign(x, { nombre: p ? p.nombre : 'Proveedor eliminado' });
+  }).sort((a, b) => b.total - a.total);
+}
+export function rankingItemsMantenimiento() {
+  const porItem = {};
+  S.mantenimientos.forEach(m => {
+    const k = m.item || 'otro';
+    if (!porItem[k]) porItem[k] = { item: k, label: m.label || k, cantidad: 0, total: 0 };
+    porItem[k].cantidad++; porItem[k].total += (+m.costo || 0);
+  });
+  return Object.values(porItem).sort((a, b) => b.total - a.total);
+}
+export function proporcionMantenimiento() {
+  const preventivo = S.mantenimientos.filter(m => m.tipo !== 'correctivo').length;
+  const correctivo = S.mantenimientos.filter(m => m.tipo === 'correctivo').length;
+  return { preventivo, correctivo, total: preventivo + correctivo };
+}
+export function gastoMantenimientoDelMes(offsetMeses) {
+  const t = today();
+  const d = new Date(t.getFullYear(), t.getMonth() - offsetMeses, 1);
+  const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  return S.mantenimientos.filter(m => (m.fecha || '').slice(0, 7) === key).reduce((a, m) => a + (+m.costo || 0), 0);
 }
 export function alerts() {
   const out = [];
