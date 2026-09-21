@@ -1,7 +1,7 @@
 import { S } from '../state.js';
 import { $, val, uid, iso, today, esc, fdate, money } from '../utils.js';
-import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS } from '../constants.js';
-import { isContract, calc, finFinanciado, driverName, diasEnTaller } from '../calc.js';
+import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS } from '../constants.js';
+import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls } from '../calc.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -40,12 +40,12 @@ export function carForm(id) {
     h += '<div class="card"><div class="row between"><span class="muted">Pagado desde el inicio</span><b>' + money(i.paid) + '</b></div>' +
     '<div class="row between"><span class="muted">Debería haber pagado</span><b>' + money(i.due) + '</b></div>' +
     '<div class="row between"><span class="muted">Deuda</span><b style="color:' + (i.debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(i.debt) + '</b></div>' +
-    (i.ajustes > 0 ? '<div class="row between small muted"><span>Ajustes / condonaciones</span><span>-' + money(i.ajustes) + '</span></div>' : '') +
+    (i.ajustes !== 0 ? '<div class="row between small muted"><span>Ajustes / condonaciones</span><span>' + (i.ajustes > 0 ? '-' + money(i.ajustes) : '+' + money(-i.ajustes)) + '</span></div>' : '') +
     (i.saldo != null ? '<div class="row between"><span class="muted">Saldo total de la financiación</span><b>' + money(i.saldo) + '</b></div>' : '') +
     (fin ? '<div class="row between"><span class="muted">Fin estimado de cuotas</span><b>' + fdate(iso(fin)) + '</b></div>' : '') +
     '<div class="row" style="margin-top:10px"><button class="btn grow" onclick="payForm(\'' + c.id + '\')">Registrar cobro</button><button class="btn sec" onclick="ajusteForm(\'' + c.id + '\')">Ajustar deuda</button></div></div>';
     const AJ = (c.ajustesDeuda || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
-    if (AJ.length) h += '<div class="sec-t">Ajustes de deuda</div>' + AJ.map(x => '<div class="card row"><div class="grow"><div>-' + money(x.monto) + ' <span class="small muted">' + fdate(x.fecha) + '</span></div>' + (x.motivo ? '<div class="small muted">' + esc(x.motivo) + '</div>' : '') + '</div>' + (isAdmin() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delAjuste(\'' + c.id + '\',\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    if (AJ.length) h += '<div class="sec-t">Ajustes de deuda</div>' + AJ.map(x => '<div class="card row"><div class="grow"><div>' + (x.monto >= 0 ? '-' + money(x.monto) : '+' + money(-x.monto)) + ' <span class="small muted">' + fdate(x.fecha) + '</span></div>' + (x.motivo ? '<div class="small muted">' + esc(x.motivo) + '</div>' : '') + '</div>' + (isAdmin() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delAjuste(\'' + c.id + '\',\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
   }
   h += '<div class="two"><label class="f"><span>Patente</span><input id="c_patente" value="' + esc(c.patente) + '" autocapitalize="characters"></label>' +
   '<label class="f"><span>Año</span><input id="c_anio" inputmode="numeric" value="' + esc(c.anio) + '"></label></div>' +
@@ -55,7 +55,6 @@ export function carForm(id) {
   '<label class="f"><span>Combustible</span><select id="c_combustible"><option value="">Sin especificar</option>' + COMBUSTIBLES.map(x => '<option value="' + x[0] + '"' + (c.combustible === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
   '<div class="two"><label class="f"><span>Kilometraje actual</span><input id="c_km" inputmode="numeric" value="' + esc(c.km) + '"></label>' +
   '<label class="f"><span>Costo de compra</span><input id="c_costocompra" inputmode="decimal" value="' + esc(c.costoCompra || '') + '"></label></div>' +
-  '<label class="f"><span>Próximo service <small>a qué kilometraje</small></span><input id="c_proxservice" inputmode="numeric" value="' + esc(c.proximoServiceKm) + '"></label>' +
   '<label class="f"><span>Estado</span><select id="c_tipo" data-orig="' + esc(ex ? c.tipo : '') + '" onchange="onTipo(this)">' + Object.keys(TIPOS).map(k => '<option value="' + k + '"' + (c.tipo === k ? ' selected' : '') + '>' + TIPOS[k] + '</option>').join('') + '</select></label>' +
   '<div id="contrato"><label class="f"><span>Chofer</span><select id="c_chofer"><option value="">Elegir chofer</option>' + S.drivers.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre))).map(d => '<option value="' + d.id + '"' + (c.choferId === d.id ? ' selected' : '') + '>' + esc(d.nombre) + '</option>').join('') + '</select></label>' +
   '<div id="finbox" class="two"><label class="f"><span>Total a pagar en cuotas</span><input id="c_total" inputmode="decimal" value="' + esc(c.total || '') + '" oninput="autoCuota()"></label>' +
@@ -76,13 +75,27 @@ export function carForm(id) {
     const G = S.gastos.filter(g => g.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     const totalGastos = G.reduce((a, g) => a + (+g.costo || 0), 0);
     const diasTaller = diasEnTaller(c);
-    h += '<div class="sec-t row between">Gastos y mantenimiento<span class="small muted">' + money(totalGastos) + ' en total' + (diasTaller ? ' · ' + diasTaller + ' días parado' : '') + '</span></div>';
+    const plan = (c.mantenimientoPlan || []).filter(p => p.intervaloKm || p.intervaloMeses);
+    const MH = S.mantenimientos.filter(m => m.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
+    const totalMant = MH.reduce((a, m) => a + (+m.costo || 0), 0);
+    h += '<div class="sec-t row between">Mantenimiento<span class="small muted">' + money(totalMant) + ' en total' + (diasTaller ? ' · ' + diasTaller + ' días parado' : '') + '</span></div>';
+    if (c.tipo === 'taller') h += '<div class="row" style="margin-bottom:10px"><button class="btn sec grow" onclick="sacarDeTaller(\'' + c.id + '\')">Sacar de taller</button></div>';
+    if (plan.length) h += plan.map(p => { const e = estadoPlanItem(c, p); return '<div class="row between small" style="padding:4px 0"><span>' + esc(p.label || p.item) + '</span><span>' + badge(e.cls, textoRestante(e)) + '</span></div>'; }).join('');
+    h += '<button class="btn sec block" style="margin:8px 0" onclick="mantenimientoForm(\'' + c.id + '\')">+ Registrar mantenimiento</button>';
+    if (MH.length) h += '<div class="sec-t">Historial de mantenimiento</div>' + MH.map(m => '<div class="card row"><div class="grow tap" onclick="mantenimientoForm(\'' + c.id + '\',\'' + m.id + '\')"><div>' + money(m.costo) + ' <span class="small muted">' + esc(m.label || m.item) + (m.tipo === 'correctivo' ? ' · correctivo' : '') + '</span></div><div class="small muted">' + fdate(m.fecha) + (m.km ? ' · ' + (+m.km).toLocaleString('es-AR') + ' km' : '') + '</div></div>' + (isAdmin() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delMantenimiento(\'' + m.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    h += '<div class="sec-t row between">Gastos<span class="small muted">' + money(totalGastos) + ' en total</span></div>';
     if (G.length) h += G.map(g => '<div class="card row"><div class="grow"><div>' + money(g.costo) + ' <span class="small muted">' + esc(gastoCatLabel(g.categoria)) + '</span></div><div class="small muted">' + fdate(g.fecha) + (g.proveedor ? ' · ' + esc(g.proveedor) : '') + (g.descripcion ? ' · ' + esc(g.descripcion) : '') + '</div></div>' + (isAdmin() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delGasto(\'' + g.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     h += '<button class="btn sec block" style="margin:8px 0 20px" onclick="gastoForm(\'' + c.id + '\')">+ Agregar gasto</button>';
     const I = S.inspecciones.filter(x => x.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     h += '<div class="sec-t">Inspecciones de entrega/recepción</div>';
     if (I.length) h += I.map(x => '<div class="card row"><div class="grow"><div>' + (x.tipo === 'entrega' ? 'Entrega' : 'Recepción') + ' <span class="small muted">' + fdate(x.fecha) + (x.km ? ' · ' + x.km + ' km' : '') + '</span></div>' + (x.notas ? '<div class="small muted">' + esc(x.notas) + '</div>' : '') + '</div>' + (isAdmin() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delInspeccion(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     else h += '<div class="small muted" style="margin-bottom:8px">Sin inspecciones registradas.</div>';
+    const MU = S.multas.filter(m => m.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
+    const estLabel = e => (MULTA_ESTADOS.find(x => x[0] === e) || [0, e])[1];
+    h += '<div class="sec-t">Multas</div>';
+    if (MU.length) h += MU.map(m => '<div class="card row tap" onclick="multaForm(\'' + c.id + '\',\'' + m.id + '\')"><div class="grow"><div>' + money(m.monto) + ' <span class="small muted">' + fdate(m.fecha) + '</span></div><div class="small muted">' + esc(m.choferId ? driverName(m.choferId) : 'Sin asignar') + '</div></div>' + badge(estadoMultaCls(m.estado), estLabel(m.estado)) + (isAdmin() ? '<button class="btn danger sm" onclick="event.stopPropagation();confirmDel(this,()=>delMulta(\'' + m.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    else h += '<div class="small muted" style="margin-bottom:8px">Sin multas registradas.</div>';
+    h += '<button class="btn sec block" style="margin:8px 0 20px" onclick="multaForm(\'' + c.id + '\')">+ Registrar multa</button>';
     const H = (c.historialChoferes || []).slice().sort((a, b) => b.desde.localeCompare(a.desde));
     if (H.length) {
       h += '<div class="sec-t">Historial de choferes</div>' + H.map(x => '<div class="row between small" style="padding:4px 0"><span>' + esc(driverName(x.choferId) || 'Chofer eliminado') + '</span><span class="muted">' + fdate(x.desde) + ' – ' + (x.hasta ? fdate(x.hasta) : 'actual') + '</span></div>').join('');
@@ -112,18 +125,22 @@ export async function saveCar(id) {
   const tipo = val('c_tipo'), con = tipo === 'alquiler' || tipo === 'financiado';
   const ex = S.cars.find(x => x.id === id);
   const choferId = con ? val('c_chofer') : '';
+  const kmNuevo = +val('c_km') || 0;
+  const kmViejo = ex ? (+ex.km || 0) : null;
+  const kmHistorial = (ex && ex.kmHistorial) || [];
   const o = {
     id: id || uid(), patente, marca: val('c_marca'), modelo: val('c_modelo'), anio: val('c_anio'), tipo,
     choferId, monto: con ? (+val('c_monto') || 0) : 0, inicio: con ? val('c_inicio') : '',
     total: tipo === 'financiado' ? (+val('c_total') || 0) : 0, cuotas: tipo === 'financiado' ? (+val('c_cuotas') || 0) : 0, notas: val('c_notas'),
     numeroFlota: val('c_numflota'), combustible: val('c_combustible'), km: val('c_km'), costoCompra: +val('c_costocompra') || 0,
-    proximoServiceKm: val('c_proxservice'),
     polizaNumero: val('c_poliza'), aseguradora: val('c_aseguradora'),
     vendido: (ex || {}).vendido || false,
     files: (ex || {}).files || [],
     ajustesDeuda: (ex || {}).ajustesDeuda || [],
     historialChoferes: actualizarHistorialChoferes(ex, choferId),
-    historialTaller: actualizarHistorialTaller(ex, tipo)
+    historialTaller: actualizarHistorialTaller(ex, tipo),
+    mantenimientoPlan: (ex && ex.mantenimientoPlan) || planMantenimientoDefault(kmNuevo, iso(today())),
+    kmHistorial: (kmNuevo && kmNuevo !== kmViejo) ? kmHistorial.concat([{ fecha: iso(today()), km: kmNuevo }]) : kmHistorial,
   };
   VENC.forEach(v => { o[v[0]] = val('v_' + v[0]); });
   if (con) {
@@ -141,6 +158,28 @@ export async function delCar(id) {
   await purgeFiles(S.cars.find(x => x.id === id));
   for (const p of S.payments.filter(p => p.carId === id)) await remove('payments', p.id);
   if (await remove('cars', id)) { closeModal(); toast('Auto eliminado'); }
+}
+/* Actualización silenciosa de km desde otros formularios (cobro, inspección, mantenimiento).
+   Nunca retrocede el km ni interrumpe el flujo del formulario que la llama. */
+export async function actualizarKm(carId, km) {
+  const k = +km || 0;
+  const c = S.cars.find(x => x.id === carId);
+  if (!c || !k || k <= (+c.km || 0)) return;
+  const kmHistorial = (c.kmHistorial || []).concat([{ fecha: iso(today()), km: k }]);
+  await save('cars', Object.assign({}, c, { km: k, kmHistorial }));
+}
+export async function marcarEnTaller(id) {
+  const c = S.cars.find(x => x.id === id);
+  if (!c || c.tipo === 'taller') return;
+  const historialTaller = actualizarHistorialTaller(c, 'taller');
+  await save('cars', Object.assign({}, c, { tipo: 'taller', tipoPrevioTaller: c.tipo, historialTaller }));
+}
+export async function sacarDeTaller(id) {
+  const c = S.cars.find(x => x.id === id);
+  if (!c || c.tipo !== 'taller') return;
+  const nuevoTipo = c.tipoPrevioTaller || 'disponible';
+  const historialTaller = actualizarHistorialTaller(c, nuevoTipo);
+  if (await save('cars', Object.assign({}, c, { tipo: nuevoTipo, tipoPrevioTaller: '', historialTaller }))) { closeModal(); toast('Auto sacado de taller'); }
 }
 export async function sugerirAjusteInflacion(id) {
   const c = S.cars.find(x => x.id === id);

@@ -1,7 +1,7 @@
 import { $, esc, val, uid, money, fdate } from '../utils.js';
 import { S } from '../state.js';
-import { DOCS, RATINGS } from '../constants.js';
-import { plate, driverDebt, carHistoryForDriver, driverScore } from '../calc.js';
+import { DOCS, RATINGS, MULTA_ESTADOS } from '../constants.js';
+import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge } from '../calc.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -48,6 +48,11 @@ export function driverForm(id) {
     if (San.length) h += San.map(s => '<div class="card row"><div class="grow"><div class="small muted">' + fdate(s.fecha) + '</div><div>' + esc(s.motivo) + '</div></div>' + (isAdmin() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delSancion(\'' + s.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     else h += '<div class="small muted" style="margin-bottom:8px">Sin sanciones registradas.</div>';
     h += '<button class="btn sec block" style="margin:8px 0 20px" onclick="sancionForm(\'' + d.id + '\')">+ Agregar sanción</button>';
+    const M = multasDeChofer(d.id);
+    if (M.length) {
+      const estLabel = e => (MULTA_ESTADOS.find(x => x[0] === e) || [0, e])[1];
+      h += '<div class="sec-t">Multas</div>' + M.map(m => '<div class="card row tap" onclick="multaForm(\'' + m.carId + '\',\'' + m.id + '\')"><div class="grow"><div>' + money(m.monto) + ' <span class="small muted">' + fdate(m.fecha) + '</span></div><div class="small muted">' + plate((S.cars.find(x => x.id === m.carId) || {}).patente) + '</div></div>' + badge(estadoMultaCls(m.estado), estLabel(m.estado)) + '</div>').join('');
+    }
     const H = carHistoryForDriver(d.id);
     if (H.length) h += '<div class="sec-t">Historial de autos</div>' + H.map(x => '<div class="row between small" style="padding:4px 0"><span>' + esc(x.patente || 'Auto eliminado') + '</span><span class="muted">' + fdate(x.desde) + ' – ' + (x.hasta ? fdate(x.hasta) : 'actual') + '</span></div>').join('');
     h += '<div class="row" style="margin-top:20px"><button class="btn sec grow" onclick="toggleInactivo(\'' + d.id + '\')">' + (d.inactivo ? 'Reactivar' : 'Marcar como inactivo') + '</button></div>' +

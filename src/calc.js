@@ -1,6 +1,6 @@
 import { S } from './state.js';
-import { VENC, TIPOS } from './constants.js';
-import { days, parse, today, esc, fdate } from './utils.js';
+import { VENC, TIPOS, MANTENIMIENTO_ITEMS } from './constants.js';
+import { days, parse, today, iso, esc, fdate } from './utils.js';
 import { settings } from './settings.js';
 import { isSnoozed } from './snooze.js';
 
@@ -50,6 +50,53 @@ export function alertaService(c) {
   if (restante <= 3000) return { cls: 'soft', d: 20, t: 'Service en ' + restante.toLocaleString('es-AR') + ' km' };
   return null;
 }
+
+/* Plan de mantenimiento: [{item, label, intervaloKm, intervaloMeses, ultimoKm, ultimaFecha}] por auto. */
+export function planMantenimientoDefault(km, fecha) {
+  return MANTENIMIENTO_ITEMS.map(([item, label, intervaloKm, intervaloMeses]) => ({
+    item, label, intervaloKm: intervaloKm || null, intervaloMeses: intervaloMeses || null, ultimoKm: +km || 0, ultimaFecha: fecha,
+  }));
+}
+export function estadoPlanItem(c, p) {
+  const kmActual = +c.km || 0;
+  let restanteKm = null, restanteDias = null;
+  if (p.intervaloKm) restanteKm = (+p.ultimoKm || 0) + (+p.intervaloKm) - kmActual;
+  if (p.intervaloMeses && p.ultimaFecha) {
+    const venc = parse(p.ultimaFecha); venc.setMonth(venc.getMonth() + (+p.intervaloMeses));
+    restanteDias = days(today(), venc);
+  }
+  if ((restanteKm != null && restanteKm <= 0) || (restanteDias != null && restanteDias <= 0)) return { cls: 'bad', restanteKm, restanteDias };
+  if ((restanteKm != null && restanteKm <= 1000) || (restanteDias != null && restanteDias <= settings.avisoWarn)) return { cls: 'warn', restanteKm, restanteDias };
+  if ((restanteKm != null && restanteKm <= 3000) || (restanteDias != null && restanteDias <= settings.avisoSoft)) return { cls: 'soft', restanteKm, restanteDias };
+  return { cls: 'ok', restanteKm, restanteDias };
+}
+export function textoRestante(e) {
+  if (e.cls === 'ok') return 'Al día';
+  if (e.cls === 'bad') return 'Vencido';
+  const partes = [];
+  if (e.restanteKm != null && e.restanteKm > 0) partes.push(e.restanteKm.toLocaleString('es-AR') + ' km');
+  if (e.restanteDias != null && e.restanteDias > 0) partes.push(e.restanteDias + ' d');
+  return 'En ' + (partes.join(' / ') || 'breve');
+}
+export function textoEstadoItem(label, e) {
+  if (e.cls === 'bad') return label + ' vencido';
+  const partes = [];
+  if (e.restanteKm != null && e.restanteKm > 0) partes.push(e.restanteKm.toLocaleString('es-AR') + ' km');
+  if (e.restanteDias != null && e.restanteDias > 0) partes.push(e.restanteDias + ' d');
+  return label + ' en ' + (partes.join(' / ') || 'breve');
+}
+const CLS_ORDEN = { bad: 0, warn: 1, soft: 2, ok: 3 };
+export function peorItemMantenimiento(c) {
+  let peor = null;
+  (c.mantenimientoPlan || []).forEach(p => {
+    if (!p.intervaloKm && !p.intervaloMeses) return;
+    const e = estadoPlanItem(c, p);
+    if (e.cls === 'ok') return;
+    if (!peor || CLS_ORDEN[e.cls] < CLS_ORDEN[peor.e.cls]) peor = { p, e };
+  });
+  if (!peor) return null;
+  return { cls: peor.e.cls, t: textoEstadoItem(peor.p.label || peor.p.item, peor.e) };
+}
 export function alerts() {
   const out = [];
   activeCars().forEach(c => VENC.forEach(([k, l]) => {
@@ -58,14 +105,24 @@ export function alerts() {
     out.push(Object.assign({ who: c.patente || 'Auto sin patente', sub: l, kind: 'car', id: c.id, key }, s));
   }));
   activeCars().forEach(c => {
-    const s = alertaService(c); if (!s) return;
-    const key = 'car:' + c.id + ':service'; if (isSnoozed(key)) return;
-    out.push(Object.assign({ who: c.patente || 'Auto sin patente', sub: 'Service', kind: 'car', id: c.id, key }, s));
+    (c.mantenimientoPlan || []).forEach(p => {
+      if (!p.intervaloKm && !p.intervaloMeses) return;
+      const e = estadoPlanItem(c, p); if (e.cls === 'ok') return;
+      const key = 'car:' + c.id + ':mant:' + p.item; if (isSnoozed(key)) return;
+      const d = e.cls === 'bad' ? -1 : (e.restanteDias != null ? e.restanteDias : (e.cls === 'warn' ? 7 : 20));
+      out.push({ who: c.patente || 'Auto sin patente', sub: p.label || p.item, kind: 'car', id: c.id, key, d, cls: e.cls, t: textoEstadoItem(p.label || p.item, e) });
+    });
   });
   activeDrivers().forEach(d => {
     const s = vs(d.licVenc); if (!s) return;
     const key = 'driver:' + d.id + ':lic'; if (isSnoozed(key)) return;
     out.push(Object.assign({ who: d.nombre, sub: 'Licencia', kind: 'driver', id: d.id, key }, s));
+  });
+  S.multas.filter(m => m.estado === 'pendiente' || m.estado === 'vencida').forEach(m => {
+    const s = vs(m.fechaLimitePago); if (!s) return;
+    const key = 'multa:' + m.id; if (isSnoozed(key)) return;
+    const auto = carById(m.carId);
+    out.push(Object.assign({ who: (auto && auto.patente) || 'Auto', sub: 'Multa pendiente de pago', kind: 'multa', id: m.id, carId: m.carId, key }, s));
   });
   return out.sort((a, b) => a.d - b.d);
 }
@@ -74,6 +131,12 @@ export const driverName = id => { const d = S.drivers.find(x => x.id === id); re
 export const carById = id => S.cars.find(x => x.id === id);
 export function driverDebt(id) {
   return S.cars.filter(c => c.choferId === id && isContract(c)).reduce((a, c) => a + calc(c).debt, 0);
+}
+export function choferEnFecha(c, fecha) {
+  const h = (c.historialChoferes || []).find(x => x.desde <= fecha && (!x.hasta || fecha <= x.hasta));
+  if (h) return h.choferId;
+  if (c.choferId && (!c.inicio || fecha >= c.inicio)) return c.choferId;
+  return '';
 }
 export function carHistoryForDriver(driverId) {
   const out = [];
@@ -85,8 +148,12 @@ export function diasEnTaller(c) {
 }
 export function rentabilidadAuto(c) {
   const cobrado = S.payments.filter(p => p.carId === c.id).reduce((a, p) => a + (+p.monto || 0), 0);
-  const gastos = S.gastos.filter(g => g.carId === c.id).reduce((a, g) => a + (+g.costo || 0), 0);
+  const gastos = S.gastos.filter(g => g.carId === c.id).reduce((a, g) => a + (+g.costo || 0), 0) +
+    S.mantenimientos.filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
   return { cobrado, gastos, neta: cobrado - gastos, costoCompra: +c.costoCompra || 0 };
+}
+export function gastoMantenimientoAuto(c) {
+  return S.mantenimientos.filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
 }
 export function driverTotalPagado(driverId) {
   return S.payments.filter(p => p.choferId === driverId).reduce((a, p) => a + (+p.monto || 0), 0);
@@ -108,3 +175,15 @@ export function cobradoDelMes(offsetMeses) {
 export const plate = p => '<span class="plate">' + esc(p || 'Sin patente') + '</span>';
 export const badge = (cls, t) => '<span class="badge b-' + cls + '">' + esc(t) + '</span>';
 export const tipoBadge = t => badge(t === 'alquiler' ? 'info' : t === 'financiado' ? 'ok' : 'mute', TIPOS[t] || t);
+export const estadoMultaCls = e => e === 'pagada' ? 'ok' : e === 'vencida' ? 'bad' : e === 'apelada' ? 'info' : 'warn';
+export function multasDeChofer(driverId) {
+  return S.multas.filter(m => m.choferId === driverId).sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+export function rankingMultasChoferes() {
+  const porChofer = {};
+  S.multas.filter(m => m.choferId).forEach(m => {
+    if (!porChofer[m.choferId]) porChofer[m.choferId] = { driverId: m.choferId, cantidad: 0, total: 0 };
+    porChofer[m.choferId].cantidad++; porChofer[m.choferId].total += (+m.monto || 0);
+  });
+  return Object.values(porChofer).map(x => Object.assign(x, { nombre: driverName(x.driverId) })).sort((a, b) => b.total - a.total);
+}

@@ -12,7 +12,8 @@ export function googleCard() {
   if (conectado) {
     h += '<div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px">' +
       '<button class="btn sec sm" onclick="syncCalendarUI()">Sincronizar vencimientos</button>' +
-      '<button class="btn sec sm" onclick="syncSheetsUI()">Exportar a Sheets</button>' +
+      '<button class="btn sec sm" onclick="syncSheetsUI()">Exportar cobros a Sheets</button>' +
+      '<button class="btn sec sm" onclick="syncMultasSheetsUI()">Exportar multas a Sheets</button>' +
       '<button class="btn sec sm" onclick="syncDriveUI()">Backup a Drive</button>' +
       '</div>';
   }

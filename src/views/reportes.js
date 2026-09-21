@@ -1,6 +1,6 @@
 import { S } from '../state.js';
 import { esc, money, today } from '../utils.js';
-import { plate, rentabilidadAuto, driverTotalPagado, activeCars, isContract, calc, cobradoDelMes, diasEnTaller } from '../calc.js';
+import { plate, rentabilidadAuto, driverTotalPagado, activeCars, isContract, calc, cobradoDelMes, diasEnTaller, gastoMantenimientoAuto, rankingMultasChoferes } from '../calc.js';
 
 function cobrosPorMes(n) {
   const t = today();
@@ -43,6 +43,18 @@ function seccionComparativaChoferes() {
   return '<h2>Choferes por total pagado</h2>' + rows.map((x, i) => '<div class="card row between"><span>' + (i + 1) + '. ' + esc(x.d.nombre) + '</span><b>' + money(x.total) + '</b></div>').join('');
 }
 
+function seccionMantenimiento() {
+  const rows = activeCars().map(c => ({ c, total: gastoMantenimientoAuto(c) })).filter(x => x.total > 0).sort((a, b) => b.total - a.total);
+  if (!rows.length) return '';
+  return '<h2>Gasto de mantenimiento por auto</h2>' + rows.map(x => '<div class="card row between"><span>' + plate(x.c.patente) + '</span><b>' + money(x.total) + '</b></div>').join('');
+}
+
+function seccionMultasChoferes() {
+  const rows = rankingMultasChoferes().slice(0, 10);
+  if (!rows.length) return '';
+  return '<h2>Choferes por multas</h2>' + rows.map(x => '<div class="card row between"><span>' + esc(x.nombre || 'Chofer eliminado') + ' <span class="small muted">(' + x.cantidad + (x.cantidad === 1 ? ' multa' : ' multas') + ')</span></span><b>' + money(x.total) + '</b></div>').join('');
+}
+
 function seccionComparacionMensual() {
   const [ant, act] = cobrosPorMes(2);
   const delta = ant.total > 0 ? Math.round((act.total - ant.total) / ant.total * 100) : (act.total > 0 ? 100 : 0);
@@ -77,5 +89,7 @@ export function viewReportes() {
   h += seccionProyeccion();
   h += seccionRentabilidad();
   h += seccionComparativaChoferes();
+  h += seccionMantenimiento();
+  h += seccionMultasChoferes();
   return h;
 }

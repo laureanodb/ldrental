@@ -1,6 +1,6 @@
 import { S, ui } from '../state.js';
 import { esc, money } from '../utils.js';
-import { isContract, calc, vs, driverName, plate, tipoBadge, badge, alertaService } from '../calc.js';
+import { isContract, calc, vs, driverName, plate, tipoBadge, badge, peorItemMantenimiento } from '../calc.js';
 import { VENC } from '../constants.js';
 
 export function viewAutos() {
@@ -20,7 +20,7 @@ export function listAutos() {
     else if (isContract(c) && i.debt > 0) b += badge('bad', 'Debe ' + money(i.debt));
     else if (isContract(c)) b += badge('ok', 'Al día');
     if (!c.vendido && al && al.d <= 30) b += ' ' + badge(al.cls, 'Doc: ' + al.t.replace('Vence ', 'vence '));
-    const serv = !c.vendido && alertaService(c);
+    const serv = !c.vendido && peorItemMantenimiento(c);
     if (serv) b += ' ' + badge(serv.cls, serv.t);
     if (c.files && c.files.length) b += ' ' + badge('mute', c.files.length + (c.files.length === 1 ? ' archivo' : ' archivos'));
     return '<div class="card tap" onclick="carForm(\'' + c.id + '\')"><div class="row between"><div>' + plate(c.patente) + '</div>' + tipoBadge(c.tipo) + '</div>' +

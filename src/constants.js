@@ -1,13 +1,33 @@
 export const TIPOS = { alquiler: 'Alquilado', financiado: 'Financiado', disponible: 'Disponible', taller: 'En taller' };
 export const DOCS = [['dni', 'DNI (frente y dorso)'], ['lic', 'Licencia profesional'], ['dom', 'Comprobante de domicilio'], ['ant', 'Certificado de antecedentes'], ['app', 'Alta en la app (Uber, Cabify, etc.)'], ['contrato', 'Contrato firmado'], ['garante', 'Garante / aval']];
 export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuesto automotor (fecha de vencimiento)'], ['cedula', 'Cédula / tarjeta'], ['gnc', 'Revisión técnica GNC'], ['habilitacion', 'Licencia / habilitación de transporte']];
-export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones'];
+export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas'];
 
 export const COMBUSTIBLES = [['nafta', 'Nafta'], ['diesel', 'Diésel'], ['gnc', 'GNC'], ['electrico', 'Eléctrico'], ['hibrido', 'Híbrido']];
 export const RATINGS = [['bueno', 'Cumplidor'], ['regular', 'Regular'], ['malo', 'Problemático']];
 export const METODOS_PAGO = [['efectivo', 'Efectivo'], ['transferencia', 'Transferencia'], ['mercadopago', 'MercadoPago'], ['otro', 'Otro']];
 export const GASTO_CATS = [['service', 'Service / mantenimiento'], ['siniestro', 'Siniestro / choque'], ['multa', 'Multa'], ['combustible', 'Combustible'], ['otro', 'Otro gasto']];
 export const INSPECCION_ITEMS = [['carroceria', 'Carrocería sin daños nuevos'], ['limpieza', 'Interior limpio'], ['neumaticos', 'Neumáticos en buen estado'], ['documentos', 'Documentos en el auto'], ['auxilio', 'Rueda de auxilio y herramientas']];
+
+/* Catálogo de mantenimiento: [clave, etiqueta, intervalo en km u null, intervalo en meses u null] */
+export const MANTENIMIENTO_ITEMS = [
+  ['aceite', 'Aceite y filtro de aceite', 10000, 6],
+  ['filtroAire', 'Filtro de aire', 15000, 12],
+  ['filtroHabitaculo', 'Filtro de habitáculo', 15000, 12],
+  ['frenos', 'Frenos (pastillas y discos)', 20000, 12],
+  ['bateria', 'Batería', null, 24],
+  ['correaDistribucion', 'Correa de distribución/repartición', 60000, 48],
+  ['liquidoRefrigerante', 'Líquido refrigerante', 40000, 24],
+  ['liquidoFrenos', 'Líquido de frenos', 40000, 24],
+  ['bujias', 'Bujías', 40000, 24],
+  ['alineacion', 'Alineación y balanceo', 10000, 6],
+  ['neumaticos', 'Neumáticos', 40000, 36],
+  ['matafuegos', 'Matafuegos (vencimiento)', null, 12],
+];
+export const MANTENIMIENTO_CHECKLIST = [['revisado', 'Se revisó el ítem completo'], ['piezaOriginal', 'Repuesto original / de marca'], ['pruebaRuta', 'Prueba de ruta luego del trabajo']];
+
+export const TIPOS_INFRACCION = [['velocidad', 'Exceso de velocidad'], ['estacionamiento', 'Estacionamiento indebido'], ['semaforo', 'Semáforo en rojo'], ['documentacion', 'Documentación / VTV / seguro'], ['carril', 'Carril exclusivo / mal uso de carril'], ['telefono', 'Uso de celular al conducir'], ['otro', 'Otra infracción']];
+export const MULTA_ESTADOS = [['pendiente', 'Pendiente de pago'], ['pagada', 'Pagada'], ['vencida', 'Vencida'], ['apelada', 'En descargo / apelada']];
 
 export function normCar(c) {
   /* corrige autos guardados con un bug anterior: la patente quedó reemplazada por una fecha */
@@ -17,4 +37,6 @@ export function normCar(c) {
 
 export const DCATS = [...DOCS.map(x => [x[0], x[1].replace(/ \(.*\)/, '')]), ['otro', 'Otro']];
 export const CCATS = [['cedula', 'Cédula / tarjeta'], ['titulo', 'Título / boleto de compra'], ['seguro', 'Póliza de seguro'], ['vtv', 'VTV'], ['patente', 'Comprobante de impuesto automotor'], ['contrato', 'Contrato'], ['fotos', 'Fotos del auto'], ['otro', 'Otro']];
+export const MCATS = [['factura', 'Factura del taller'], ['foto', 'Foto del trabajo'], ['otro', 'Otro']];
+export const TCATS = [['acta', 'Foto del acta/infracción'], ['comprobante', 'Comprobante de pago'], ['otro', 'Otro']];
 export const ACCEPT = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];

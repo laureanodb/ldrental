@@ -1,6 +1,6 @@
 import { S, sb, as } from './state.js';
 import { $, val, uid, iso, today, esc, fdate } from './utils.js';
-import { DOCS, DCATS, CCATS, ACCEPT } from './constants.js';
+import { DOCS, DCATS, CCATS, MCATS, TCATS, ACCEPT } from './constants.js';
 import { BUCKET } from './config.js';
 import { toast } from './modal.js';
 import { render } from './nav.js';
@@ -25,7 +25,7 @@ export function renderFiles(col, id) {
   if (!id) { el.innerHTML = '<div class="small muted" style="margin-bottom:12px">Guardá primero y después podés adjuntar fotos, PDF o links.</div>'; return; }
   const prev = $('#f_cat') ? $('#f_cat').value : '';
   const e = S[col].find(x => x.id === id); const F = (e && e.files) || [];
-  const cats = col === 'drivers' ? DCATS : CCATS;
+  const cats = col === 'drivers' ? DCATS : col === 'mantenimientos' ? MCATS : col === 'multas' ? TCATS : CCATS;
   const label = k => (cats.find(c => c[0] === k) || [0, 'Archivo'])[1];
   const gallery = col === 'cars' ? F.filter(f => !f.link && f.cat === 'fotos' && (f.type || '').startsWith('image/')) : [];
   const rest = F.filter(f => !gallery.includes(f));

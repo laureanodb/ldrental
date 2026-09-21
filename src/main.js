@@ -4,7 +4,9 @@ import { ui } from './state.js';
 import { init } from './session.js';
 import { go, render, renderList } from './nav.js';
 import { doLogin, logout } from './session.js';
-import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion } from './forms/car.js';
+import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller } from './forms/car.js';
+import { mantenimientoForm, onMantItem, saveMantenimiento, delMantenimiento } from './forms/mantenimiento.js';
+import { multaForm, onMultaCar, onMultaFecha, saveMulta, delMulta } from './forms/multa.js';
 import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo } from './forms/driver.js';
 import { payForm, onPayCar, savePay, delPay } from './forms/payment.js';
 import { closeModal, confirmDel } from './modal.js';
@@ -22,7 +24,7 @@ import { usuariosView, cambiarRol, toggleActivo } from './forms/usuarios.js';
 import { conectarGoogleUI } from './views/google-ui.js';
 import { googleConfigured, loadGis } from './google.js';
 import { syncCalendarUI } from './google-calendar.js';
-import { syncSheetsUI } from './google-sheets.js';
+import { syncSheetsUI, syncMultasSheetsUI } from './google-sheets.js';
 import { syncDriveUI } from './google-drive.js';
 
 /* Las plantillas HTML generadas usan atributos inline (onclick, oninput, …)
@@ -31,7 +33,9 @@ import { syncDriveUI } from './google-drive.js';
 Object.assign(window, {
   ui, go, render, renderList,
   doLogin, logout,
-  carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion,
+  carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller,
+  mantenimientoForm, onMantItem, saveMantenimiento, delMantenimiento,
+  multaForm, onMultaCar, onMultaFecha, saveMulta, delMulta,
   driverForm, saveDriver, delDriver, addTelRow, toggleInactivo,
   payForm, onPayCar, savePay, delPay,
   closeModal, confirmDel,
@@ -45,7 +49,7 @@ Object.assign(window, {
   ajusteForm, saveAjuste, delAjuste,
   searchView, doSearch,
   usuariosView, cambiarRol, toggleActivo,
-  conectarGoogleUI, syncCalendarUI, syncSheetsUI, syncDriveUI,
+  conectarGoogleUI, syncCalendarUI, syncSheetsUI, syncMultasSheetsUI, syncDriveUI,
 });
 
 window.addEventListener('online', () => { flushQueue(); render(); });
