@@ -25,7 +25,7 @@ export async function pickRestore(inp) {
   const f = inp.files[0]; inp.value = ''; if (!f) return;
   let d;
   try { d = JSON.parse(await f.text()); } catch (e) { toast('El archivo no es una copia válida'); return; }
-  if (!d || d.app !== 'mi-flota' || !(Array.isArray(d.cars) && Array.isArray(d.drivers) && Array.isArray(d.payments))) { toast('Ese archivo no es una copia de Mi Flota'); return; }
+  if (!d || d.app !== 'mi-flota' || !(Array.isArray(d.cars) && Array.isArray(d.drivers) && Array.isArray(d.payments))) { toast('Ese archivo no es una copia de LD Rental'); return; }
   pendingRestore = d;
   const fe = d.fecha ? new Date(d.fecha).toLocaleDateString('es-AR') : 'sin fecha';
   const nOtros = COLS.filter(c => !['cars', 'drivers', 'payments'].includes(c) && Array.isArray(d[c])).reduce((a, c) => a + d[c].length, 0);

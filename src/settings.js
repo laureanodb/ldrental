@@ -1,7 +1,8 @@
 import { esc } from './utils.js';
 
 const KEY = 'flota-settings';
-const DEFAULTS = { avisoWarn: 15, avisoSoft: 30, depositoAvisoPct: 50, multaUmbral: 500000, multaPlazoDias: 7, kmSemanaEsperado: 1500, fotoControlDias: 30, companyName: 'Mi Flota', companyLogo: '', bonoSemanas: 8, riesgoSemanas: 2 };
+const DEFAULTS = { avisoWarn: 15, avisoSoft: 30, depositoAvisoPct: 50, multaUmbral: 500000, multaPlazoDias: 7, kmSemanaEsperado: 1500, fotoControlDias: 30, companyName: 'LD Rental', companyLogo: '', bonoSemanas: 8, riesgoSemanas: 2 };
+const CAR_ICON = '<svg viewBox="0 0 24 24" style="width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:-5px;margin-right:8px"><path d="M5 16v-4l2-5h10l2 5v4M3 16h18M7 19v-3M17 19v-3M7.5 12h9"/></svg>';
 
 function read() {
   try {
@@ -18,5 +19,5 @@ export function saveSettings(patch) {
 }
 export function brandH1() {
   return (settings.companyLogo ? '<img src="' + settings.companyLogo + '" alt="" style="height:32px;display:block;margin-bottom:6px">' : '') +
-    '<h1>' + esc(settings.companyName || 'Mi Flota') + '</h1>';
+    '<h1>' + (settings.companyLogo ? '' : CAR_ICON) + esc(settings.companyName || 'LD Rental') + '</h1>';
 }

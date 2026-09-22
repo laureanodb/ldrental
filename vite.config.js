@@ -8,8 +8,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Mi Flota',
-        short_name: 'Mi Flota',
+        name: 'LD Rental',
+        short_name: 'LD Rental',
         description: 'Autos, choferes, cobros y vencimientos en un solo lugar.',
         lang: 'es',
         theme_color: '#222b33',

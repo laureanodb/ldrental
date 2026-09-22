@@ -59,7 +59,7 @@ export function saveAjustes() {
   toast('Ajustes guardados'); render();
 }
 export function guardarNombreEmpresa() {
-  saveSettings({ companyName: val('a_companyName') || 'Mi Flota' });
+  saveSettings({ companyName: val('a_companyName') || 'LD Rental' });
   toast('Nombre guardado'); render();
 }
 export function subirLogo(input) {

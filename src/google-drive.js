@@ -17,7 +17,7 @@ async function obtenerCarpeta() {
   const creada = await googleFetch(DRIVE_FILES, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: 'Mi Flota — Backups', mimeType: 'application/vnd.google-apps.folder' }),
+    body: JSON.stringify({ name: 'LD Rental — Backups', mimeType: 'application/vnd.google-apps.folder' }),
   });
   try { localStorage.setItem(FOLDER_KEY, creada.id); } catch (e) {}
   return creada.id;

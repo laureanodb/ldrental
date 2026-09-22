@@ -27,7 +27,7 @@ async function obtenerOCrearPlanilla() {
   const creada = await googleFetch(SHEETS_BASE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ properties: { title: 'Mi Flota — Cobros' } }),
+    body: JSON.stringify({ properties: { title: 'LD Rental — Cobros' } }),
   });
   try { localStorage.setItem(SHEET_ID_KEY, creada.spreadsheetId); } catch (e) {}
   return creada.spreadsheetId;
