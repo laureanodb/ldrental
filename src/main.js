@@ -10,6 +10,7 @@ import { mantAtajoFecha } from './views/mantenimiento.js';
 import { multaForm, onMultaCar, onMultaFecha, saveMulta, delMulta } from './forms/multa.js';
 import { siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro } from './forms/siniestro.js';
 import { reciboPDF, reciboCompartir } from './recibo.js';
+import { contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato } from './contrato.js';
 import { exportarExcel } from './export-excel.js';
 import { activarPush, desactivarPush, guardarHorarioPush } from './push.js';
 import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, onFotoPerfil } from './forms/driver.js';
@@ -46,6 +47,7 @@ Object.assign(window, {
   multaForm, onMultaCar, onMultaFecha, saveMulta, delMulta,
   siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro,
   reciboPDF, reciboCompartir, exportarExcel, activarPush, desactivarPush, guardarHorarioPush,
+  contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato,
   driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, onFotoPerfil,
   depositoForm, saveDeposito, delDeposito,
   payForm, onPayCar, savePay, delPay,

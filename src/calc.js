@@ -306,6 +306,11 @@ export function puntoEquilibrio(c) {
 export function gastoMantenimientoAuto(c) {
   return S.mantenimientos.filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
 }
+export function gastosPorCategoria() {
+  const out = {};
+  S.gastos.forEach(g => { const k = g.categoria || 'otro'; out[k] = (out[k] || 0) + (+g.costo || 0); });
+  return out;
+}
 const RATING_ORDEN = { bueno: 0, regular: 1, malo: 2 };
 export function proveedoresActivos() {
   return S.proveedores.filter(p => !p.inactivo).slice().sort((a, b) => {

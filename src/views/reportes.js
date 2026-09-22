@@ -1,7 +1,8 @@
 import { S, ui } from '../state.js';
 import { esc, money, moneyUSD, today } from '../utils.js';
-import { plate, rentabilidadAuto, driverTotalPagado, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio } from '../calc.js';
+import { plate, rentabilidadAuto, driverTotalPagado, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio } from '../calc.js';
 import { canVerFinanzas } from '../roles.js';
+import { GASTO_CATS, CANALES_PROSPECTO } from '../constants.js';
 
 function cobrosPorMes(n) {
   const t = today();
@@ -101,6 +102,26 @@ function seccionComparativaChoferes() {
   return '<h2>Choferes por total pagado</h2>' + rows.map((x, i) => '<div class="card row between"><span>' + (i + 1) + '. ' + esc(x.d.nombre) + '</span><b>' + money(x.total) + '</b></div>').join('');
 }
 
+function seccionGastosPorCategoria() {
+  if (!canVerFinanzas()) return '';
+  const cat = gastosPorCategoria();
+  const rows = GASTO_CATS.map(x => ({ l: x[1], total: cat[x[0]] || 0 })).filter(x => x.total > 0).sort((a, b) => b.total - a.total);
+  if (!rows.length) return '';
+  const max = Math.max(...rows.map(x => x.total));
+  return '<h2>Gastos por categoría</h2>' + rows.map(x => '<div class="card"><div class="row between small" style="margin-bottom:4px"><span>' + esc(x.l) + '</span><b>' + money(x.total) + '</b></div>' +
+  '<div style="background:var(--soft);border-radius:6px;height:8px;overflow:hidden"><div style="width:' + Math.round(x.total / max * 100) + '%;height:100%;background:var(--info)"></div></div></div>').join('');
+}
+
+function seccionProspectosPorCanal() {
+  const P = S.drivers.filter(d => d.prospecto);
+  if (!P.length) return '';
+  const rows = CANALES_PROSPECTO.map(x => ({ l: x[1], n: P.filter(d => d.canalOrigen === x[0]).length })).filter(x => x.n);
+  const sinDato = P.filter(d => !d.canalOrigen).length;
+  if (!rows.length && !sinDato) return '';
+  return '<h2>Prospectos por canal de origen</h2>' + rows.map(x => '<div class="card row between"><span>' + esc(x.l) + '</span><b>' + x.n + '</b></div>').join('') +
+  (sinDato ? '<div class="card row between small muted"><span>Sin especificar</span><b>' + sinDato + '</b></div>' : '');
+}
+
 function seccionMantenimiento() {
   const rows = activeCars().map(c => ({ c, total: gastoMantenimientoAuto(c) })).filter(x => x.total > 0).sort((a, b) => b.total - a.total);
   if (!rows.length) return '';
@@ -166,9 +187,11 @@ export function viewReportes() {
   h += seccionResumenAnual();
   h += seccionComparativaChoferes();
   h += seccionTablaComparativaChoferes();
+  h += seccionGastosPorCategoria();
   h += seccionMantenimiento();
   h += seccionSiniestros();
   h += seccionMultasChoferes();
   h += seccionSiniestrosChoferes();
+  h += seccionProspectosPorCanal();
   return h;
 }

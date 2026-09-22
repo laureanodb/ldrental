@@ -36,6 +36,7 @@ export const SINIESTRO_ESTADOS = [['abierto', 'Abierto'], ['tramite', 'En trámi
 export const SCATS = [['foto', 'Foto del siniestro'], ['parte', 'Parte / denuncia policial'], ['presupuesto', 'Presupuesto de reparación'], ['comprobante', 'Comprobante de pago'], ['otro', 'Otro']];
 
 export const ETAPAS_PROSPECTO = [['contacto', 'Contacto inicial'], ['entrevista', 'Entrevista'], ['documentacion', 'Juntando documentación'], ['evaluacion', 'En evaluación'], ['aprobado', 'Aprobado'], ['rechazado', 'Rechazado']];
+export const CANALES_PROSPECTO = [['redes', 'Instagram / Facebook'], ['referido', 'Boca a boca / referido'], ['whatsapp', 'WhatsApp / grupo'], ['otro', 'Otro']];
 export const ONBOARDING_ITEMS = [['contrato', 'Contrato firmado'], ['induccion', 'Inducción / capacitación realizada'], ['entregaAuto', 'Auto entregado con inspección'], ['appActivada', 'Alta en la app de viajes activada'], ['depositoInicial', 'Primer pago de depósito recibido']];
 
 export function normCar(c) {

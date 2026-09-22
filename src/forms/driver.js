@@ -1,6 +1,6 @@
 import { $, esc, val, uid, money, moneyUSD, fdate } from '../utils.js';
 import { S } from '../state.js';
-import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS } from '../constants.js';
+import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS, CANALES_PROSPECTO } from '../constants.js';
 import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono } from '../calc.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
@@ -47,6 +47,8 @@ export function driverForm(id) {
   '<label class="chk"><input type="checkbox" id="d_prospecto" onchange="document.getElementById(\'etapaBox\').style.display=this.checked?\'\':\'none\'"' + (d.prospecto ? ' checked' : '') + '><span>Es un prospecto (todavía no firmó contrato)</span></label>' +
   '<div id="etapaBox" style="display:' + (d.prospecto ? '' : 'none') + '"><label class="f"><span>Etapa del embudo</span><select id="d_etapaProspecto">' + ETAPAS_PROSPECTO.map(x => '<option value="' + x[0] + '"' + (d.etapaProspecto === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
   '<label class="f"><span>Referido por</span><input id="d_referidoPor" value="' + esc(d.referidoPor) + '"></label>' +
+  '<label class="f"><span>Canal de origen</span><select id="d_canalOrigen" onchange="document.getElementById(\'canalOrigenOtroBox\').style.display=this.value===\'otro\'?\'\':\'none\'"><option value="">Sin especificar</option>' + CANALES_PROSPECTO.map(x => '<option value="' + x[0] + '"' + (d.canalOrigen === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
+  '<div id="canalOrigenOtroBox" style="display:' + (d.canalOrigen === 'otro' ? '' : 'none') + '"><label class="f"><span>¿Cuál?</span><input id="d_canalOrigenOtro" value="' + esc(d.canalOrigenOtro) + '"></label></div>' +
   '<div class="two"><label class="f"><span>DNI</span><input id="d_dni" inputmode="numeric" value="' + esc(d.dni) + '"></label>' +
   '<label class="f"><span>Vence la licencia</span><input id="d_lic" type="date" value="' + esc(d.licVenc) + '"></label></div>' +
   '<label class="f"><span>Teléfono <small>con código de país, ej: +5491155551234</small></span><input id="d_tel" type="tel" value="' + esc(d.tel) + '"></label>' +
@@ -120,6 +122,7 @@ export async function saveDriver(id) {
     contactoEmergencia: { nombre: val('d_emerg_nombre'), tel: val('d_emerg_tel') },
     otrosTelefonos, inactivo: (ex || {}).inactivo || false, prospecto: document.getElementById('d_prospecto').checked,
     etapaProspecto: val('d_etapaProspecto'), referidoPor: val('d_referidoPor'), onboarding,
+    canalOrigen: val('d_canalOrigen'), canalOrigenOtro: val('d_canalOrigenOtro'),
     fotoPerfil: val('d_fotoPerfilData'),
     files: (ex || {}).files || []
   };
