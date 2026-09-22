@@ -96,7 +96,15 @@ export function driverForm(id) {
     }
     const H = carHistoryForDriver(d.id);
     if (H.length) h += '<div class="sec-t">Historial de autos</div>' + H.map(x => '<div class="row between small" style="padding:4px 0"><span>' + esc(x.patente || 'Auto eliminado') + '</span><span class="muted">' + fdate(x.desde) + ' – ' + (x.hasta ? fdate(x.hasta) : 'actual') + '</span></div>').join('');
-    h += '<div class="row" style="margin-top:20px"><button class="btn sec grow" onclick="toggleInactivo(\'' + d.id + '\')">' + (d.inactivo ? 'Reactivar' : 'Marcar como inactivo') + '</button></div>' +
+    const portalUrl = d.portalToken ? location.origin + location.pathname + '#/portal/' + d.id + '/' + d.portalToken : '';
+    h += '<div class="sec-t">Portal del chofer</div>' +
+    (portalUrl ? '<div class="card"><div class="small muted" style="margin-bottom:6px">Link de solo lectura para que el chofer vea su deuda, próximo pago y recibos sin loguearse.</div>' +
+      '<input readonly value="' + esc(portalUrl) + '" onclick="this.select()" style="margin-bottom:8px">' +
+      '<div class="row"><button class="btn sec sm" onclick="copiarLinkPortal(\'' + esc(portalUrl) + '\')">Copiar</button>' +
+      '<a class="btn sec sm" target="_blank" href="https://wa.me/?text=' + encodeURIComponent('Hola ' + (d.nombre || '').split(' ')[0] + ', acá podés ver tu estado de cuenta: ' + portalUrl) + '">WhatsApp</a></div></div>'
+      : '<div class="small muted" style="margin-bottom:8px">Todavía no generaste el link para este chofer.</div>') +
+    '<button class="btn sec block" style="margin:8px 0 20px" onclick="regenerarLinkPortal(\'' + d.id + '\')">' + (portalUrl ? 'Regenerar link' : 'Generar link') + '</button>';
+    h += '<div class="row" style="margin-top:0"><button class="btn sec grow" onclick="toggleInactivo(\'' + d.id + '\')">' + (d.inactivo ? 'Reactivar' : 'Marcar como inactivo') + '</button></div>' +
     (canDelete() ? '<div style="margin-top:8px"><button class="btn danger block" onclick="confirmDel(this,()=>delDriver(\'' + d.id + '\'))">Eliminar chofer</button></div>' : '');
   }
   openModal(h); renderFiles('drivers', ex ? ex.id : null);
@@ -127,6 +135,20 @@ export async function saveDriver(id) {
     files: (ex || {}).files || []
   };
   if (await save('drivers', o)) { closeModal(); toast('Chofer guardado'); }
+}
+export async function regenerarLinkPortal(id) {
+  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const token = uid() + uid();
+  if (!(await save('drivers', Object.assign({}, d, { portalToken: token })))) return;
+  toast('Link generado'); driverForm(id);
+}
+export async function copiarLinkPortal(url) {
+  try {
+    await navigator.clipboard.writeText(url);
+    toast('Link copiado');
+  } catch (e) {
+    toast('No se pudo copiar: seleccioná el texto y copialo a mano');
+  }
 }
 export async function toggleInactivo(id) {
   const d = S.drivers.find(x => x.id === id); if (!d) return;

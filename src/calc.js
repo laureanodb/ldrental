@@ -249,6 +249,19 @@ export function alerts() {
     const key = 'car:' + c.id + ':sobrekm'; if (isSnoozed(key)) return;
     out.push({ who: c.patente || 'Auto sin patente', sub: 'Sobrekilometraje', kind: 'car', id: c.id, key, d: 20, cls: 'warn', t: semanal.toLocaleString('es-AR') + ' km/semana (esperado ' + settings.kmSemanaEsperado.toLocaleString('es-AR') + ')' });
   });
+  activeDrivers().forEach(d => {
+    if (d.prospecto) return;
+    const cars = S.cars.filter(c => c.choferId === d.id && isContract(c) && c.inicio);
+    if (!cars.length) return;
+    const ultimoPago = S.payments.filter(p => p.choferId === d.id).reduce((max, p) => (!max || p.fecha > max ? p.fecha : max), null);
+    const inicioMasViejo = cars.reduce((min, c) => (!min || c.inicio < min ? c.inicio : min), null);
+    const desde = ultimoPago || inicioMasViejo;
+    if (!desde) return;
+    const diasSinPago = days(parse(desde), today());
+    if (diasSinPago < 14) return;
+    const key = 'driver:' + d.id + ':inactivo'; if (isSnoozed(key)) return;
+    out.push({ who: d.nombre, sub: 'Posible chofer inactivo', kind: 'driver', id: d.id, key, d: 0, cls: 'bad', t: 'Sin cobros hace ' + diasSinPago + ' días' });
+  });
   return out.sort((a, b) => a.d - b.d);
 }
 export const urgent = () => alerts().filter(a => a.d <= settings.avisoWarn);

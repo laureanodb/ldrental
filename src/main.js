@@ -13,7 +13,8 @@ import { reciboPDF, reciboCompartir } from './recibo.js';
 import { contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato } from './contrato.js';
 import { exportarExcel } from './export-excel.js';
 import { activarPush, desactivarPush, guardarHorarioPush } from './push.js';
-import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, onFotoPerfil } from './forms/driver.js';
+import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal } from './forms/driver.js';
+import { initPortal } from './portal.js';
 import { depositoForm, saveDeposito, delDeposito } from './forms/deposito.js';
 import { payForm, onPayCar, savePay, delPay } from './forms/payment.js';
 import { closeModal, confirmDel } from './modal.js';
@@ -48,7 +49,7 @@ Object.assign(window, {
   siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro,
   reciboPDF, reciboCompartir, exportarExcel, activarPush, desactivarPush, guardarHorarioPush,
   contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato,
-  driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, onFotoPerfil,
+  driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal,
   depositoForm, saveDeposito, delDeposito,
   payForm, onPayCar, savePay, delPay,
   closeModal, confirmDel,
@@ -65,9 +66,14 @@ Object.assign(window, {
   conectarGoogleUI, syncCalendarUI, syncSheetsUI, syncMultasSheetsUI, syncMantenimientoSheetsUI, syncDriveUI,
 });
 
-window.addEventListener('online', () => { flushQueue(); render(); });
-window.addEventListener('offline', () => render());
+const portalMatch = location.hash.match(/^#\/portal\/([^/]+)\/([^/]+)/);
+if (portalMatch) {
+  initPortal(decodeURIComponent(portalMatch[1]), decodeURIComponent(portalMatch[2]));
+} else {
+  window.addEventListener('online', () => { flushQueue(); render(); });
+  window.addEventListener('offline', () => render());
 
-if (googleConfigured()) loadGis().catch(() => {});
+  if (googleConfigured()) loadGis().catch(() => {});
 
-init();
+  init();
+}
