@@ -1,7 +1,7 @@
 import { S } from '../state.js';
 import { esc, money, today } from '../utils.js';
-import { plate, rentabilidadAuto, driverTotalPagado, activeCars, isContract, calc, cobradoDelMes, diasEnTaller, gastoMantenimientoAuto, rankingMultasChoferes } from '../calc.js';
-import { isAdmin } from '../roles.js';
+import { plate, rentabilidadAuto, driverTotalPagado, activeCars, isContract, calc, cobradoDelMes, diasEnTaller, gastoMantenimientoAuto, rankingMultasChoferes, resumenAnual, siniestrosDeAuto } from '../calc.js';
+import { canVerFinanzas } from '../roles.js';
 
 function cobrosPorMes(n) {
   const t = today();
@@ -27,7 +27,7 @@ function seccionGrafico() {
 }
 
 function seccionRentabilidad() {
-  if (!isAdmin()) return '';
+  if (!canVerFinanzas()) return '';
   const rows = activeCars().map(c => Object.assign({ c }, rentabilidadAuto(c))).sort((a, b) => b.neta - a.neta);
   if (!rows.length) return '';
   let h = '<h2>Rentabilidad por auto</h2>';
@@ -37,6 +37,15 @@ function seccionRentabilidad() {
     (diasEnTaller(r.c) ? '<div class="small muted">' + diasEnTaller(r.c) + ' días parado en taller</div>' : '') +
     '</div>').join('');
   return h;
+}
+
+function seccionResumenAnual() {
+  if (!canVerFinanzas()) return '';
+  const anio = today().getFullYear();
+  const rows = [resumenAnual(anio), resumenAnual(anio - 1)].filter(r => r.cobrado || r.gastos);
+  if (!rows.length) return '';
+  return '<h2>Resumen anual</h2>' + rows.map(r => '<div class="card"><div class="row between"><b>' + r.year + '</b><b style="color:' + (r.neta >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(r.neta) + '</b></div>' +
+    '<div class="row between small muted" style="margin-top:4px"><span>Cobrado ' + money(r.cobrado) + '</span><span>Gastos ' + money(r.gastos) + '</span></div></div>').join('');
 }
 
 function seccionComparativaChoferes() {
@@ -49,6 +58,14 @@ function seccionMantenimiento() {
   const rows = activeCars().map(c => ({ c, total: gastoMantenimientoAuto(c) })).filter(x => x.total > 0).sort((a, b) => b.total - a.total);
   if (!rows.length) return '';
   return '<h2>Gasto de mantenimiento por auto</h2>' + rows.map(x => '<div class="card row between"><span>' + plate(x.c.patente) + '</span><b>' + money(x.total) + '</b></div>').join('');
+}
+
+function seccionSiniestros() {
+  const rows = activeCars().map(c => ({ c, S: siniestrosDeAuto(c) })).filter(x => x.S.length)
+    .map(x => ({ c: x.c, cantidad: x.S.length, total: x.S.reduce((a, s) => a + (+s.costoTaller || 0), 0), abiertos: x.S.filter(s => s.estado !== 'cerrado').length }))
+    .sort((a, b) => b.total - a.total);
+  if (!rows.length) return '';
+  return '<h2>Siniestros por auto</h2>' + rows.map(x => '<div class="card row between"><span>' + plate(x.c.patente) + ' <span class="small muted">(' + x.cantidad + (x.cantidad === 1 ? ' siniestro' : ' siniestros') + (x.abiertos ? ' · ' + x.abiertos + ' abierto' + (x.abiertos === 1 ? '' : 's') : '') + ')</span></span><b>' + money(x.total) + '</b></div>').join('');
 }
 
 function seccionMultasChoferes() {
@@ -90,8 +107,10 @@ export function viewReportes() {
   h += seccionGrafico();
   h += seccionProyeccion();
   h += seccionRentabilidad();
+  h += seccionResumenAnual();
   h += seccionComparativaChoferes();
   h += seccionMantenimiento();
+  h += seccionSiniestros();
   h += seccionMultasChoferes();
   return h;
 }

@@ -6,7 +6,7 @@ import { isAdmin } from '../roles.js';
 function renderUsuarios(list) {
   return '<div id="us_list">' + list.map(p => '<div class="card"><div class="row between"><b>' + esc(p.email) + '</b>' + (p.activo ? '' : '<span class="badge b-mute">Inactivo</span>') + '</div>' +
   '<div class="row" style="margin-top:8px;gap:8px">' +
-  '<select onchange="cambiarRol(\'' + p.id + '\',this.value)"' + (p.id === S.user.id ? ' disabled' : '') + '><option value="empleado"' + (p.rol === 'empleado' ? ' selected' : '') + '>Empleado</option><option value="admin"' + (p.rol === 'admin' ? ' selected' : '') + '>Admin</option></select>' +
+  '<select onchange="cambiarRol(\'' + p.id + '\',this.value)"' + (p.id === S.user.id ? ' disabled' : '') + '><option value="empleado"' + (p.rol === 'empleado' ? ' selected' : '') + '>Empleado</option><option value="supervisor"' + (p.rol === 'supervisor' ? ' selected' : '') + '>Supervisor</option><option value="admin"' + (p.rol === 'admin' ? ' selected' : '') + '>Admin</option></select>' +
   '<button class="btn sec sm"' + (p.id === S.user.id ? ' disabled' : '') + ' onclick="toggleActivo(\'' + p.id + '\',' + !p.activo + ')">' + (p.activo ? 'Revocar acceso' : 'Restaurar acceso') + '</button>' +
   '</div></div>').join('') + '</div>';
 }

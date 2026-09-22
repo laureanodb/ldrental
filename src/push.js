@@ -1,0 +1,71 @@
+import { S, sb } from './state.js';
+import { VAPID_PUBLIC_KEY } from './config.js';
+import { toast } from './modal.js';
+import { render } from './nav.js';
+
+export function pushSoportado() {
+  return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+export function pushConfigurado() {
+  return Boolean(VAPID_PUBLIC_KEY);
+}
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const out = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) out[i] = rawData.charCodeAt(i);
+  return out;
+}
+
+const cache = { checked: false, checking: false, estado: 'inactivo' };
+export function pushEstadoCache() { return cache; }
+export async function refrescarPushEstado() {
+  if (cache.checking) return;
+  if (!pushSoportado()) { cache.estado = 'no-soportado'; cache.checked = true; return; }
+  cache.checking = true;
+  try {
+    if (Notification.permission === 'denied') { cache.estado = 'bloqueado'; }
+    else {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      cache.estado = sub ? 'activo' : 'inactivo';
+    }
+  } catch (e) { cache.estado = 'inactivo'; }
+  cache.checked = true; cache.checking = false;
+  render();
+}
+export async function activarPush() {
+  if (!pushSoportado()) { toast('Este navegador no admite notificaciones push'); return; }
+  if (!pushConfigurado()) { toast('Las notificaciones push todavía no están configuradas'); return; }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('No se dio permiso para las notificaciones'); cache.estado = perm === 'denied' ? 'bloqueado' : 'inactivo'; render(); return; }
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
+    const j = sub.toJSON();
+    const r = await sb.from('push_subscriptions').upsert(
+      { user_id: S.user.id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth },
+      { onConflict: 'endpoint' }
+    );
+    if (r.error) { toast('No se pudo activar: ' + r.error.message); return; }
+    cache.estado = 'activo'; toast('Notificaciones activadas'); render();
+  } catch (e) {
+    toast('No se pudo activar: ' + ((e && e.message) || 'error')); render();
+  }
+}
+export async function desactivarPush() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      const endpoint = sub.endpoint;
+      await sub.unsubscribe();
+      await sb.from('push_subscriptions').delete().eq('endpoint', endpoint);
+    }
+    cache.estado = 'inactivo'; toast('Notificaciones desactivadas'); render();
+  } catch (e) {
+    toast('No se pudo desactivar: ' + ((e && e.message) || 'error')); render();
+  }
+}

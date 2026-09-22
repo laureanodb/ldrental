@@ -6,21 +6,41 @@ import { snooze } from '../snooze.js';
 import { toast } from '../modal.js';
 import { render } from '../nav.js';
 import { isAdmin } from '../roles.js';
+import { pushSoportado, pushConfigurado, pushEstadoCache, refrescarPushEstado } from '../push.js';
+
+function pushCard() {
+  if (!pushSoportado() || !pushConfigurado()) return '';
+  const cache = pushEstadoCache();
+  if (!cache.checked) refrescarPushEstado();
+  const on = cache.estado === 'activo';
+  const bloqueado = cache.estado === 'bloqueado';
+  return '<div class="card"><div class="row between"><div><div>Notificaciones push</div><div class="small muted">' + (bloqueado ? 'Bloqueadas en el navegador. Habilitalas en los ajustes del sitio.' : 'Un resumen diario de vencimientos, deudas y multas.') + '</div></div>' +
+  (bloqueado ? '' : '<button class="btn sec sm" onclick="' + (on ? 'desactivarPush()' : 'activarPush()') + '">' + (on ? 'Desactivar' : 'Activar') + '</button>') + '</div></div>';
+}
 
 export function ajustesCard() {
   return '<h2>Ajustes</h2><div class="card"><div class="small muted" style="margin-bottom:10px">Cuántos días antes querés que un vencimiento se marque como urgente o próximo.</div>' +
   '<div class="two"><label class="f"><span>Aviso urgente (días)</span><input id="a_warn" inputmode="numeric" value="' + settings.avisoWarn + '"></label>' +
   '<label class="f"><span>Aviso próximo (días)</span><input id="a_soft" inputmode="numeric" value="' + settings.avisoSoft + '"></label></div>' +
   '<button class="btn sec block" onclick="saveAjustes()">Guardar ajustes</button></div>' +
+  pushCard() +
   (isAdmin() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Umbrales y políticas de la flota.</div>' +
   '<div class="two"><label class="f"><span>Depósito: avisar si baja de <small>%</small></span><input id="a_depPct" inputmode="numeric" value="' + settings.depositoAvisoPct + '"></label>' +
   '<label class="f"><span>Multas: límite acumulado</span><input id="a_multaUmbral" inputmode="numeric" value="' + settings.multaUmbral + '"></label></div>' +
   '<div class="two"><label class="f"><span>Multas: plazo de pago <small>días</small></span><input id="a_multaPlazo" inputmode="numeric" value="' + settings.multaPlazoDias + '"></label>' +
   '<label class="f"><span>Km esperados por semana</span><input id="a_kmSemana" inputmode="numeric" value="' + settings.kmSemanaEsperado + '"></label></div>' +
-  '<label class="f"><span>Fotos de control cada <small>días</small></span><input id="a_fotoDias" inputmode="numeric" value="' + settings.fotoControlDias + '"></label>' +
+  '<div class="two"><label class="f"><span>Fotos de control cada <small>días</small></span><input id="a_fotoDias" inputmode="numeric" value="' + settings.fotoControlDias + '"></label>' +
+  '<label class="f"><span>Bono: semanas sin atraso</span><input id="a_bonoSemanas" inputmode="numeric" value="' + settings.bonoSemanas + '"></label></div>' +
+  '<label class="f"><span>Chofer en riesgo: semanas de atraso</span><input id="a_riesgoSemanas" inputmode="numeric" value="' + settings.riesgoSemanas + '"></label>' +
   '<button class="btn sec block" onclick="saveAjustes()">Guardar ajustes</button></div>' : '') +
+  (isAdmin() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Nombre y logo que aparecen en el login y el panel.</div>' +
+  '<label class="f"><span>Nombre de la empresa</span><input id="a_companyName" value="' + esc(settings.companyName) + '"></label>' +
+  (settings.companyLogo ? '<div class="row" style="margin-bottom:10px;align-items:center"><img src="' + settings.companyLogo + '" alt="" style="height:36px"><button class="btn sec sm" onclick="quitarLogo()">Quitar logo</button></div>' : '') +
+  '<label class="btn sec block filebtn" style="margin-bottom:10px">' + (settings.companyLogo ? 'Cambiar logo' : 'Subir logo') + '<input id="logoIn" type="file" accept="image/*" onchange="subirLogo(this)"></label>' +
+  '<button class="btn sec block" onclick="guardarNombreEmpresa()">Guardar nombre</button></div>' : '') +
   '<div class="card"><div class="row between"><span>Proveedores y talleres de confianza</span><button class="btn sec sm" onclick="proveedoresView()">Ver</button></div></div>' +
-  (isAdmin() ? '<div class="card"><div class="row between"><span>Usuarios y permisos</span><button class="btn sec sm" onclick="usuariosView()">Ver</button></div></div>' : '');
+  (isAdmin() ? '<div class="card"><div class="row between"><span>Usuarios y permisos</span><button class="btn sec sm" onclick="usuariosView()">Ver</button></div></div>' : '') +
+  (isAdmin() ? '<div class="card"><div class="row between"><span>Auditoría</span><button class="btn sec sm" onclick="auditoriaView()">Ver</button></div></div>' : '');
 }
 export function saveAjustes() {
   const w = +val('a_warn') || 15, s = +val('a_soft') || 30;
@@ -32,13 +52,28 @@ export function saveAjustes() {
     multaPlazoDias: +val('a_multaPlazo') || settings.multaPlazoDias,
     kmSemanaEsperado: +val('a_kmSemana') || settings.kmSemanaEsperado,
     fotoControlDias: +val('a_fotoDias') || settings.fotoControlDias,
+    bonoSemanas: +val('a_bonoSemanas') || settings.bonoSemanas,
+    riesgoSemanas: +val('a_riesgoSemanas') || settings.riesgoSemanas,
   });
   saveSettings(patch);
   toast('Ajustes guardados'); render();
 }
+export function guardarNombreEmpresa() {
+  saveSettings({ companyName: val('a_companyName') || 'Mi Flota' });
+  toast('Nombre guardado'); render();
+}
+export function subirLogo(input) {
+  const f = input.files && input.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => { saveSettings({ companyLogo: reader.result }); toast('Logo guardado'); render(); };
+  reader.readAsDataURL(f);
+}
+export function quitarLogo() { saveSettings({ companyLogo: '' }); toast('Logo quitado'); render(); }
 export function backupCard() {
   return '<h2>Copia de seguridad</h2><div class="card"><div class="small muted" style="margin-bottom:10px">Descargá un archivo con todos tus autos, choferes y cobros y guardalo en tu celular, Drive o mail. Sirve para recuperar todo si algo se pierde. Las fotos y PDF adjuntos no van dentro del archivo.</div>' +
   '<div class="row">' + '<button class="btn grow" onclick="backup()">Descargar copia</button>' + '<label class="btn sec grow filebtn">Restaurar copia<input id="restoreIn" type="file" onchange="pickRestore(this)"></label></div></div>' +
+  '<div class="card"><div class="small muted" style="margin-bottom:10px">Exportá todos los datos a un archivo Excel (una hoja por sección) para analizarlos o compartirlos.</div>' +
+  '<button class="btn sec block" onclick="exportarExcel()">Exportar todo a Excel</button></div>' +
   '<button class="btn sec block" style="margin-top:8px" onclick="logout()">Cerrar sesión (' + esc(S.user && S.user.email || '') + ')</button>';
 }
 export function alertRow(a) {

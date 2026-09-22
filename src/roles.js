@@ -15,3 +15,6 @@ export async function loadOwnProfile() {
   } catch (e) { S.profilesEnabled = false; S.profile = null; }
 }
 export const isAdmin = () => !S.profilesEnabled || Boolean(S.profile && S.profile.rol === 'admin' && S.profile.activo);
+export const isSupervisor = () => Boolean(S.profile && S.profile.rol === 'supervisor' && S.profile.activo);
+export const canDelete = () => isAdmin() || isSupervisor();
+export const canVerFinanzas = () => isAdmin() || isSupervisor();

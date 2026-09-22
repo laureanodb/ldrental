@@ -1,7 +1,7 @@
 export const TIPOS = { alquiler: 'Alquilado', financiado: 'Financiado', disponible: 'Disponible', taller: 'En taller' };
 export const DOCS = [['dni', 'DNI (frente y dorso)'], ['lic', 'Licencia profesional'], ['dom', 'Comprobante de domicilio'], ['ant', 'Certificado de antecedentes'], ['app', 'Alta en la app (Uber, Cabify, etc.)'], ['contrato', 'Contrato firmado'], ['garante', 'Garante / aval']];
 export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuesto automotor (fecha de vencimiento)'], ['cedula', 'Cédula / tarjeta'], ['gnc', 'Revisión técnica GNC'], ['habilitacion', 'Licencia / habilitación de transporte']];
-export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos'];
+export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros'];
 
 export const COMBUSTIBLES = [['nafta', 'Nafta'], ['diesel', 'Diésel'], ['gnc', 'GNC'], ['electrico', 'Eléctrico'], ['hibrido', 'Híbrido']];
 export const RATINGS = [['bueno', 'Cumplidor'], ['regular', 'Regular'], ['malo', 'Problemático']];
@@ -29,6 +29,13 @@ export const MANTENIMIENTO_CHECKLIST = [['revisado', 'Se revisó el ítem comple
 
 export const TIPOS_INFRACCION = [['velocidad', 'Exceso de velocidad'], ['estacionamiento', 'Estacionamiento indebido'], ['semaforo', 'Semáforo en rojo'], ['documentacion', 'Documentación / VTV / seguro'], ['carril', 'Carril exclusivo / mal uso de carril'], ['telefono', 'Uso de celular al conducir'], ['otro', 'Otra infracción']];
 export const MULTA_ESTADOS = [['pendiente', 'Pendiente de pago'], ['pagada', 'Pagada'], ['vencida', 'Vencida'], ['apelada', 'En descargo / apelada']];
+
+export const TIPOS_SINIESTRO = [['choque', 'Choque'], ['robo', 'Robo'], ['incendio', 'Incendio'], ['granizo', 'Granizo'], ['vandalismo', 'Vandalismo'], ['otro', 'Otro']];
+export const SINIESTRO_ESTADOS = [['abierto', 'Abierto'], ['tramite', 'En trámite con el seguro'], ['cerrado', 'Cerrado']];
+export const SCATS = [['foto', 'Foto del siniestro'], ['parte', 'Parte / denuncia policial'], ['presupuesto', 'Presupuesto de reparación'], ['comprobante', 'Comprobante de pago'], ['otro', 'Otro']];
+
+export const ETAPAS_PROSPECTO = [['contacto', 'Contacto inicial'], ['entrevista', 'Entrevista'], ['documentacion', 'Juntando documentación'], ['evaluacion', 'En evaluación'], ['aprobado', 'Aprobado'], ['rechazado', 'Rechazado']];
+export const ONBOARDING_ITEMS = [['contrato', 'Contrato firmado'], ['induccion', 'Inducción / capacitación realizada'], ['entregaAuto', 'Auto entregado con inspección'], ['appActivada', 'Alta en la app de viajes activada'], ['depositoInicial', 'Primer pago de depósito recibido']];
 
 export function normCar(c) {
   /* corrige autos guardados con un bug anterior: la patente quedó reemplazada por una fecha */

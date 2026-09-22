@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { VENC, TIPOS, MANTENIMIENTO_ITEMS } from './constants.js';
-import { days, parse, today, iso, esc, fdate, money } from './utils.js';
+import { days, parse, today, iso, esc, fdate, money, num1 } from './utils.js';
 import { settings } from './settings.js';
 import { isSnoozed } from './snooze.js';
 
@@ -232,6 +232,11 @@ export function alerts() {
     const key = 'driver:' + d.id + ':multaumbral'; if (isSnoozed(key)) return;
     out.push({ who: d.nombre, sub: 'Multas acumuladas superan el límite', kind: 'driver', id: d.id, key, d: 0, cls: 'bad', t: money(pend) + ' en multas pendientes' });
   });
+  activeDrivers().forEach(d => {
+    if (!driverEnRiesgo(d.id)) return;
+    const key = 'driver:' + d.id + ':riesgo'; if (isSnoozed(key)) return;
+    out.push({ who: d.nombre, sub: 'Chofer en riesgo por atrasos', kind: 'driver', id: d.id, key, d: 0, cls: 'bad', t: num1(driverWeeksInfo(d.id).lateWeeks) + ' semanas de atraso' });
+  });
   activeCars().forEach(c => {
     const f = alertaFotoControl(c); if (!f) return;
     const key = 'car:' + c.id + ':foto'; if (isSnoozed(key)) return;
@@ -266,6 +271,19 @@ export function carHistoryForDriver(driverId) {
 export function diasEnTaller(c) {
   return (c.historialTaller || []).reduce((a, h) => a + Math.max(0, days(parse(h.desde), h.hasta ? parse(h.hasta) : today())), 0);
 }
+export function resumenAnual(year) {
+  const inicio = year + '-01-01', fin = year + '-12-31';
+  const cobrado = S.payments.filter(p => p.fecha >= inicio && p.fecha <= fin).reduce((a, p) => a + (+p.monto || 0), 0);
+  const gastos = S.gastos.filter(g => g.fecha >= inicio && g.fecha <= fin).reduce((a, g) => a + (+g.costo || 0), 0) +
+    S.mantenimientos.filter(m => m.fecha >= inicio && m.fecha <= fin).reduce((a, m) => a + (+m.costo || 0), 0);
+  return { year, cobrado, gastos, neta: cobrado - gastos };
+}
+export function financiacionesProximas(semanas) {
+  return activeCars().filter(c => c.tipo === 'financiado' && c.cuotas && c.choferId).map(c => {
+    const i = calc(c);
+    return { c, restantes: Math.max(0, (+c.cuotas) - i.weeks) };
+  }).filter(x => x.restantes > 0 && x.restantes <= semanas).sort((a, b) => a.restantes - b.restantes);
+}
 export function rentabilidadAuto(c) {
   const cobrado = S.payments.filter(p => p.carId === c.id).reduce((a, p) => a + (+p.monto || 0), 0);
   const gastos = S.gastos.filter(g => g.carId === c.id).reduce((a, g) => a + (+g.costo || 0), 0) +
@@ -275,16 +293,30 @@ export function rentabilidadAuto(c) {
 export function gastoMantenimientoAuto(c) {
   return S.mantenimientos.filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
 }
+export function siniestrosDeAuto(c) {
+  return S.siniestros.filter(s => s.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
 export function driverTotalPagado(driverId) {
   return S.payments.filter(p => p.choferId === driverId).reduce((a, p) => a + (+p.monto || 0), 0);
 }
-export function driverScore(driverId) {
+export function driverWeeksInfo(driverId) {
   const cars = S.cars.filter(c => c.choferId === driverId && isContract(c) && c.inicio);
-  if (!cars.length) return null;
   let totalWeeks = 0, lateWeeks = 0;
   cars.forEach(c => { const i = calc(c); totalWeeks += i.weeks; lateWeeks += i.late; });
-  if (!totalWeeks) return null;
+  return { totalWeeks, lateWeeks, tieneCars: cars.length > 0 };
+}
+export function driverScore(driverId) {
+  const { totalWeeks, lateWeeks, tieneCars } = driverWeeksInfo(driverId);
+  if (!tieneCars || !totalWeeks) return null;
   return Math.max(0, Math.round((1 - lateWeeks / totalWeeks) * 100));
+}
+export function driverEnRiesgo(driverId) {
+  const { lateWeeks } = driverWeeksInfo(driverId);
+  return settings.riesgoSemanas > 0 && lateWeeks >= settings.riesgoSemanas;
+}
+export function driverCalificaBono(driverId) {
+  const { totalWeeks, lateWeeks, tieneCars } = driverWeeksInfo(driverId);
+  return tieneCars && lateWeeks === 0 && totalWeeks >= settings.bonoSemanas;
 }
 export function cobradoDelMes(offsetMeses) {
   const t = today();
