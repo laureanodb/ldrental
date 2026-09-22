@@ -1,5 +1,5 @@
 import { S } from '../state.js';
-import { $, val, uid, iso, today, esc, money, num1 } from '../utils.js';
+import { $, val, uid, iso, today, esc, money, moneyUSD, num1 } from '../utils.js';
 import { isContract, calc, carById, driverName } from '../calc.js';
 import { METODOS_PAGO } from '../constants.js';
 import { openModal, closeModal, toast } from '../modal.js';
@@ -13,7 +13,7 @@ export function payForm(carId) {
   const h = '<h3>Registrar cobro</h3>' +
   '<label class="f"><span>Auto</span><select id="p_car" onchange="onPayCar()">' + cars.map(x => '<option value="' + x.id + '"' + (x.id === c.id ? ' selected' : '') + '>' + esc(x.patente) + ' · ' + esc(driverName(x.choferId)) + '</option>').join('') + '</select></label>' +
   '<div class="small muted" id="p_info" style="margin:-4px 0 12px"></div>' +
-  '<div class="two"><label class="f"><span>Monto</span><input id="p_monto" inputmode="decimal"></label>' +
+  '<div class="two"><label class="f"><span id="p_lblmonto">Monto</span><input id="p_monto" inputmode="decimal"></label>' +
   '<label class="f"><span>Fecha</span><input id="p_fecha" type="date" value="' + iso(today()) + '"></label></div>' +
   '<div class="two"><label class="f"><span>Tipo</span><select id="p_tipo"><option value="alquiler">Alquiler</option><option value="cuota">Cuota de financiación</option><option value="otro">Otro (anticipo, seña, etc.)</option></select></label>' +
   '<label class="f"><span>Método de pago</span><select id="p_metodo">' + METODOS_PAGO.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label></div>' +
@@ -26,9 +26,11 @@ export function payForm(carId) {
 export function onPayCar() {
   const c = carById($('#p_car').value); if (!c) return;
   const i = calc(c);
+  const mon = c.tipo === 'financiado' ? moneyUSD : money;
   $('#p_monto').value = c.monto || '';
   $('#p_tipo').value = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';
-  $('#p_info').textContent = (i.debt > 0 ? 'Debe ' + money(i.debt) + ' (' + num1(i.late) + ' semanas). ' : 'Está al día. ') + (c.tipo === 'alquiler' ? 'Alquiler' : 'Cuota') + ' semanal: ' + money(c.monto) + '.';
+  $('#p_lblmonto').textContent = c.tipo === 'financiado' ? 'Monto (en dólares)' : 'Monto';
+  $('#p_info').textContent = (i.debt > 0 ? 'Debe ' + mon(i.debt) + ' (' + num1(i.late) + ' semanas). ' : 'Está al día. ') + (c.tipo === 'alquiler' ? 'Alquiler' : 'Cuota') + ' semanal: ' + mon(c.monto) + '.';
 }
 export async function savePay() {
   const c = carById(val('p_car')); const monto = +val('p_monto');

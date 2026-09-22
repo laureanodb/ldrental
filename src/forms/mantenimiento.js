@@ -3,10 +3,18 @@ import { S } from '../state.js';
 import { MANTENIMIENTO_CHECKLIST } from '../constants.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
-import { carById } from '../calc.js';
+import { carById, proveedoresActivos } from '../calc.js';
 import { carForm, actualizarKm, marcarEnTaller } from './car.js';
 import { renderFiles } from '../files.js';
 
+function proveedoresParaSelect(actualId) {
+  const L = proveedoresActivos();
+  if (actualId && !L.some(p => p.id === actualId)) {
+    const actual = S.proveedores.find(p => p.id === actualId);
+    if (actual) return [actual].concat(L);
+  }
+  return L;
+}
 export function mantenimientoForm(carId, editId, presetItem) {
   const cars = S.cars.filter(x => !x.vendido).slice().sort((a, b) => String(a.patente).localeCompare(String(b.patente)));
   const c = carById(carId) || (carId ? null : cars[0]);
@@ -27,7 +35,7 @@ export function mantenimientoForm(carId, editId, presetItem) {
   '<label class="f"><span>Fecha</span><input id="m_fecha" type="date" value="' + esc(ex ? ex.fecha : iso(today())) + '"></label></div>' +
   '<div class="two"><label class="f"><span>Km del auto</span><input id="m_km" inputmode="numeric" value="' + esc(ex ? ex.km : (c.km || '')) + '"></label>' +
   '<label class="f"><span>Costo</span><input id="m_costo" inputmode="decimal" value="' + esc(ex ? ex.costo : '') + '"></label></div>' +
-  '<label class="f"><span>Taller / proveedor</span><select id="m_proveedor"><option value="">Sin especificar</option>' + S.proveedores.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre))).map(p => '<option value="' + p.id + '"' + (ex && ex.proveedorId === p.id ? ' selected' : '') + '>' + esc(p.nombre) + '</option>').join('') + '</select></label>' +
+  '<label class="f"><span>Taller / proveedor</span><select id="m_proveedor"><option value="">Sin especificar</option>' + proveedoresParaSelect(ex && ex.proveedorId).map(p => '<option value="' + p.id + '"' + (ex && ex.proveedorId === p.id ? ' selected' : '') + '>' + esc(p.nombre) + '</option>').join('') + '</select></label>' +
   '<div class="sec-t">Checklist</div>' + MANTENIMIENTO_CHECKLIST.map(x => '<label class="chk"><input type="checkbox" id="mc_' + x[0] + '"' + (!ex || (ex.checklist || {})[x[0]] ? ' checked' : '') + '><span>' + x[1] + '</span></label>').join('') +
   '<div class="two"><label class="f"><span>Garantía <small>meses</small></span><input id="m_garMeses" inputmode="numeric" value="' + esc(ex ? ex.garantiaMeses || '' : '') + '"></label>' +
   '<label class="f"><span>Garantía <small>km</small></span><input id="m_garKm" inputmode="numeric" value="' + esc(ex ? ex.garantiaKm || '' : '') + '"></label></div>' +

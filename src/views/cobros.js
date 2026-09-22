@@ -1,8 +1,8 @@
 import { S, ui } from '../state.js';
-import { esc, money, fdate, num1, parse, today } from '../utils.js';
+import { esc, money, moneyUSD, fdate, num1, parse, today, days } from '../utils.js';
 import { isContract, calc, carById, badge, plate, driverName } from '../calc.js';
 import { METODOS_PAGO } from '../constants.js';
-import { canDelete } from '../roles.js';
+import { canDelete, canVerFinanzas } from '../roles.js';
 
 const metodoLabel = m => (METODOS_PAGO.find(x => x[0] === m) || [])[1];
 const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -29,21 +29,30 @@ export function viewCobros() {
   if (!act.length) h += '<div class="card empty">Cuando tengas autos alquilados o financiados con chofer, van a aparecer acá.</div>';
   act.forEach(x => {
     const c = x.c, i = x.i, d = S.drivers.find(y => y.id === c.choferId);
+    const mon = c.tipo === 'financiado' ? moneyUSD : money;
     let wa = '';
     if (i.debt > 0 && d && d.tel) {
-      const msg = 'Hola ' + d.nombre.split(' ')[0] + ', te escribo por el pago de ' + (c.tipo === 'alquiler' ? 'alquiler' : 'cuota') + ' del auto ' + c.patente + '. Tenés pendiente ' + money(i.debt) + '. ¿Cuándo podés pasar a abonarlo?';
+      const msg = 'Hola ' + d.nombre.split(' ')[0] + ', te escribo por el pago de ' + (c.tipo === 'alquiler' ? 'alquiler' : 'cuota') + ' del auto ' + c.patente + '. Tenés pendiente ' + mon(i.debt) + '. ¿Cuándo podés pasar a abonarlo?';
       wa = '<a class="btn sec sm" target="_blank" rel="noopener" href="https://wa.me/' + d.tel.replace(/\D/g, '') + '?text=' + encodeURIComponent(msg) + '">WhatsApp</a>';
+    } else if (i.debt === 0 && d && d.tel && c.inicio) {
+      const prox = parse(c.inicio); prox.setDate(prox.getDate() + i.weeks * 7);
+      const faltan = days(today(), prox);
+      if (faltan >= 0 && faltan <= 2) {
+        const msg = 'Hola ' + d.nombre.split(' ')[0] + ', te recuerdo que se acerca el pago de ' + (c.tipo === 'alquiler' ? 'alquiler' : 'cuota') + ' del auto ' + c.patente + ' (' + mon(c.monto) + '), vence el ' + fdate(prox.getFullYear() + '-' + String(prox.getMonth() + 1).padStart(2, '0') + '-' + String(prox.getDate()).padStart(2, '0')) + '. ¡Cualquier cosa avisame!';
+        wa = '<a class="btn sec sm" target="_blank" rel="noopener" href="https://wa.me/' + d.tel.replace(/\D/g, '') + '?text=' + encodeURIComponent(msg) + '">Recordar</a>';
+      }
     }
-    h += '<div class="card"><div class="row between"><div>' + plate(c.patente) + ' <span class="small muted">' + esc(d ? d.nombre : '') + '</span></div>' + (i.debt > 0 ? badge('bad', 'Debe ' + money(i.debt)) : badge('ok', 'Al día')) + '</div>' +
-    '<div class="row between small muted" style="margin-top:6px"><div>' + (c.tipo === 'alquiler' ? 'Alquiler' : 'Cuota') + ' ' + money(c.monto) + ' por semana' + (i.debt > 0 ? ' · ' + num1(i.late) + ' sem. de atraso' : '') + '</div></div>' +
+    h += '<div class="card"><div class="row between"><div>' + plate(c.patente) + ' <span class="small muted">' + esc(d ? d.nombre : '') + '</span></div>' + (i.debt > 0 ? badge('bad', 'Debe ' + mon(i.debt)) : badge('ok', 'Al día')) + '</div>' +
+    '<div class="row between small muted" style="margin-top:6px"><div>' + (c.tipo === 'alquiler' ? 'Alquiler' : 'Cuota') + ' ' + mon(c.monto) + ' por semana' + (i.debt > 0 ? ' · ' + num1(i.late) + ' sem. de atraso' : '') + '</div></div>' +
     '<div class="row" style="margin-top:8px"><button class="btn sm" onclick="payForm(\'' + c.id + '\')">Cobrar</button>' + wa + '</div></div>';
   });
-  h += '<h2>Historial</h2><div class="bar"><select onchange="ui.filterCar=this.value;render()"><option value="">Todos los autos</option>' + S.cars.map(c => '<option value="' + c.id + '"' + (ui.filterCar === c.id ? ' selected' : '') + '>' + esc(c.patente) + '</option>').join('') + '</select></div>';
-  const P = S.payments.filter(p => !ui.filterCar || p.carId === ui.filterCar).sort((a, b) => (b.fecha + b.id).localeCompare(a.fecha + a.id));
+  h += '<h2>Historial</h2><div class="bar"><select onchange="ui.filterCar=this.value;render()"><option value="">Todos los autos</option>' + S.cars.map(c => '<option value="' + c.id + '"' + (ui.filterCar === c.id ? ' selected' : '') + '>' + esc(c.patente) + '</option>').join('') + '</select>' +
+  '<select onchange="ui.filtroCobrosMetodo=this.value;render()"><option value="">Todos los métodos</option>' + METODOS_PAGO.map(m => '<option value="' + m[0] + '"' + (ui.filtroCobrosMetodo === m[0] ? ' selected' : '') + '>' + m[1] + '</option>').join('') + '</select></div>';
+  const P = S.payments.filter(p => (!ui.filterCar || p.carId === ui.filterCar) && (!ui.filtroCobrosMetodo || p.metodo === ui.filtroCobrosMetodo)).sort((a, b) => (b.fecha + b.id).localeCompare(a.fecha + a.id));
   if (!P.length) h += '<div class="card muted">Todavía no hay cobros registrados.</div>';
   P.slice(0, 40).forEach(p => {
     const c = carById(p.carId);
-    h += '<div class="card row"><div class="grow"><div>' + money(p.monto) + ' <span class="small muted">' + esc(p.tipo === 'alquiler' ? 'alquiler' : p.tipo === 'cuota' ? 'cuota' : 'otro') + '</span>' + (p.parcial ? ' ' + badge('warn', 'Parcial') : '') + '</div><div class="small muted">' + fdate(p.fecha) + ' · ' + esc(c ? c.patente : 'auto eliminado') + (p.choferId && driverName(p.choferId) ? ' · ' + esc(driverName(p.choferId)) : '') + (metodoLabel(p.metodo) ? ' · ' + esc(metodoLabel(p.metodo)) : '') + (p.nota ? ' · ' + esc(p.nota) : '') + '</div></div>' + '<button class="btn sec sm" onclick="reciboPDF(\'' + p.id + '\')">Recibo</button>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delPay(\'' + p.id + '\'))">Borrar</button>' : '') + '</div>';
+    h += '<div class="card row"><div class="grow"><div>' + (p.tipo === 'cuota' ? moneyUSD(p.monto) : money(p.monto)) + ' <span class="small muted">' + esc(p.tipo === 'alquiler' ? 'alquiler' : p.tipo === 'cuota' ? 'cuota' : 'otro') + '</span>' + (p.parcial ? ' ' + badge('warn', 'Parcial') : '') + '</div><div class="small muted">' + fdate(p.fecha) + ' · ' + esc(c ? c.patente : 'auto eliminado') + (p.choferId && driverName(p.choferId) ? ' · ' + esc(driverName(p.choferId)) : '') + (metodoLabel(p.metodo) ? ' · ' + esc(metodoLabel(p.metodo)) : '') + (p.nota ? ' · ' + esc(p.nota) : '') + '</div></div>' + (canVerFinanzas() ? '<button class="btn sec sm" onclick="reciboPDF(\'' + p.id + '\')">Recibo</button><button class="btn sec sm" onclick="reciboCompartir(\'' + p.id + '\')">Compartir</button>' : '') + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delPay(\'' + p.id + '\'))">Borrar</button>' : '') + '</div>';
   });
   if (P.length > 40) h += '<div class="small muted" style="text-align:center">Se muestran los últimos 40. Exportá para ver todos.</div>';
   return h;

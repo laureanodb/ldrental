@@ -12,15 +12,17 @@ export function ajusteForm(carId) {
   '<div class="small muted" style="margin-bottom:12px">Un monto positivo reduce la deuda calculada (condonación, descuento, error a favor del chofer).</div>' +
   '<div class="two"><label class="f"><span>Monto a descontar</span><input id="aj_monto" inputmode="decimal"></label>' +
   '<label class="f"><span>Fecha</span><input id="aj_fecha" type="date" value="' + iso(today()) + '"></label></div>' +
-  '<label class="f"><span>Motivo</span><textarea id="aj_motivo"></textarea></label>' +
+  '<label class="f"><span>Motivo <small>obligatorio</small></span><textarea id="aj_motivo"></textarea></label>' +
   '<div class="row"><button class="btn grow" onclick="saveAjuste(\'' + c.id + '\')">Guardar</button><button class="btn sec" onclick="carForm(\'' + c.id + '\')">Cancelar</button></div>';
   openModal(h);
 }
 export async function saveAjuste(carId) {
   const monto = +val('aj_monto');
   if (!monto || monto <= 0) { toast('Poné el monto a descontar'); return; }
+  const motivo = val('aj_motivo');
+  if (!motivo) { toast('Contá el motivo del ajuste'); return; }
   const c = carById(carId); if (!c) return;
-  const ajuste = { id: uid(), fecha: val('aj_fecha') || iso(today()), monto, motivo: val('aj_motivo') };
+  const ajuste = { id: uid(), fecha: val('aj_fecha') || iso(today()), monto, motivo };
   const ajustesDeuda = (c.ajustesDeuda || []).concat([ajuste]);
   if (await save('cars', Object.assign({}, c, { ajustesDeuda }))) { closeModal(); toast('Ajuste registrado'); }
 }

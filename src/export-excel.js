@@ -3,6 +3,7 @@ import { COLS } from './constants.js';
 import { iso, today } from './utils.js';
 import { toast } from './modal.js';
 import { saveFile } from './backup.js';
+import { resumenGeneral } from './calc.js';
 
 const SHEET_LABELS = { cars: 'Autos', drivers: 'Choferes', payments: 'Cobros', gastos: 'Gastos', proveedores: 'Proveedores', sanciones: 'Sanciones', prospectos: 'Prospectos', inspecciones: 'Inspecciones', mantenimientos: 'Mantenimiento', multas: 'Multas', depositos: 'Depositos', siniestros: 'Siniestros' };
 
@@ -21,6 +22,18 @@ export async function exportarExcel() {
     toast('Generando archivo Excel…');
     const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
+    const r = resumenGeneral();
+    const wsResumen = XLSX.utils.json_to_sheet([
+      { concepto: 'Cobrado total (pesos, alquileres)', valor: r.cobrado },
+      { concepto: 'Cobrado total (dólares, financiados)', valor: r.cobradoUSD },
+      { concepto: 'Gastos totales (gastos + mantenimiento, pesos)', valor: r.gastos },
+      { concepto: 'Rentabilidad neta (pesos)', valor: r.neta },
+      { concepto: 'Deuda total de choferes (pesos, alquileres)', valor: r.deudaTotal },
+      { concepto: 'Deuda total de financiados (dólares)', valor: r.deudaTotalUSD },
+      { concepto: 'Autos activos', valor: r.autosActivos },
+      { concepto: 'Choferes activos', valor: r.choferesActivos },
+    ]);
+    XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
     COLS.forEach(col => {
       const rows = (S[col] || []).map(limpiar);
       const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ sinDatos: true }]);

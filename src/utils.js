@@ -1,6 +1,7 @@
 export const $ = s => document.querySelector(s);
 export const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const money = n => '$ ' + Math.round(n || 0).toLocaleString('es-AR');
+export const moneyUSD = n => 'US$ ' + Math.round(n || 0).toLocaleString('es-AR');
 export const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
 export const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 export const parse = s => { if (!s) return null; const p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); };

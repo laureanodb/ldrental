@@ -1,6 +1,7 @@
-import { S } from '../state.js';
-import { money, today, esc, num1 } from '../utils.js';
-import { isContract, calc, urgent, driverName, plate, activeCars, cobradoDelMes, financiacionesProximas } from '../calc.js';
+import { S, ui } from '../state.js';
+import { money, moneyUSD, today, esc, num1 } from '../utils.js';
+import { isContract, calc, urgent, driverName, plate, activeCars, cobradoDelMes, cobradoDelMesUSD, cobradoDelMesPorMetodo, financiacionesProximas } from '../calc.js';
+import { METODOS_PAGO } from '../constants.js';
 import { settings, brandH1 } from '../settings.js';
 import { backupCard, alertRow, ajustesCard } from './shared.js';
 import { googleCard } from './google-ui.js';
@@ -10,28 +11,38 @@ export function viewPanel() {
   const act = flota.filter(c => isContract(c) && c.choferId);
   const t0 = today();
   const cobMes = cobradoDelMes(0);
+  const cobMesUSD = cobradoDelMesUSD(0);
   const cobMesAnt = cobradoDelMes(1);
   const deltaMes = cobMesAnt > 0 ? Math.round((cobMes - cobMesAnt) / cobMesAnt * 100) : (cobMes > 0 ? 100 : null);
-  const esperado = act.reduce((a, c) => a + (+c.monto || 0), 0);
+  const esperado = act.filter(c => c.tipo !== 'financiado').reduce((a, c) => a + (+c.monto || 0), 0);
+  const esperadoUSD = act.filter(c => c.tipo === 'financiado').reduce((a, c) => a + (+c.monto || 0), 0);
   const infos = act.map(c => ({ c, i: calc(c) }));
-  const deuda = infos.reduce((a, x) => a + x.i.debt, 0);
+  const deuda = infos.filter(x => x.c.tipo !== 'financiado').reduce((a, x) => a + x.i.debt, 0);
   const saldoFin = flota.filter(c => c.tipo === 'financiado').reduce((a, c) => a + (calc(c).saldo || 0), 0);
+  const disponibles = flota.filter(c => c.tipo === 'disponible').length;
   const urg = urgent();
   if (!S.cars.length && !S.drivers.length) {
     return brandH1() + '<p class="sub">Autos, choferes, cobros y vencimientos en un solo lugar.</p>' +
     '<div class="card empty"><b>Empecemos por lo básico</b>Cargá tus choferes y tus autos. Después registrás cada cobro semanal y la app te dice quién debe y qué vence.<div style="margin-top:16px" class="row" ><button class="btn grow" onclick="driverForm()">Cargar chofer</button><button class="btn grow" onclick="carForm()">Cargar auto</button></div></div>' + backupCard();
   }
-  const morosos = infos.filter(x => x.i.debt > 0).sort((a, b) => b.i.debt - a.i.debt).slice(0, 5);
+  const morosos = infos.filter(x => x.i.debt > 0 && x.c.tipo !== 'financiado').sort((a, b) => b.i.debt - a.i.debt).slice(0, 5);
   let h = brandH1() + '<p class="sub">' + t0.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) + '</p>';
   h += '<div class="row" style="margin-bottom:12px"><button class="btn grow" onclick="payForm()">Cobro rápido</button><button class="btn sec" onclick="searchView()">Buscar</button></div>';
   h += '<div class="grid">' +
-    '<div class="kpi"><div class="n">' + money(cobMes) + '</div><div class="l">Cobrado este mes' + (deltaMes != null ? ' <span style="color:' + (deltaMes >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + (deltaMes >= 0 ? '▲' : '▼') + Math.abs(deltaMes) + '%</span>' : '') + '</div></div>' +
-    '<div class="kpi"><div class="n">' + money(esperado) + '</div><div class="l">Esperado por semana</div></div>' +
+    '<div class="kpi tap" onclick="ui.showDesgloseCobrado=!ui.showDesgloseCobrado;render()"><div class="n">' + money(cobMes) + (cobMesUSD ? '<div class="small">+ ' + moneyUSD(cobMesUSD) + '</div>' : '') + '</div><div class="l">Cobrado este mes' + (deltaMes != null ? ' <span style="color:' + (deltaMes >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + (deltaMes >= 0 ? '▲' : '▼') + Math.abs(deltaMes) + '%</span>' : '') + '</div></div>' +
+    '<div class="kpi"><div class="n">' + money(esperado) + (esperadoUSD ? '<div class="small">+ ' + moneyUSD(esperadoUSD) + '</div>' : '') + '</div><div class="l">Esperado por semana</div></div>' +
     '<div class="kpi ' + (deuda > 0 ? 'bad' : '') + '"><div class="n">' + money(deuda) + '</div><div class="l">Deuda de choferes</div></div>' +
-    '<div class="kpi"><div class="n">' + money(saldoFin) + '</div><div class="l">Falta cobrar de financiados</div></div>' +
+    '<div class="kpi"><div class="n">' + moneyUSD(saldoFin) + '</div><div class="l">Falta cobrar de financiados</div></div>' +
     '<div class="kpi"><div class="n">' + act.length + ' de ' + flota.length + '</div><div class="l">Autos en la calle</div></div>' +
     '<div class="kpi ' + (urg.length ? 'warn' : '') + ' tap" onclick="go(\'venc\')"><div class="n">' + urg.length + '</div><div class="l">Vencimientos urgentes</div></div>' +
+    '<div class="kpi tap" onclick="ui.filtroAutoTipo=\'disponible\';go(\'autos\')"><div class="n">' + disponibles + '</div><div class="l">Autos disponibles</div></div>' +
   '</div>';
+  if (ui.showDesgloseCobrado) {
+    const porMetodo = cobradoDelMesPorMetodo(0);
+    const metodoLabel = m => m === 'sin_especificar' ? 'Sin especificar' : ((METODOS_PAGO.find(x => x[0] === m) || [0, m])[1]);
+    h += '<div class="card" style="margin-bottom:12px"><div class="small muted" style="margin-bottom:6px">Cobrado este mes por método de pago</div>' +
+    (Object.keys(porMetodo).length ? Object.entries(porMetodo).sort((a, b) => b[1] - a[1]).map(([m, monto]) => '<div class="row between small" style="padding:2px 0"><span>' + esc(metodoLabel(m)) + '</span><b>' + money(monto) + '</b></div>').join('') : '<div class="small muted">Sin cobros este mes.</div>') + '</div>';
+  }
   h += '<h2>Choferes con deuda</h2>';
   if (!morosos.length) h += '<div class="card muted">Nadie debe nada. Todo al día.</div>';
   morosos.forEach(x => {

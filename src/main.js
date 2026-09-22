@@ -9,10 +9,10 @@ import { mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delManteni
 import { mantAtajoFecha } from './views/mantenimiento.js';
 import { multaForm, onMultaCar, onMultaFecha, saveMulta, delMulta } from './forms/multa.js';
 import { siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro } from './forms/siniestro.js';
-import { reciboPDF } from './recibo.js';
+import { reciboPDF, reciboCompartir } from './recibo.js';
 import { exportarExcel } from './export-excel.js';
-import { activarPush, desactivarPush } from './push.js';
-import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo } from './forms/driver.js';
+import { activarPush, desactivarPush, guardarHorarioPush } from './push.js';
+import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, onFotoPerfil } from './forms/driver.js';
 import { depositoForm, saveDeposito, delDeposito } from './forms/deposito.js';
 import { payForm, onPayCar, savePay, delPay } from './forms/payment.js';
 import { closeModal, confirmDel } from './modal.js';
@@ -45,8 +45,8 @@ Object.assign(window, {
   mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, mantAtajoFecha,
   multaForm, onMultaCar, onMultaFecha, saveMulta, delMulta,
   siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro,
-  reciboPDF, exportarExcel, activarPush, desactivarPush,
-  driverForm, saveDriver, delDriver, addTelRow, toggleInactivo,
+  reciboPDF, reciboCompartir, exportarExcel, activarPush, desactivarPush, guardarHorarioPush,
+  driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, onFotoPerfil,
   depositoForm, saveDeposito, delDeposito,
   payForm, onPayCar, savePay, delPay,
   closeModal, confirmDel,

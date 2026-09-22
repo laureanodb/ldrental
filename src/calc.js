@@ -273,10 +273,12 @@ export function diasEnTaller(c) {
 }
 export function resumenAnual(year) {
   const inicio = year + '-01-01', fin = year + '-12-31';
-  const cobrado = S.payments.filter(p => p.fecha >= inicio && p.fecha <= fin).reduce((a, p) => a + (+p.monto || 0), 0);
+  const enRango = S.payments.filter(p => p.fecha >= inicio && p.fecha <= fin);
+  const cobrado = enRango.filter(p => p.tipo !== 'cuota').reduce((a, p) => a + (+p.monto || 0), 0);
+  const cobradoUSD = enRango.filter(p => p.tipo === 'cuota').reduce((a, p) => a + (+p.monto || 0), 0);
   const gastos = S.gastos.filter(g => g.fecha >= inicio && g.fecha <= fin).reduce((a, g) => a + (+g.costo || 0), 0) +
     S.mantenimientos.filter(m => m.fecha >= inicio && m.fecha <= fin).reduce((a, m) => a + (+m.costo || 0), 0);
-  return { year, cobrado, gastos, neta: cobrado - gastos };
+  return { year, cobrado, cobradoUSD, gastos, neta: cobrado - gastos };
 }
 export function financiacionesProximas(semanas) {
   return activeCars().filter(c => c.tipo === 'financiado' && c.cuotas && c.choferId).map(c => {
@@ -288,16 +290,71 @@ export function rentabilidadAuto(c) {
   const cobrado = S.payments.filter(p => p.carId === c.id).reduce((a, p) => a + (+p.monto || 0), 0);
   const gastos = S.gastos.filter(g => g.carId === c.id).reduce((a, g) => a + (+g.costo || 0), 0) +
     S.mantenimientos.filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
-  return { cobrado, gastos, neta: cobrado - gastos, costoCompra: +c.costoCompra || 0 };
+  const moneda = c.tipo === 'financiado' ? 'USD' : 'ARS';
+  return { cobrado, gastos, neta: moneda === 'USD' ? null : cobrado - gastos, costoCompra: +c.costoCompra || 0, moneda };
+}
+export function puntoEquilibrio(c) {
+  if (c.tipo === 'financiado') return null;
+  const costoCompra = +c.costoCompra || 0;
+  if (!costoCompra) return null;
+  const cobrado = rentabilidadAuto(c).cobrado;
+  const falta = costoCompra - cobrado;
+  if (falta <= 0) return { recuperado: true, falta: 0, semanas: 0 };
+  const monto = +c.monto || 0;
+  return { recuperado: false, falta, semanas: monto > 0 ? Math.ceil(falta / monto) : null };
 }
 export function gastoMantenimientoAuto(c) {
   return S.mantenimientos.filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
 }
+const RATING_ORDEN = { bueno: 0, regular: 1, malo: 2 };
+export function proveedoresActivos() {
+  return S.proveedores.filter(p => !p.inactivo).slice().sort((a, b) => {
+    const ra = RATING_ORDEN[a.rating] != null ? RATING_ORDEN[a.rating] : 3;
+    const rb = RATING_ORDEN[b.rating] != null ? RATING_ORDEN[b.rating] : 3;
+    return ra !== rb ? ra - rb : String(a.nombre).localeCompare(String(b.nombre));
+  });
+}
 export function siniestrosDeAuto(c) {
   return S.siniestros.filter(s => s.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
+export function rankingSiniestrosChoferes() {
+  const porChofer = {};
+  S.siniestros.forEach(s => {
+    if (!s.choferId) return;
+    if (!porChofer[s.choferId]) porChofer[s.choferId] = { driverId: s.choferId, cantidad: 0 };
+    porChofer[s.choferId].cantidad++;
+  });
+  return Object.values(porChofer).map(x => Object.assign(x, { nombre: driverName(x.driverId) })).sort((a, b) => b.cantidad - a.cantidad);
+}
+export function comparativaChoferes() {
+  return S.drivers.filter(d => !d.inactivo && !d.prospecto).map(d => {
+    const hist = carHistoryForDriver(d.id);
+    const desde = hist.reduce((min, h) => (!min || h.desde < min ? h.desde : min), null);
+    const antiguedadDias = desde ? days(parse(desde), today()) : 0;
+    const monedaDeuda = S.cars.some(c => c.choferId === d.id && c.tipo === 'financiado') ? 'USD' : 'ARS';
+    return { driverId: d.id, nombre: d.nombre, antiguedadDias, totalPagado: driverTotalPagado(d.id), deuda: driverDebt(d.id), monedaDeuda, score: driverScore(d.id) };
+  });
+}
+export function comparativaAutos() {
+  return activeCars().filter(c => c.tipo !== 'financiado').map(c => {
+    const rent = rentabilidadAuto(c);
+    return { c, neta: rent.neta, cobrado: rent.cobrado, gastos: rent.gastos, km: +c.km || 0, diasTaller: diasEnTaller(c) };
+  });
+}
+export function resumenGeneral() {
+  const cobrado = S.payments.filter(p => p.tipo !== 'cuota').reduce((a, p) => a + (+p.monto || 0), 0);
+  const cobradoUSD = S.payments.filter(p => p.tipo === 'cuota').reduce((a, p) => a + (+p.monto || 0), 0);
+  const gastos = S.gastos.reduce((a, g) => a + (+g.costo || 0), 0) + S.mantenimientos.reduce((a, m) => a + (+m.costo || 0), 0);
+  const deudaTotal = activeCars().filter(c => isContract(c) && c.tipo !== 'financiado').reduce((a, c) => a + calc(c).debt, 0);
+  const deudaTotalUSD = activeCars().filter(c => c.tipo === 'financiado').reduce((a, c) => a + calc(c).debt, 0);
+  return {
+    cobrado, cobradoUSD, gastos, neta: cobrado - gastos, deudaTotal, deudaTotalUSD,
+    autosActivos: activeCars().length,
+    choferesActivos: S.drivers.filter(d => !d.inactivo && !d.prospecto).length,
+  };
+}
 export function driverTotalPagado(driverId) {
-  return S.payments.filter(p => p.choferId === driverId).reduce((a, p) => a + (+p.monto || 0), 0);
+  return S.payments.filter(p => p.choferId === driverId && p.tipo !== 'cuota').reduce((a, p) => a + (+p.monto || 0), 0);
 }
 export function driverWeeksInfo(driverId) {
   const cars = S.cars.filter(c => c.choferId === driverId && isContract(c) && c.inicio);
@@ -318,11 +375,25 @@ export function driverCalificaBono(driverId) {
   const { totalWeeks, lateWeeks, tieneCars } = driverWeeksInfo(driverId);
   return tieneCars && lateWeeks === 0 && totalWeeks >= settings.bonoSemanas;
 }
-export function cobradoDelMes(offsetMeses) {
+function pagosDelMes(offsetMeses) {
   const t = today();
   const d = new Date(t.getFullYear(), t.getMonth() - offsetMeses, 1);
   const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-  return S.payments.filter(p => (p.fecha || '').slice(0, 7) === key).reduce((a, p) => a + (+p.monto || 0), 0);
+  return S.payments.filter(p => (p.fecha || '').slice(0, 7) === key);
+}
+export function cobradoDelMes(offsetMeses) {
+  return pagosDelMes(offsetMeses).filter(p => p.tipo !== 'cuota').reduce((a, p) => a + (+p.monto || 0), 0);
+}
+export function cobradoDelMesUSD(offsetMeses) {
+  return pagosDelMes(offsetMeses).filter(p => p.tipo === 'cuota').reduce((a, p) => a + (+p.monto || 0), 0);
+}
+export function cobradoDelMesPorMetodo(offsetMeses) {
+  const out = {};
+  pagosDelMes(offsetMeses).filter(p => p.tipo !== 'cuota').forEach(p => {
+    const m = p.metodo || 'sin_especificar';
+    out[m] = (out[m] || 0) + (+p.monto || 0);
+  });
+  return out;
 }
 export const plate = p => '<span class="plate">' + esc(p || 'Sin patente') + '</span>';
 export const badge = (cls, t) => '<span class="badge b-' + cls + '">' + esc(t) + '</span>';

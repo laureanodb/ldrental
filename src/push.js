@@ -55,6 +55,16 @@ export async function activarPush() {
     toast('No se pudo activar: ' + ((e && e.message) || 'error')); render();
   }
 }
+export async function guardarHorarioPush() {
+  const input = document.getElementById('a_pushHora');
+  if (!input) return;
+  const horaAR = +input.value;
+  if (Number.isNaN(horaAR) || horaAR < 0 || horaAR > 23) { toast('Poné una hora entre 0 y 23'); return; }
+  const horaUTC = (horaAR + 3) % 24;
+  const r = await sb.rpc('set_push_schedule', { hora_utc: horaUTC });
+  if (r.error) { toast('No se pudo guardar el horario: ' + r.error.message); return; }
+  toast('Horario guardado. El resumen diario va a llegar a las ' + horaAR + ':00 (hora Argentina).');
+}
 export async function desactivarPush() {
   try {
     const reg = await navigator.serviceWorker.ready;

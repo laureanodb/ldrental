@@ -1,4 +1,4 @@
-import { $, esc, val, uid, money, fdate } from '../utils.js';
+import { $, esc, val, uid, money, moneyUSD, fdate } from '../utils.js';
 import { S } from '../state.js';
 import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS } from '../constants.js';
 import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono } from '../calc.js';
@@ -13,6 +13,15 @@ function telRow(t) {
   '<div class="row"><input class="d-tel-num grow" type="tel" placeholder="Teléfono" value="' + esc(t.tel) + '"><button class="btn danger sm" onclick="this.closest(\'.d-tel\').remove()">✕</button></div></div>';
 }
 export function addTelRow() { $('#d_tels').insertAdjacentHTML('beforeend', telRow()); }
+export function onFotoPerfil(input) {
+  const f = input.files && input.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const data = document.getElementById('d_fotoPerfilData'); if (data) data.value = reader.result;
+    const img = document.getElementById('d_fotoPreview'); if (img) { img.src = reader.result; img.style.display = ''; }
+  };
+  reader.readAsDataURL(f);
+}
 
 export function driverForm(id) {
   const ex = S.drivers.find(x => x.id === id);
@@ -22,13 +31,19 @@ export function driverForm(id) {
   if (ex && d.prospecto) h += '<div class="card" style="margin-bottom:10px"><span class="badge b-info">Prospecto · ' + esc((ETAPAS_PROSPECTO.find(x => x[0] === d.etapaProspecto) || [0, 'Contacto inicial'])[1]) + '</span></div>';
   if (ex) {
     const cars = S.cars.filter(c => c.choferId === d.id); const debt = driverDebt(d.id); const score = driverScore(d.id);
+    const mon = cars.some(c => c.tipo === 'financiado') ? moneyUSD : money;
     h += '<div class="card"><div class="row between"><span class="muted">Autos</span><span>' + (cars.length ? cars.map(c => plate(c.patente)).join(' ') : 'Ninguno') + '</span></div>' +
-    '<div class="row between"><span class="muted">Deuda</span><b style="color:' + (debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(debt) + '</b></div>' +
+    '<div class="row between"><span class="muted">Deuda</span><b style="color:' + (debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + mon(debt) + '</b></div>' +
     (score != null ? '<div class="row between"><span class="muted">Puntualidad</span><b>' + score + '%</b></div>' : '') +
     (!d.prospecto && driverEnRiesgo(d.id) ? '<div class="row between"><span class="muted">Riesgo</span>' + badge('bad', 'En riesgo por atrasos') + '</div>' : '') +
     (!d.prospecto && driverCalificaBono(d.id) ? '<div class="row between"><span class="muted">Bono</span>' + badge('ok', 'Califica por puntualidad') + '</div>' : '') + '</div>';
   }
-  h += '<label class="f"><span>Nombre y apellido</span><input id="d_nombre" value="' + esc(d.nombre) + '"></label>' +
+  h += '<div class="row" style="align-items:center;gap:12px;margin-bottom:10px">' +
+  '<img id="d_fotoPreview" src="' + esc(d.fotoPerfil || '') + '" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;background:var(--soft);display:' + (d.fotoPerfil ? '' : 'none') + '">' +
+  '<label class="btn sec sm filebtn">Foto de perfil<input id="fotoPerfilIn" type="file" accept="image/*" onchange="onFotoPerfil(this)"></label>' +
+  '<input type="hidden" id="d_fotoPerfilData" value="' + esc(d.fotoPerfil || '') + '">' +
+  '</div>' +
+  '<label class="f"><span>Nombre y apellido</span><input id="d_nombre" value="' + esc(d.nombre) + '"></label>' +
   '<label class="chk"><input type="checkbox" id="d_prospecto" onchange="document.getElementById(\'etapaBox\').style.display=this.checked?\'\':\'none\'"' + (d.prospecto ? ' checked' : '') + '><span>Es un prospecto (todavía no firmó contrato)</span></label>' +
   '<div id="etapaBox" style="display:' + (d.prospecto ? '' : 'none') + '"><label class="f"><span>Etapa del embudo</span><select id="d_etapaProspecto">' + ETAPAS_PROSPECTO.map(x => '<option value="' + x[0] + '"' + (d.etapaProspecto === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
   '<label class="f"><span>Referido por</span><input id="d_referidoPor" value="' + esc(d.referidoPor) + '"></label>' +
@@ -105,6 +120,7 @@ export async function saveDriver(id) {
     contactoEmergencia: { nombre: val('d_emerg_nombre'), tel: val('d_emerg_tel') },
     otrosTelefonos, inactivo: (ex || {}).inactivo || false, prospecto: document.getElementById('d_prospecto').checked,
     etapaProspecto: val('d_etapaProspecto'), referidoPor: val('d_referidoPor'), onboarding,
+    fotoPerfil: val('d_fotoPerfilData'),
     files: (ex || {}).files || []
   };
   if (await save('drivers', o)) { closeModal(); toast('Chofer guardado'); }

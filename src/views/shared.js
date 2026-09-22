@@ -7,6 +7,7 @@ import { toast } from '../modal.js';
 import { render } from '../nav.js';
 import { isAdmin } from '../roles.js';
 import { pushSoportado, pushConfigurado, pushEstadoCache, refrescarPushEstado } from '../push.js';
+import { canVerFinanzas } from '../roles.js';
 
 function pushCard() {
   if (!pushSoportado() || !pushConfigurado()) return '';
@@ -15,7 +16,9 @@ function pushCard() {
   const on = cache.estado === 'activo';
   const bloqueado = cache.estado === 'bloqueado';
   return '<div class="card"><div class="row between"><div><div>Notificaciones push</div><div class="small muted">' + (bloqueado ? 'Bloqueadas en el navegador. Habilitalas en los ajustes del sitio.' : 'Un resumen diario de vencimientos, deudas y multas.') + '</div></div>' +
-  (bloqueado ? '' : '<button class="btn sec sm" onclick="' + (on ? 'desactivarPush()' : 'activarPush()') + '">' + (on ? 'Desactivar' : 'Activar') + '</button>') + '</div></div>';
+  (bloqueado ? '' : '<button class="btn sec sm" onclick="' + (on ? 'desactivarPush()' : 'activarPush()') + '">' + (on ? 'Desactivar' : 'Activar') + '</button>') + '</div>' +
+  (isAdmin() ? '<div style="margin-top:10px"><label class="f"><span>Hora del resumen <small>Argentina</small></span><input id="a_pushHora" inputmode="numeric" value="8"></label><button class="btn sec block" onclick="guardarHorarioPush()">Guardar horario</button></div>' : '') +
+  '</div>';
 }
 
 export function ajustesCard() {
@@ -72,8 +75,8 @@ export function quitarLogo() { saveSettings({ companyLogo: '' }); toast('Logo qu
 export function backupCard() {
   return '<h2>Copia de seguridad</h2><div class="card"><div class="small muted" style="margin-bottom:10px">Descargá un archivo con todos tus autos, choferes y cobros y guardalo en tu celular, Drive o mail. Sirve para recuperar todo si algo se pierde. Las fotos y PDF adjuntos no van dentro del archivo.</div>' +
   '<div class="row">' + '<button class="btn grow" onclick="backup()">Descargar copia</button>' + '<label class="btn sec grow filebtn">Restaurar copia<input id="restoreIn" type="file" onchange="pickRestore(this)"></label></div></div>' +
-  '<div class="card"><div class="small muted" style="margin-bottom:10px">Exportá todos los datos a un archivo Excel (una hoja por sección) para analizarlos o compartirlos.</div>' +
-  '<button class="btn sec block" onclick="exportarExcel()">Exportar todo a Excel</button></div>' +
+  (canVerFinanzas() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Exportá todos los datos a un archivo Excel (una hoja por sección) para analizarlos o compartirlos.</div>' +
+  '<button class="btn sec block" onclick="exportarExcel()">Exportar todo a Excel</button></div>' : '') +
   '<button class="btn sec block" style="margin-top:8px" onclick="logout()">Cerrar sesión (' + esc(S.user && S.user.email || '') + ')</button>';
 }
 export function alertRow(a) {

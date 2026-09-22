@@ -25,7 +25,7 @@ export function renderNav() {
   const n = urgent().length;
   const nMant = mantenimientoVencidosCount();
   const items = [['panel', 'Panel'], ['autos', 'Autos'], ['choferes', 'Choferes'], ['cobros', 'Cobros'], ['venc', 'Vencimientos'], ['mantenimiento', 'Mantenimiento'], ['reportes', 'Reportes']];
-  $('#nav').innerHTML = items.map(([k, l]) => '<button class="' + (ui.tab === k ? 'on' : '') + '" onclick="go(\'' + k + '\')"><svg viewBox="0 0 24 24">' + ICONS[k] + '</svg>' + l + (k === 'venc' && n ? '<span class="dot">' + n + '</span>' : '') + (k === 'mantenimiento' && nMant ? '<span class="dot">' + nMant + '</span>' : '') + '</button>').join('');
+  $('#nav').innerHTML = items.map(([k, l]) => '<button class="' + (ui.tab === k ? 'on' : '') + '" onclick="' + (k === 'autos' ? "ui.filtroAutoTipo='';" : '') + 'go(\'' + k + '\')"><svg viewBox="0 0 24 24">' + ICONS[k] + '</svg>' + l + (k === 'venc' && n ? '<span class="dot">' + n + '</span>' : '') + (k === 'mantenimiento' && nMant ? '<span class="dot">' + nMant + '</span>' : '') + '</button>').join('');
 }
 export function go(t) { ui.tab = t; render(); window.scrollTo(0, 0); }
 function offlineBar() {

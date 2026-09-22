@@ -3,7 +3,7 @@ import { S } from '../state.js';
 import { GASTO_CATS } from '../constants.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
-import { carById } from '../calc.js';
+import { carById, proveedoresActivos } from '../calc.js';
 import { carForm } from './car.js';
 
 export function gastoForm(carId) {
@@ -14,7 +14,8 @@ export function gastoForm(carId) {
   '<label class="f"><span>Fecha</span><input id="g_fecha" type="date" value="' + iso(today()) + '"></label></div>' +
   '<div class="two"><label class="f"><span>Costo</span><input id="g_costo" inputmode="decimal"></label>' +
   '<label class="f"><span>Km (opcional)</span><input id="g_km" inputmode="numeric"></label></div>' +
-  '<label class="f"><span>Proveedor / taller</span><input id="g_proveedor"></label>' +
+  '<label class="f"><span>Proveedor / taller</span><select id="g_proveedorSel" onchange="document.getElementById(\'g_proveedorOtroBox\').style.display=this.value===\'__otro__\'?\'\':\'none\'"><option value="">Sin especificar</option>' + proveedoresActivos().map(p => '<option value="' + esc(p.nombre) + '">' + esc(p.nombre) + '</option>').join('') + '<option value="__otro__">Otro (escribir)</option></select></label>' +
+  '<div id="g_proveedorOtroBox" style="display:none"><label class="f"><span>Nombre del proveedor</span><input id="g_proveedorOtro"></label></div>' +
   '<label class="f"><span>Descripción</span><textarea id="g_desc"></textarea></label>' +
   '<label class="chk"><input type="checkbox" id="g_sinFactura"><span>Sin factura</span></label>' +
   '<div class="row"><button class="btn grow" onclick="saveGasto(\'' + c.id + '\')">Guardar</button><button class="btn sec" onclick="carForm(\'' + c.id + '\')">Cancelar</button></div>';
@@ -23,7 +24,9 @@ export function gastoForm(carId) {
 export async function saveGasto(carId) {
   const costo = +val('g_costo');
   if (!costo || costo <= 0) { toast('Poné el costo del gasto'); return; }
-  const o = { id: uid(), carId, categoria: val('g_cat'), fecha: val('g_fecha') || iso(today()), costo, km: val('g_km'), proveedor: val('g_proveedor'), descripcion: val('g_desc'), sinFactura: document.getElementById('g_sinFactura').checked };
+  const selProveedor = val('g_proveedorSel');
+  const proveedor = selProveedor === '__otro__' ? val('g_proveedorOtro') : selProveedor;
+  const o = { id: uid(), carId, categoria: val('g_cat'), fecha: val('g_fecha') || iso(today()), costo, km: val('g_km'), proveedor, descripcion: val('g_desc'), sinFactura: document.getElementById('g_sinFactura').checked };
   if (await save('gastos', o)) { closeModal(); toast('Gasto registrado'); }
 }
 export async function delGasto(id) {

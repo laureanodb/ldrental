@@ -3,6 +3,7 @@ export const DOCS = [['dni', 'DNI (frente y dorso)'], ['lic', 'Licencia profesio
 export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuesto automotor (fecha de vencimiento)'], ['cedula', 'Cédula / tarjeta'], ['gnc', 'Revisión técnica GNC'], ['habilitacion', 'Licencia / habilitación de transporte']];
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros'];
 
+export const ASEGURADORAS = ['Allianz', 'Sancor', 'Mercantil', 'Fed. Pat.', 'Zurich', 'Nación', 'Rivadavia', 'Provincia', 'Mapfre', 'Holando', 'Otro'];
 export const COMBUSTIBLES = [['nafta', 'Nafta'], ['diesel', 'Diésel'], ['gnc', 'GNC'], ['electrico', 'Eléctrico'], ['hibrido', 'Híbrido']];
 export const RATINGS = [['bueno', 'Cumplidor'], ['regular', 'Regular'], ['malo', 'Problemático']];
 export const METODOS_PAGO = [['efectivo', 'Efectivo'], ['transferencia', 'Transferencia'], ['mercadopago', 'MercadoPago'], ['otro', 'Otro']];
