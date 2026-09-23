@@ -112,6 +112,17 @@ export function agendaMantenimiento() {
   });
   return out.sort((a, b) => CLS_ORDEN[a.e.cls] - CLS_ORDEN[b.e.cls]);
 }
+export function fichaTecnica(c) {
+  const porItem = {};
+  S.mantenimientos.filter(m => m.carId === c.id && (m.marca || m.especificacion)).forEach(m => {
+    const cur = porItem[m.item];
+    if (!cur || m.fecha > cur.fecha) porItem[m.item] = m;
+  });
+  return Object.values(porItem).map(m => {
+    const planItem = (c.mantenimientoPlan || []).find(p => p.item === m.item);
+    return { item: m.item, label: m.label || (planItem && planItem.label) || m.item, marca: m.marca, especificacion: m.especificacion, fecha: m.fecha };
+  }).sort((a, b) => String(a.label).localeCompare(String(b.label)));
+}
 export function mantenimientoVencidosCount() {
   let n = 0;
   activeCars().forEach(c => (c.mantenimientoPlan || []).forEach(p => {

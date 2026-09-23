@@ -35,6 +35,8 @@ export function mantenimientoForm(carId, editId, presetItem) {
   '<label class="f"><span>Fecha</span><input id="m_fecha" type="date" value="' + esc(ex ? ex.fecha : iso(today())) + '"></label></div>' +
   '<div class="two"><label class="f"><span>Km del auto</span><input id="m_km" inputmode="numeric" value="' + esc(ex ? ex.km : (c.km || '')) + '"></label>' +
   '<label class="f"><span>Costo</span><input id="m_costo" inputmode="decimal" value="' + esc(ex ? ex.costo : '') + '"></label></div>' +
+  '<div class="two"><label class="f"><span>Marca / Producto <small>opcional</small></span><input id="m_marca" placeholder="ej: Shell, Michelin, Bosch..." value="' + esc(ex ? ex.marca : '') + '"></label>' +
+  '<label class="f"><span>Especificación <small>opcional</small></span><input id="m_especificacion" placeholder="ej: 5W30 sintético, 195/65R15..." value="' + esc(ex ? ex.especificacion : '') + '"></label></div>' +
   '<label class="f"><span>Taller / proveedor</span><select id="m_proveedor"><option value="">Sin especificar</option>' + proveedoresParaSelect(ex && ex.proveedorId).map(p => '<option value="' + p.id + '"' + (ex && ex.proveedorId === p.id ? ' selected' : '') + '>' + esc(p.nombre) + '</option>').join('') + '</select></label>' +
   '<div class="sec-t">Checklist</div>' + MANTENIMIENTO_CHECKLIST.map(x => '<label class="chk"><input type="checkbox" id="mc_' + x[0] + '"' + (!ex || (ex.checklist || {})[x[0]] ? ' checked' : '') + '><span>' + x[1] + '</span></label>').join('') +
   '<div class="two"><label class="f"><span>Garantía <small>meses</small></span><input id="m_garMeses" inputmode="numeric" value="' + esc(ex ? ex.garantiaMeses || '' : '') + '"></label>' +
@@ -74,6 +76,7 @@ export async function saveMantenimiento(editId) {
   const checklist = {}; MANTENIMIENTO_CHECKLIST.forEach(x => { const cb = document.getElementById('mc_' + x[0]); checklist[x[0]] = cb ? cb.checked : false; });
   const o = {
     id: editId || uid(), carId, item: itemKey, label, tipo: val('m_tipo'), fecha, km,
+    marca: val('m_marca'), especificacion: val('m_especificacion'),
     proveedorId: val('m_proveedor'), costo: +val('m_costo') || 0, checklist,
     garantiaMeses: +val('m_garMeses') || 0, garantiaKm: +val('m_garKm') || 0,
     sinFactura: document.getElementById('m_sinFactura').checked,
