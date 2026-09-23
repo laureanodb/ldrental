@@ -134,11 +134,11 @@ export function driverForm(id) {
       '<a class="btn sec sm" target="_blank" href="https://wa.me/?text=' + encodeURIComponent('Hola ' + (d.nombre || '').split(' ')[0] + ', acá podés ver tu estado de cuenta: ' + portalUrl) + '">WhatsApp</a></div></div>'
       : '<div class="small muted" style="margin-bottom:8px">Todavía no generaste el link para este chofer.</div>') +
     '<button class="btn sec block" style="margin:8px 0 20px" onclick="regenerarLinkPortal(\'' + d.id + '\')">' + (portalUrl ? 'Regenerar link' : 'Generar link') + '</button>';
-    hist += '<div class="row" style="margin-top:0"><button class="btn sec grow" onclick="toggleInactivo(\'' + d.id + '\')">' + (d.inactivo ? 'Reactivar' : 'Marcar como inactivo') + '</button></div>' +
-    (canDelete() ? '<div style="margin-top:8px"><button class="btn danger block" onclick="confirmDel(this,()=>delDriver(\'' + d.id + '\'))">Eliminar chofer</button></div>' : '');
   }
 
   const saveCancelRow = '<div class="row" style="margin:14px 0"><button class="btn grow" onclick="saveDriver(' + (ex ? "'" + d.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
+  const accionesRow = ex ? '<div class="row" style="margin-top:20px"><button class="btn sec grow" onclick="toggleInactivo(\'' + d.id + '\')">' + (d.inactivo ? 'Reactivar' : 'Marcar como inactivo') + '</button></div>' +
+    (canDelete() ? '<div style="margin-top:8px"><button class="btn danger block" onclick="confirmDel(this,()=>delDriver(\'' + d.id + '\'))">Eliminar chofer</button></div>' : '') : '';
 
   if (ex) {
     h += '<div class="tabs" data-scope="chofer">' +
@@ -152,6 +152,7 @@ export function driverForm(id) {
     h += tabpanelChofer('financiacion', false, financiacion);
     h += tabpanelChofer('sanciones', false, sanciones);
     h += tabpanelChofer('hist', false, hist);
+    h += accionesRow;
   } else {
     h += datos + financiacion + saveCancelRow;
   }
