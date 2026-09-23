@@ -322,6 +322,30 @@ export function financiacionesProximas(semanas) {
     return { c, restantes: Math.max(0, (+c.cuotas) - i.weeks) };
   }).filter(x => x.restantes > 0 && x.restantes <= semanas).sort((a, b) => a.restantes - b.restantes);
 }
+export function cronogramaCuotas(c) {
+  if (c.tipo !== 'financiado' || !c.inicio || !c.cuotas || !c.monto) return [];
+  const i = calc(c);
+  const cubierto = i.paid + (i.ajustes || 0);
+  const inicio = parse(c.inicio);
+  const out = [];
+  for (let n = 1; n <= +c.cuotas; n++) {
+    const f = new Date(inicio); f.setDate(f.getDate() + (n - 1) * 7);
+    const cubiertoCuota = Math.max(0, Math.min(cubierto - (n - 1) * c.monto, c.monto));
+    let estado;
+    if (cubiertoCuota >= c.monto) estado = 'pagada';
+    else if (cubiertoCuota > 0) estado = 'parcial';
+    else estado = days(today(), f) < 0 ? 'atrasada' : 'pendiente';
+    out.push({ numero: n, fecha: iso(f), monto: c.monto, estado });
+  }
+  return out;
+}
+export function financiacionesCompletadasSinTransferir() {
+  return activeCars().filter(c => {
+    if (c.tipo !== 'financiado' || !c.cuotas || c.tituloTransferido) return false;
+    const i = calc(c);
+    return i.saldo != null && i.saldo <= 0;
+  });
+}
 export function rentabilidadAuto(c) {
   const cobrado = S.payments.filter(p => p.carId === c.id).reduce((a, p) => a + (+p.monto || 0), 0);
   const gastos = S.gastos.filter(g => g.carId === c.id).reduce((a, g) => a + (+g.costo || 0), 0) +

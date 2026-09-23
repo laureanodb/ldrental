@@ -1,6 +1,6 @@
 import { S, ui } from '../state.js';
 import { money, moneyUSD, today, esc, num1 } from '../utils.js';
-import { isContract, calc, urgent, driverName, plate, activeCars, cobradoDelMes, cobradoDelMesUSD, cobradoDelMesPorMetodo, financiacionesProximas } from '../calc.js';
+import { isContract, calc, urgent, driverName, plate, activeCars, cobradoDelMes, cobradoDelMesUSD, cobradoDelMesPorMetodo, financiacionesProximas, financiacionesCompletadasSinTransferir, badge } from '../calc.js';
 import { METODOS_PAGO } from '../constants.js';
 import { settings } from '../settings.js';
 import { alertRow } from './shared.js';
@@ -54,6 +54,10 @@ export function viewPanel() {
   const finProx = financiacionesProximas(4);
   if (finProx.length) {
     h += '<h2>Financiaciones por terminar</h2>' + finProx.map(x => '<div class="card tap row between" onclick="carForm(\'' + x.c.id + '\')"><div><div>' + plate(x.c.patente) + '</div><div class="small muted">' + esc(driverName(x.c.choferId)) + '</div></div><div class="right"><b>' + x.restantes + '</b><div class="small muted">' + (x.restantes === 1 ? 'cuota' : 'cuotas') + '</div></div></div>').join('');
+  }
+  const finSinTransferir = financiacionesCompletadasSinTransferir();
+  if (finSinTransferir.length) {
+    h += '<h2>Pagadas, falta transferir titularidad</h2>' + finSinTransferir.map(c => '<div class="card tap row between" onclick="carForm(\'' + c.id + '\')"><div><div>' + plate(c.patente) + '</div><div class="small muted">' + esc(driverName(c.choferId)) + '</div></div>' + badge('warn', 'Pendiente') + '</div>').join('');
   }
   return h;
 }
