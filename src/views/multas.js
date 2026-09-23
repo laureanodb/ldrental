@@ -41,7 +41,7 @@ export function listMultas() {
   const estLabel = e => (MULTA_ESTADOS.find(x => x[0] === e) || [0, e])[1];
   return L.map(m => {
     const c = carById(m.carId);
-    return '<div class="card tap" onclick="multaForm(\'' + m.carId + '\',\'' + m.id + '\')"><div class="row between"><div>' + money(m.monto) + ' <span class="small muted">' + fdate(m.fecha) + '</span></div>' + badge(estadoMultaCls(m.estado), estLabel(m.estado)) + '</div>' +
-    '<div class="small muted" style="margin-top:4px">' + esc(c ? c.patente : 'Auto eliminado') + (m.choferId ? ' · ' + esc(driverName(m.choferId)) : '') + '</div></div>';
+    return '<div class="card tap" onclick="multaForm(\'' + m.carId + '\',\'' + m.id + '\')"><div class="row between"><div>' + money(m.monto) + (m.recargo ? ' <span class="small" style="color:var(--bad)">+' + money(m.recargo) + ' recargo</span>' : '') + ' <span class="small muted">' + fdate(m.fecha) + '</span></div>' + badge(estadoMultaCls(m.estado), estLabel(m.estado)) + '</div>' +
+    '<div class="small muted" style="margin-top:4px">' + esc(c ? c.patente : 'Auto eliminado') + (m.choferId ? ' · ' + esc(driverName(m.choferId)) : '') + (m.puntos ? ' · ' + m.puntos + ' pts' : '') + '</div></div>';
   }).join('');
 }

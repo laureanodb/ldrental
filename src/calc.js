@@ -186,6 +186,11 @@ export function depositosDeChofer(driverId) {
 export function multasPendientesChofer(driverId) {
   return S.multas.filter(m => m.choferId === driverId && (m.estado === 'pendiente' || m.estado === 'vencida')).reduce((a, m) => a + (+m.monto || 0), 0);
 }
+export function puntosLicencia(driverId) {
+  const desde = new Date(); desde.setMonth(desde.getMonth() - (settings.puntosVigenciaMeses || 24));
+  const desdeIso = iso(desde);
+  return S.multas.filter(m => m.choferId === driverId && m.fecha >= desdeIso && m.resultadoDescargo !== 'aceptado').reduce((a, m) => a + (+m.puntos || 0), 0);
+}
 export function alertaFotoControl(c) {
   const fotos = (c.files || []).filter(f => !f.link && f.cat === 'fotos');
   if (!fotos.length) return null;
@@ -254,6 +259,12 @@ export function alerts() {
     if (pend < settings.multaUmbral) return;
     const key = 'driver:' + d.id + ':multaumbral'; if (isSnoozed(key)) return;
     out.push({ who: d.nombre, sub: 'Multas acumuladas superan el límite', kind: 'driver', id: d.id, key, d: 0, cls: 'bad', t: money(pend) + ' en multas pendientes' });
+  });
+  activeDrivers().forEach(d => {
+    const pts = puntosLicencia(d.id);
+    if (pts < settings.puntosLimite) return;
+    const key = 'driver:' + d.id + ':puntoslicencia'; if (isSnoozed(key)) return;
+    out.push({ who: d.nombre, sub: 'Puntos de licencia acumulados', kind: 'driver', id: d.id, key, d: 0, cls: 'bad', t: pts + ' de ' + settings.puntosLimite + ' puntos' });
   });
   activeDrivers().forEach(d => {
     if (!driverEnRiesgo(d.id)) return;

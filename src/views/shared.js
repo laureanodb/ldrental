@@ -35,6 +35,8 @@ export function ajustesCard() {
   '<div class="two"><label class="f"><span>Fotos de control cada <small>días</small></span><input id="a_fotoDias" inputmode="numeric" value="' + settings.fotoControlDias + '"></label>' +
   '<label class="f"><span>Bono: semanas sin atraso</span><input id="a_bonoSemanas" inputmode="numeric" value="' + settings.bonoSemanas + '"></label></div>' +
   '<label class="f"><span>Chofer en riesgo: semanas de atraso</span><input id="a_riesgoSemanas" inputmode="numeric" value="' + settings.riesgoSemanas + '"></label>' +
+  '<div class="two"><label class="f"><span>Multas: recargo por pago tardío <small>%</small></span><input id="a_multaRecargo" inputmode="numeric" value="' + settings.multaRecargoPct + '"></label>' +
+  '<label class="f"><span>Puntos de licencia: límite de aviso</span><input id="a_puntosLimite" inputmode="numeric" value="' + settings.puntosLimite + '"></label></div>' +
   '<button class="btn sec block" onclick="saveAjustes()">Guardar ajustes</button></div>' : '') +
   (isAdmin() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Nombre y logo que aparecen en el login y el panel.</div>' +
   '<label class="f"><span>Nombre de la empresa</span><input id="a_companyName" value="' + esc(settings.companyName) + '"></label>' +
@@ -54,6 +56,8 @@ export function saveAjustes() {
     fotoControlDias: +val('a_fotoDias') || settings.fotoControlDias,
     bonoSemanas: +val('a_bonoSemanas') || settings.bonoSemanas,
     riesgoSemanas: +val('a_riesgoSemanas') || settings.riesgoSemanas,
+    multaRecargoPct: +val('a_multaRecargo') || settings.multaRecargoPct,
+    puntosLimite: +val('a_puntosLimite') || settings.puntosLimite,
   });
   saveSettings(patch);
   toast('Ajustes guardados'); render();

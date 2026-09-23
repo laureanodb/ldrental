@@ -30,6 +30,8 @@ export const MANTENIMIENTO_CHECKLIST = [['revisado', 'Se revisó el ítem comple
 
 export const TIPOS_INFRACCION = [['velocidad', 'Exceso de velocidad'], ['estacionamiento', 'Estacionamiento indebido'], ['semaforo', 'Semáforo en rojo'], ['documentacion', 'Documentación / VTV / seguro'], ['carril', 'Carril exclusivo / mal uso de carril'], ['telefono', 'Uso de celular al conducir'], ['otro', 'Otra infracción']];
 export const MULTA_ESTADOS = [['pendiente', 'Pendiente de pago'], ['pagada', 'Pagada'], ['vencida', 'Vencida'], ['apelada', 'En descargo / apelada']];
+export const PUNTOS_INFRACCION_DEFAULT = { velocidad: 5, estacionamiento: 1, semaforo: 7, documentacion: 3, carril: 2, telefono: 4, otro: 2 };
+export const RESULTADO_DESCARGO = [['', 'Sin resolver'], ['rechazado', 'Rechazado (se debe pagar)'], ['aceptado', 'Aceptado (se anula)']];
 
 export const TIPOS_SINIESTRO = [['choque', 'Choque'], ['robo', 'Robo'], ['incendio', 'Incendio'], ['granizo', 'Granizo'], ['vandalismo', 'Vandalismo'], ['otro', 'Otro']];
 export const SINIESTRO_ESTADOS = [['abierto', 'Abierto'], ['tramite', 'En trámite con el seguro'], ['cerrado', 'Cerrado']];

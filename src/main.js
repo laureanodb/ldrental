@@ -7,7 +7,7 @@ import { doLogin, logout } from './session.js';
 import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm } from './forms/car.js';
 import { mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento } from './forms/mantenimiento.js';
 import { mantAtajoFecha } from './views/mantenimiento.js';
-import { multaForm, onMultaCar, onMultaFecha, saveMulta, delMulta } from './forms/multa.js';
+import { multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta } from './forms/multa.js';
 import { siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro } from './forms/siniestro.js';
 import { reciboPDF, reciboCompartir } from './recibo.js';
 import { contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato } from './contrato.js';
@@ -48,7 +48,7 @@ Object.assign(window, {
   carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm,
   goMas,
   mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, mantAtajoFecha,
-  multaForm, onMultaCar, onMultaFecha, saveMulta, delMulta,
+  multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta,
   siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro,
   reciboPDF, reciboCompartir, exportarExcel, activarPush, desactivarPush, guardarHorarioPush,
   contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato,

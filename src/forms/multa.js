@@ -1,6 +1,6 @@
 import { $, val, uid, iso, today, esc, parse } from '../utils.js';
 import { S } from '../state.js';
-import { TIPOS_INFRACCION, MULTA_ESTADOS } from '../constants.js';
+import { TIPOS_INFRACCION, MULTA_ESTADOS, PUNTOS_INFRACCION_DEFAULT, RESULTADO_DESCARGO } from '../constants.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { carById, driverName, choferEnFecha, isContract } from '../calc.js';
@@ -21,11 +21,14 @@ export function multaForm(carId, editId) {
   (ex ? '' : '<label class="f"><span>Auto</span><select id="mu_car" onchange="onMultaCar()">' + cars.map(x => '<option value="' + x.id + '"' + (x.id === c.id ? ' selected' : '') + '>' + esc(x.patente) + '</option>').join('') + '</select></label>') +
   '<div class="two"><label class="f"><span>N° de acta</span><input id="mu_acta" value="' + esc(ex ? ex.numeroActa : '') + '"></label>' +
   '<label class="f"><span>Fecha de la infracción</span><input id="mu_fecha" type="date" value="' + esc(fecha) + '" onchange="onMultaFecha()"></label></div>' +
-  '<div class="two"><label class="f"><span>Tipo de infracción</span><select id="mu_tipo">' + TIPOS_INFRACCION.map(x => '<option value="' + x[0] + '"' + (ex && ex.tipoInfraccion === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
+  '<div class="two"><label class="f"><span>Tipo de infracción</span><select id="mu_tipo" onchange="onMultaTipo()">' + TIPOS_INFRACCION.map(x => '<option value="' + x[0] + '"' + (ex && ex.tipoInfraccion === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
   '<label class="f"><span>Organismo / jurisdicción</span><input id="mu_organismo" value="' + esc(ex ? ex.organismo : '') + '"></label></div>' +
   '<div class="two"><label class="f"><span>Monto</span><input id="mu_monto" inputmode="decimal" value="' + esc(ex ? ex.monto : '') + '"></label>' +
   '<label class="f"><span>Fecha límite de pago</span><input id="mu_limite" type="date" value="' + esc(limiteDefault) + '"></label></div>' +
   '<label class="f"><span>Estado</span><select id="mu_estado">' + MULTA_ESTADOS.map(x => '<option value="' + x[0] + '"' + ((ex ? ex.estado : 'pendiente') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
+  '<div class="two"><label class="f"><span>Puntos de licencia</span><input id="mu_puntos" inputmode="numeric" value="' + esc(ex ? (ex.puntos != null ? ex.puntos : (PUNTOS_INFRACCION_DEFAULT[ex.tipoInfraccion] || 0)) : (PUNTOS_INFRACCION_DEFAULT[TIPOS_INFRACCION[0][0]] || 0)) + '" oninput="this.dataset.touched=1"></label>' +
+  '<label class="f"><span>Fecha de pago <small>si ya se pagó</small></span><input id="mu_fechaPago" type="date" value="' + esc(ex ? ex.fechaPago : '') + '"></label></div>' +
+  '<label class="f"><span>Resultado del descargo <small>si aplica</small></span><select id="mu_resultado">' + RESULTADO_DESCARGO.map(x => '<option value="' + x[0] + '"' + ((ex ? ex.resultadoDescargo : '') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
   '<label class="f"><span>Chofer responsable</span><select id="mu_chofer" onchange="this.dataset.touched=1">' +
     '<option value="">Sin asignar (a cargo de la empresa)</option>' +
     S.drivers.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre))).map(d => '<option value="' + d.id + '"' + ((ex ? ex.choferId : sugerido) === d.id ? ' selected' : '') + '>' + esc(d.nombre) + '</option>').join('') +
@@ -45,6 +48,10 @@ export function onMultaCar() {
   refrescarSugerido();
 }
 export function onMultaFecha() { refrescarSugerido(); }
+export function onMultaTipo() {
+  const pts = $('#mu_puntos'); if (!pts || pts.dataset.touched) return;
+  pts.value = PUNTOS_INFRACCION_DEFAULT[val('mu_tipo')] || 0;
+}
 function refrescarSugerido() {
   const c = carById(val('mu_carid'));
   const fecha = val('mu_fecha'); if (!c || !fecha) return;
@@ -58,10 +65,13 @@ export async function saveMulta(editId) {
   const carId = val('mu_carid');
   const c = carById(carId);
   if (!c) { toast('Elegí el auto'); return; }
+  const fechaPago = val('mu_fechaPago'), fechaLimite = val('mu_limite'), estado = val('mu_estado');
+  const recargo = (estado === 'pagada' && fechaPago && fechaLimite && fechaPago > fechaLimite) ? Math.round(monto * settings.multaRecargoPct / 100) : 0;
   const o = {
     id: editId || uid(), carId, numeroActa: val('mu_acta'), fecha: val('mu_fecha') || iso(today()),
     tipoInfraccion: val('mu_tipo'), organismo: val('mu_organismo'), monto,
-    fechaLimitePago: val('mu_limite'), estado: val('mu_estado'), choferId: val('mu_chofer'),
+    fechaLimitePago: fechaLimite, estado, choferId: val('mu_chofer'),
+    puntos: +val('mu_puntos') || 0, fechaPago, resultadoDescargo: val('mu_resultado'), recargo,
     notas: val('mu_notas'), descontada: (editId && (S.multas.find(x => x.id === editId) || {}).descontada) || false,
     descontadaDeposito: (editId && (S.multas.find(x => x.id === editId) || {}).descontadaDeposito) || false,
     files: (editId && (S.multas.find(x => x.id === editId) || {}).files) || [],
@@ -80,7 +90,7 @@ export async function descontarMultaDeDeuda(multaId) {
   const c = carById(m.carId);
   if (!c || !isContract(c)) { toast('El auto no tiene un contrato de alquiler o financiación activo'); return; }
   if (m.descontada) return;
-  const ajuste = { id: uid(), fecha: iso(today()), monto: -Math.abs(m.monto), motivo: 'Multa' + (m.numeroActa ? ' Nº ' + m.numeroActa : '') + (m.tipoInfraccion ? ' (' + (TIPOS_INFRACCION.find(x => x[0] === m.tipoInfraccion) || [0, m.tipoInfraccion])[1] + ')' : ''), multaId: m.id };
+  const ajuste = { id: uid(), fecha: iso(today()), monto: -(Math.abs(m.monto) + (+m.recargo || 0)), motivo: 'Multa' + (m.numeroActa ? ' Nº ' + m.numeroActa : '') + (m.tipoInfraccion ? ' (' + (TIPOS_INFRACCION.find(x => x[0] === m.tipoInfraccion) || [0, m.tipoInfraccion])[1] + ')' : ''), multaId: m.id };
   const ajustesDeuda = (c.ajustesDeuda || []).concat([ajuste]);
   if (!(await save('cars', Object.assign({}, c, { ajustesDeuda })))) return;
   await save('multas', Object.assign({}, m, { descontada: true }));
@@ -90,7 +100,7 @@ export async function descontarMultaDeDeposito(multaId) {
   const m = S.multas.find(x => x.id === multaId);
   if (!m || !m.choferId) { toast('Asigná primero un chofer responsable'); return; }
   if (m.descontadaDeposito) return;
-  const o = { id: uid(), driverId: m.choferId, fecha: iso(today()), monto: -Math.abs(m.monto), tipo: 'descuento_multa', nota: 'Multa' + (m.numeroActa ? ' Nº ' + m.numeroActa : '') };
+  const o = { id: uid(), driverId: m.choferId, fecha: iso(today()), monto: -(Math.abs(m.monto) + (+m.recargo || 0)), tipo: 'descuento_multa', nota: 'Multa' + (m.numeroActa ? ' Nº ' + m.numeroActa : '') };
   if (!(await save('depositos', o))) return;
   await save('multas', Object.assign({}, m, { descontadaDeposito: true }));
   toast('Multa descontada del depósito de garantía');

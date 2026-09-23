@@ -1,7 +1,7 @@
 import { $, esc, val, uid, money, moneyUSD, fdate, iso, today } from '../utils.js';
 import { S } from '../state.js';
 import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS, CANALES_PROSPECTO } from '../constants.js';
-import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono } from '../calc.js';
+import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia } from '../calc.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -113,9 +113,11 @@ export function driverForm(id) {
     sanciones += '<button class="btn sec block" style="margin:8px 0 20px" onclick="sancionForm(\'' + d.id + '\')">+ Agregar sanción</button>';
     const M = multasDeChofer(d.id);
     sanciones += '<div class="sec-t">Multas</div>';
+    const pts = puntosLicencia(d.id);
+    if (pts) sanciones += '<div class="card row between small" style="margin-bottom:8px"><span class="muted">Puntos de licencia acumulados</span><b style="color:' + (pts >= settings.puntosLimite ? 'var(--bad)' : 'inherit') + '">' + pts + ' de ' + settings.puntosLimite + '</b></div>';
     if (M.length) {
       const estLabel = e => (MULTA_ESTADOS.find(x => x[0] === e) || [0, e])[1];
-      sanciones += M.map(m => '<div class="card row tap" onclick="multaForm(\'' + m.carId + '\',\'' + m.id + '\')"><div class="grow"><div>' + money(m.monto) + ' <span class="small muted">' + fdate(m.fecha) + '</span></div><div class="small muted">' + plate((S.cars.find(x => x.id === m.carId) || {}).patente) + '</div></div>' + badge(estadoMultaCls(m.estado), estLabel(m.estado)) + '</div>').join('');
+      sanciones += M.map(m => '<div class="card row tap" onclick="multaForm(\'' + m.carId + '\',\'' + m.id + '\')"><div class="grow"><div>' + money(m.monto) + (m.recargo ? ' <span class="small" style="color:var(--bad)">+' + money(m.recargo) + '</span>' : '') + ' <span class="small muted">' + fdate(m.fecha) + '</span></div><div class="small muted">' + plate((S.cars.find(x => x.id === m.carId) || {}).patente) + '</div></div>' + badge(estadoMultaCls(m.estado), estLabel(m.estado)) + '</div>').join('');
     } else sanciones += '<div class="small muted" style="margin-bottom:8px">Sin multas registradas.</div>';
   }
 
