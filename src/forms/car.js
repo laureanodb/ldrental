@@ -1,7 +1,7 @@
 import { S } from '../state.js';
 import { $, val, uid, iso, today, esc, fdate, money, moneyUSD } from '../utils.js';
 import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS, MOTIVOS_REEMPLAZO, TIPOS_SINIESTRO, SINIESTRO_ESTADOS, ASEGURADORAS } from '../constants.js';
-import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls } from '../calc.js';
+import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta } from '../calc.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -160,6 +160,17 @@ export function carForm(id) {
     gastos += '<button class="btn sec block" style="margin:8px 0 20px" onclick="siniestroForm(\'' + c.id + '\')">+ Registrar siniestro</button>';
 
     /* ---- Historial ---- */
+    if (c.vendido && c.precioVenta) {
+      const r = resultadoVenta(c);
+      if (r) {
+        hist += '<div class="card"><div class="sec-t" style="margin-top:0">Resultado de la venta</div>' +
+        '<div class="row between small"><span class="muted">Costo de compra</span><span>' + money(r.costoCompra) + '</span></div>' +
+        '<div class="row between small"><span class="muted">Cobrado en alquiler</span><span>' + money(r.cobrado) + '</span></div>' +
+        '<div class="row between small"><span class="muted">Gastos</span><span>' + money(r.gastos) + '</span></div>' +
+        '<div class="row between small"><span class="muted">Precio de venta</span><span>' + money(r.precioVenta) + '</span></div>' +
+        '<div class="row between" style="margin-top:6px"><b>Resultado</b><b style="color:' + (r.resultado >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(r.resultado) + '</b></div></div>';
+      }
+    }
     const I = S.inspecciones.filter(x => x.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     hist += '<div class="sec-t">Inspecciones de entrega/recepción</div>';
     if (I.length) hist += I.map(x => '<div class="card row"><div class="grow"><div>' + (x.tipo === 'entrega' ? 'Entrega' : 'Recepción') + ' <span class="small muted">' + fdate(x.fecha) + (x.km ? ' · ' + x.km + ' km' : '') + '</span></div>' + (x.notas ? '<div class="small muted">' + esc(x.notas) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delInspeccion(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
@@ -173,7 +184,7 @@ export function carForm(id) {
     if (HM.length) {
       hist += '<div class="sec-t">Historial de monto semanal</div>' + HM.map(x => '<div class="row between small" style="padding:4px 0"><span>' + (c.tipo === 'financiado' ? moneyUSD(x.monto) : money(x.monto)) + '</span><span class="muted">' + fdate(x.fecha) + '</span></div>').join('');
     }
-    hist += '<div class="row" style="margin-top:20px"><button class="btn sec grow" onclick="toggleVendido(\'' + c.id + '\')">' + (c.vendido ? 'Restaurar de vendidos' : 'Marcar como vendido') + '</button></div>' +
+    hist += '<div class="row" style="margin-top:20px"><button class="btn sec grow" onclick="' + (c.vendido ? "toggleVendido('" + c.id + "')" : "venderAutoForm('" + c.id + "')") + '">' + (c.vendido ? 'Restaurar de vendidos' : 'Marcar como vendido') + '</button></div>' +
     (canDelete() ? '<div style="margin-top:8px"><button class="btn danger block" onclick="confirmDel(this,()=>delCar(\'' + c.id + '\'))">Eliminar auto</button></div>' : '');
   }
 
@@ -257,6 +268,20 @@ export async function saveCar(id) {
 export async function toggleVendido(id) {
   const c = S.cars.find(x => x.id === id); if (!c) return;
   if (await save('cars', Object.assign({}, c, { vendido: !c.vendido }))) { closeModal(); toast(c.vendido ? 'Auto restaurado' : 'Auto marcado como vendido'); }
+}
+export function venderAutoForm(id) {
+  const c = S.cars.find(x => x.id === id); if (!c) return;
+  const h = '<h3>Marcar como vendido — ' + esc(c.patente) + '</h3>' +
+  '<label class="f"><span>Precio de venta</span><input id="cv_precio" inputmode="decimal"></label>' +
+  '<label class="f"><span>Fecha de venta</span><input id="cv_fecha" type="date" value="' + iso(today()) + '"></label>' +
+  '<div class="row"><button class="btn grow" onclick="confirmarVenta(\'' + c.id + '\')">Confirmar venta</button><button class="btn sec" onclick="carForm(\'' + c.id + '\')">Cancelar</button></div>';
+  openModal(h);
+}
+export async function confirmarVenta(id) {
+  const c = S.cars.find(x => x.id === id); if (!c) return;
+  const precioVenta = +val('cv_precio') || 0;
+  const fechaVenta = val('cv_fecha') || iso(today());
+  if (await save('cars', Object.assign({}, c, { vendido: true, precioVenta, fechaVenta }))) { closeModal(); toast('Auto marcado como vendido'); }
 }
 export async function delCar(id) {
   await purgeFiles(S.cars.find(x => x.id === id));

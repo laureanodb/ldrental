@@ -3,8 +3,10 @@
 // desde un formulario público (sin login, ver src/postulacion.js) y crea
 // un chofer marcado como prospecto en etapa "Contacto inicial". Usa el
 // service role solo para insertar esta única fila; no expone ni permite
-// leer ningún dato existente.
+// leer ningún dato existente. Además manda una notificación push a los
+// dispositivos suscriptos avisando del prospecto nuevo.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import webpush from 'npm:web-push@3.6.7';
 
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, apikey, content-type' };
 
@@ -36,6 +38,32 @@ Deno.serve(async (req) => {
     };
     const { error } = await sb.from('drivers').insert({ id, data, updated_at: new Date().toISOString() });
     if (error) return json({ ok: false, error: 'No se pudo guardar' }, 500);
+
+    // Aviso push: no debe bloquear ni fallar la respuesta al que se postuló.
+    try {
+      const vapidPublic = Deno.env.get('VAPID_PUBLIC_KEY');
+      const vapidPrivate = Deno.env.get('VAPID_PRIVATE_KEY');
+      if (vapidPublic && vapidPrivate) {
+        const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@example.com';
+        webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
+        const { data: subs } = await sb.from('push_subscriptions').select('id,endpoint,p256dh,auth');
+        for (const s of subs || []) {
+          try {
+            await webpush.sendNotification(
+              { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+              JSON.stringify({ title: 'Nuevo prospecto', body: nombre + ' se postuló para manejar', url: './' })
+            );
+          } catch (e: any) {
+            if (e && (e.statusCode === 404 || e.statusCode === 410)) {
+              await sb.from('push_subscriptions').delete().eq('id', s.id);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // El aviso push es best-effort: un error acá no debe romper el alta.
+    }
+
     return json({ ok: true });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);

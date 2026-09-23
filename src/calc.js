@@ -306,6 +306,13 @@ export function rentabilidadAuto(c) {
   const moneda = c.tipo === 'financiado' ? 'USD' : 'ARS';
   return { cobrado, gastos, neta: moneda === 'USD' ? null : cobrado - gastos, costoCompra: +c.costoCompra || 0, moneda };
 }
+export function resultadoVenta(c) {
+  if (!c.vendido || !c.precioVenta) return null;
+  const rent = rentabilidadAuto(c);
+  if (rent.moneda === 'USD') return null;
+  const resultado = rent.cobrado - rent.gastos - rent.costoCompra + (+c.precioVenta || 0);
+  return { resultado, cobrado: rent.cobrado, gastos: rent.gastos, costoCompra: rent.costoCompra, precioVenta: +c.precioVenta || 0 };
+}
 export function puntoEquilibrio(c) {
   if (c.tipo === 'financiado') return null;
   const costoCompra = +c.costoCompra || 0;
@@ -388,6 +395,20 @@ export function driverScore(driverId) {
 export function driverEnRiesgo(driverId) {
   const { lateWeeks } = driverWeeksInfo(driverId);
   return settings.riesgoSemanas > 0 && lateWeeks >= settings.riesgoSemanas;
+}
+export function rankingMensualChoferes() {
+  const inicioMes = new Date(today().getFullYear(), today().getMonth(), 1);
+  const inicioMesIso = iso(inicioMes);
+  return activeDrivers().filter(d => !d.prospecto).map(d => {
+    const score = driverScore(d.id);
+    const sancionesMes = S.sanciones.filter(s => s.driverId === d.id && s.fecha >= inicioMesIso).length;
+    const siniestrosMes = S.siniestros.filter(s => s.choferId === d.id && s.fecha >= inicioMesIso).length;
+    return { driverId: d.id, nombre: d.nombre, score, sancionesMes, siniestrosMes };
+  }).filter(x => x.score != null).sort((a, b) => {
+    const penA = a.sancionesMes + a.siniestrosMes, penB = b.sancionesMes + b.siniestrosMes;
+    if (penA !== penB) return penA - penB;
+    return b.score - a.score;
+  }).slice(0, 5);
 }
 export function driverCalificaBono(driverId) {
   const { totalWeeks, lateWeeks, tieneCars } = driverWeeksInfo(driverId);

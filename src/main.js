@@ -4,7 +4,7 @@ import { ui } from './state.js';
 import { init } from './session.js';
 import { go, render, renderList } from './nav.js';
 import { doLogin, logout } from './session.js';
-import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto } from './forms/car.js';
+import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta } from './forms/car.js';
 import { mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento } from './forms/mantenimiento.js';
 import { mantAtajoFecha } from './views/mantenimiento.js';
 import { multaForm, onMultaCar, onMultaFecha, saveMulta, delMulta } from './forms/multa.js';
@@ -45,7 +45,7 @@ import { syncDriveUI } from './google-drive.js';
 Object.assign(window, {
   ui, go, render, renderList,
   doLogin, logout,
-  carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto,
+  carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta,
   goMas,
   mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, mantAtajoFecha,
   multaForm, onMultaCar, onMultaFecha, saveMulta, delMulta,
