@@ -1,4 +1,4 @@
-import { $, esc, val, uid, money, moneyUSD, fdate } from '../utils.js';
+import { $, esc, val, uid, money, moneyUSD, fdate, iso, today } from '../utils.js';
 import { S } from '../state.js';
 import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS, CANALES_PROSPECTO } from '../constants.js';
 import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono } from '../calc.js';
@@ -6,6 +6,7 @@ import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
 import { canDelete } from '../roles.js';
+import { settings } from '../settings.js';
 
 function telRow(t) {
   t = t || {};
@@ -97,6 +98,9 @@ export function driverForm(id) {
     financiacion += '<div class="sec-t row between">Depósito de garantía<span class="small muted">' + money(saldoDep) + (d.depositoObjetivo ? ' de ' + money(d.depositoObjetivo) : '') + '</span></div>';
     if (DEP.length) financiacion += DEP.map(x => '<div class="card row"><div class="grow"><div>' + (x.monto >= 0 ? '+' + money(x.monto) : '-' + money(-x.monto)) + ' <span class="small muted">' + fdate(x.fecha) + '</span></div>' + (x.nota ? '<div class="small muted">' + esc(x.nota) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delDeposito(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     financiacion += '<button class="btn sec block" style="margin:8px 0 20px" onclick="depositoForm(\'' + d.id + '\')">+ Registrar pago de depósito</button>';
+    if (!d.inactivo && !d.prospecto) {
+      financiacion += '<div class="sec-t">Baja del chofer</div><button class="btn danger block" style="margin-bottom:20px" onclick="liquidacionForm(\'' + d.id + '\')">Dar de baja / Liquidación final</button>';
+    }
   }
 
   /* ---- Sanciones y multas ---- */
@@ -202,4 +206,62 @@ export async function delDriver(id) {
   await purgeFiles(S.drivers.find(x => x.id === id));
   for (const c of S.cars.filter(c => c.choferId === id)) await save('cars', Object.assign({}, c, { choferId: '', tipo: 'disponible' }));
   if (await remove('drivers', id)) { closeModal(); toast('Chofer eliminado'); }
+}
+function conceptoRow(x) {
+  x = x || {};
+  return '<div class="two d-concepto"><input class="d-concepto-motivo" placeholder="Motivo (ej: daño en el paragolpes)" value="' + esc(x.motivo) + '">' +
+  '<div class="row"><input class="d-concepto-monto grow" inputmode="decimal" placeholder="Monto a descontar" value="' + esc(x.monto || '') + '"><button class="btn danger sm" onclick="this.closest(\'.d-concepto\').remove()">✕</button></div></div>';
+}
+export function addConceptoRow() { $('#lq_conceptos').insertAdjacentHTML('beforeend', conceptoRow()); }
+export function liquidacionForm(id) {
+  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const saldoDep = saldoDeposito(d.id);
+  const deuda = driverDebt(d.id);
+  const h = '<h3>Liquidación final — ' + esc(d.nombre) + '</h3>' +
+  '<div class="card"><div class="row between"><span class="muted">Saldo de depósito</span><b>' + money(saldoDep) + '</b></div>' +
+  '<div class="row between"><span class="muted">Deuda pendiente</span><b style="color:' + (deuda > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(deuda) + '</b></div></div>' +
+  '<div class="sec-t">Descuentos adicionales <small>opcional, ej. daños</small></div><div id="lq_conceptos"></div>' +
+  '<button class="btn sec sm" style="margin-bottom:14px" onclick="addConceptoRow()">+ Agregar descuento</button>' +
+  '<div class="small muted" style="margin-bottom:14px">Al confirmar: se calcula el monto final a devolver, se descarga un comprobante en PDF, el chofer queda inactivo y el auto que tenía asignado (si tiene) vuelve a estar disponible.</div>' +
+  '<div class="row"><button class="btn grow" onclick="confirmarLiquidacion(\'' + d.id + '\')">Confirmar liquidación</button><button class="btn sec" onclick="driverForm(\'' + d.id + '\')">Cancelar</button></div>';
+  openModal(h);
+}
+async function comprobanteLiquidacion(d, r) {
+  const { jsPDF } = await import('jspdf');
+  const doc = new jsPDF({ unit: 'mm', format: 'a5' });
+  let y = 18;
+  doc.setFontSize(16); doc.text(settings.companyName || 'LD Rental', 12, y); y += 8;
+  doc.setFontSize(11); doc.text('Liquidación final', 12, y); y += 10;
+  doc.setFontSize(10);
+  const linea = (label, val) => { doc.text(label, 12, y); doc.text(String(val), 70, y); y += 7; };
+  linea('Chofer:', d.nombre || '—');
+  linea('Fecha:', fdate(iso(today())));
+  linea('Saldo de depósito:', money(r.saldoDep));
+  linea('Deuda pendiente:', '-' + money(r.deuda));
+  r.conceptos.forEach(c => linea((c.motivo || 'Descuento') + ':', '-' + money(c.monto)));
+  y += 4;
+  doc.setFontSize(13); doc.text('Monto a devolver: ' + money(r.montoFinal), 12, y);
+  y += 14;
+  doc.setFontSize(8); doc.setTextColor(140); doc.text('Comprobante generado por ' + (settings.companyName || 'LD Rental'), 12, y);
+  doc.save('liquidacion-' + String(d.nombre || 'chofer').replace(/\s+/g, '-') + '-' + iso(today()) + '.pdf');
+}
+export async function confirmarLiquidacion(id) {
+  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const saldoDep = saldoDeposito(d.id);
+  const deuda = driverDebt(d.id);
+  const conceptos = [...document.querySelectorAll('.d-concepto')].map(row => ({
+    motivo: row.querySelector('.d-concepto-motivo').value.trim(),
+    monto: +row.querySelector('.d-concepto-monto').value || 0,
+  })).filter(c => c.monto > 0);
+  const totalDescuentos = conceptos.reduce((a, c) => a + c.monto, 0);
+  const montoFinal = saldoDep - deuda - totalDescuentos;
+  if (saldoDep) {
+    if (!(await save('depositos', { id: uid(), driverId: id, fecha: iso(today()), monto: -saldoDep, nota: 'Liquidación final' }))) return;
+  }
+  for (const c of S.cars.filter(c => c.choferId === id)) {
+    await save('cars', Object.assign({}, c, { choferId: '', tipo: 'disponible' }));
+  }
+  if (!(await save('drivers', Object.assign({}, d, { inactivo: true })))) return;
+  await comprobanteLiquidacion(d, { saldoDep, deuda, conceptos, montoFinal });
+  closeModal(); toast('Chofer dado de baja. Liquidación registrada.');
 }
