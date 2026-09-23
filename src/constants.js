@@ -35,6 +35,7 @@ export const RESULTADO_DESCARGO = [['', 'Sin resolver'], ['rechazado', 'Rechazad
 
 export const TIPOS_SINIESTRO = [['choque', 'Choque'], ['robo', 'Robo'], ['incendio', 'Incendio'], ['granizo', 'Granizo'], ['vandalismo', 'Vandalismo'], ['otro', 'Otro']];
 export const SINIESTRO_ESTADOS = [['abierto', 'Abierto'], ['tramite', 'En trámite con el seguro'], ['cerrado', 'Cerrado']];
+export const RESPONSABLE_SINIESTRO = [['', 'Sin determinar'], ['chofer', 'Chofer'], ['tercero', 'Tercero'], ['compartida', 'Responsabilidad compartida']];
 export const SCATS = [['foto', 'Foto del siniestro'], ['parte', 'Parte / denuncia policial'], ['presupuesto', 'Presupuesto de reparación'], ['comprobante', 'Comprobante de pago'], ['otro', 'Otro']];
 
 export const ETAPAS_PROSPECTO = [['contacto', 'Contacto inicial'], ['entrevista', 'Entrevista'], ['documentacion', 'Juntando documentación'], ['evaluacion', 'En evaluación'], ['aprobado', 'Aprobado'], ['rechazado', 'Rechazado']];

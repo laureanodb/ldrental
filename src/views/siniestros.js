@@ -1,7 +1,7 @@
 import { S, ui } from '../state.js';
 import { esc, money, fdate } from '../utils.js';
 import { carById, driverName, badge } from '../calc.js';
-import { TIPOS_SINIESTRO, SINIESTRO_ESTADOS } from '../constants.js';
+import { TIPOS_SINIESTRO, SINIESTRO_ESTADOS, RESPONSABLE_SINIESTRO } from '../constants.js';
 
 export function siniestrosFiltrados() {
   let L = S.siniestros.slice();
@@ -40,9 +40,10 @@ export function listSiniestros() {
   if (!L.length) return '<div class="card empty">Ningún siniestro coincide con el filtro.</div>';
   const tipoLabel = t => (TIPOS_SINIESTRO.find(x => x[0] === t) || [0, t])[1];
   const estLabel = e => (SINIESTRO_ESTADOS.find(x => x[0] === e) || [0, e])[1];
+  const respLabel = r => (RESPONSABLE_SINIESTRO.find(x => x[0] === r) || [0, ''])[1];
   return L.map(s => {
     const c = carById(s.carId);
     return '<div class="card tap" onclick="siniestroForm(\'' + s.carId + '\',\'' + s.id + '\')"><div class="row between"><div>' + esc(tipoLabel(s.tipo)) + ' <span class="small muted">' + fdate(s.fecha) + '</span></div>' + badge(s.estado === 'cerrado' ? 'mute' : s.estado === 'tramite' ? 'warn' : 'bad', estLabel(s.estado)) + '</div>' +
-    '<div class="small muted" style="margin-top:4px">' + esc(c ? c.patente : 'Auto eliminado') + (s.choferId ? ' · ' + esc(driverName(s.choferId)) : '') + (s.costoTaller ? ' · ' + money(s.costoTaller) : '') + '</div></div>';
+    '<div class="small muted" style="margin-top:4px">' + esc(c ? c.patente : 'Auto eliminado') + (s.choferId ? ' · ' + esc(driverName(s.choferId)) : '') + (s.costoTaller ? ' · ' + money(s.costoTaller) : '') + (s.responsable ? ' · Responsable: ' + esc(respLabel(s.responsable)) : '') + '</div></div>';
   }).join('');
 }
