@@ -2,6 +2,7 @@ import { ui } from '../state.js';
 import { render } from '../nav.js';
 import { isAdmin } from '../roles.js';
 import { proveedoresView } from '../forms/proveedor.js';
+import { gastosGeneralesView } from '../forms/gastos-generales.js';
 import { usuariosView } from '../forms/usuarios.js';
 import { auditoriaView } from '../forms/auditoria.js';
 import { mapaFlotaView } from '../forms/mapa.js';
@@ -39,6 +40,7 @@ export function viewMas() {
     ['Mantenimiento', "goMas('mantenimiento')"],
     ['Multas', "goMas('multas')"],
     ['Siniestros', "goMas('siniestros')"],
+    ['Gastos generales', 'gastosGeneralesView()'],
     ['Proveedores y talleres', 'proveedoresView()'],
     ['Mapa de flota', 'mapaFlotaView()'],
   ]);

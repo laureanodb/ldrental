@@ -24,6 +24,7 @@ import { attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPas
 import { backup, pickRestore, doRestore, exportCSV, cancelRestore } from './backup.js';
 import { saveAjustes, snoozeAlert, guardarNombreEmpresa, subirLogo, quitarLogo } from './views/shared.js';
 import { gastoForm, saveGasto, delGasto } from './forms/gasto.js';
+import { gastosGeneralesView, gastoGeneralForm, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, saveGastoRecurrente, delGastoRecurrente } from './forms/gastos-generales.js';
 import { sancionForm, saveSancion, delSancion } from './forms/sancion.js';
 import { inspeccionForm, saveInspeccion, delInspeccion } from './forms/inspeccion.js';
 import { proveedoresView, saveProveedor, delProveedor } from './forms/proveedor.js';
@@ -60,6 +61,7 @@ Object.assign(window, {
   backup, pickRestore, doRestore, exportCSV, cancelRestore,
   saveAjustes, snoozeAlert, guardarNombreEmpresa, subirLogo, quitarLogo,
   gastoForm, saveGasto, delGasto,
+  gastosGeneralesView, gastoGeneralForm, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, saveGastoRecurrente, delGastoRecurrente,
   sancionForm, saveSancion, delSancion,
   inspeccionForm, saveInspeccion, delInspeccion,
   proveedoresView, saveProveedor, delProveedor,

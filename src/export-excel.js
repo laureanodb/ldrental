@@ -5,7 +5,7 @@ import { toast } from './modal.js';
 import { saveFile } from './backup.js';
 import { resumenGeneral } from './calc.js';
 
-const SHEET_LABELS = { cars: 'Autos', drivers: 'Choferes', payments: 'Cobros', gastos: 'Gastos', proveedores: 'Proveedores', sanciones: 'Sanciones', prospectos: 'Prospectos', inspecciones: 'Inspecciones', mantenimientos: 'Mantenimiento', multas: 'Multas', depositos: 'Depositos', siniestros: 'Siniestros' };
+const SHEET_LABELS = { cars: 'Autos', drivers: 'Choferes', payments: 'Cobros', gastos: 'Gastos', proveedores: 'Proveedores', sanciones: 'Sanciones', prospectos: 'Prospectos', inspecciones: 'Inspecciones', mantenimientos: 'Mantenimiento', multas: 'Multas', depositos: 'Depositos', siniestros: 'Siniestros', gastosrecurrentes: 'Gastos recurrentes' };
 
 function limpiar(obj) {
   const o = {};
