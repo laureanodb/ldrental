@@ -1,15 +1,18 @@
-import { $ } from './utils.js';
+import { $, esc } from './utils.js';
 import { S, ui, configured } from './state.js';
-import { urgent, mantenimientoVencidosCount } from './calc.js';
+import { urgent, mantenimientoVencidosCount, multasPendientesCount } from './calc.js';
 import { viewSetup, viewLogin } from './session.js';
 import { viewPanel } from './views/panel.js';
 import { viewAutos, listAutos } from './views/autos.js';
 import { viewChoferes, listChoferes } from './views/choferes.js';
 import { viewCobros } from './views/cobros.js';
 import { viewVenc } from './views/venc.js';
-import { viewReportes } from './views/reportes.js';
-import { viewMantenimiento, listMantenimiento } from './views/mantenimiento.js';
+import { viewMas } from './views/mas.js';
+import { listMantenimiento } from './views/mantenimiento.js';
+import { listMultas } from './views/multas.js';
+import { listSiniestros } from './views/siniestros.js';
 import { queueLength } from './offline.js';
+import { settings } from './settings.js';
 
 const ICONS = {
   panel: '<path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-4H4zM14 8h6V4h-6z"/>',
@@ -17,15 +20,14 @@ const ICONS = {
   choferes: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
   cobros: '<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9v.01M18 15v.01"/>',
   venc: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M12 13v3l2 1"/>',
-  mantenimiento: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',
-  reportes: '<path d="M4 19h16M7 19v-6M12 19V6M17 19v-9"/>'
+  mas: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
 };
 export function renderNav() {
   if (!configured() || !S.user) { $('#nav').innerHTML = ''; return; }
   const n = urgent().length;
-  const nMant = mantenimientoVencidosCount();
-  const items = [['panel', 'Panel'], ['autos', 'Autos'], ['choferes', 'Choferes'], ['cobros', 'Cobros'], ['venc', 'Vencimientos'], ['mantenimiento', 'Mantenimiento'], ['reportes', 'Reportes']];
-  $('#nav').innerHTML = items.map(([k, l]) => '<button class="' + (ui.tab === k ? 'on' : '') + '" onclick="' + (k === 'autos' ? "ui.filtroAutoTipo='';" : '') + 'go(\'' + k + '\')"><svg viewBox="0 0 24 24">' + ICONS[k] + '</svg>' + l + (k === 'venc' && n ? '<span class="dot">' + n + '</span>' : '') + (k === 'mantenimiento' && nMant ? '<span class="dot">' + nMant + '</span>' : '') + '</button>').join('');
+  const nMas = mantenimientoVencidosCount() + multasPendientesCount();
+  const items = [['panel', 'Panel'], ['autos', 'Autos'], ['choferes', 'Choferes'], ['cobros', 'Cobros'], ['venc', 'Vencimientos'], ['mas', 'Más']];
+  $('#nav').innerHTML = items.map(([k, l]) => '<button class="' + (ui.tab === k ? 'on' : '') + '" onclick="' + (k === 'autos' ? "ui.filtroAutoTipo='';" : '') + (k === 'mas' ? "ui.masView='';" : '') + 'go(\'' + k + '\')"><svg viewBox="0 0 24 24">' + ICONS[k] + '</svg>' + l + (k === 'venc' && n ? '<span class="dot">' + n + '</span>' : '') + (k === 'mas' && nMas ? '<span class="dot">' + nMas + '</span>' : '') + '</button>').join('');
 }
 export function go(t) { ui.tab = t; render(); window.scrollTo(0, 0); }
 function offlineBar() {
@@ -33,19 +35,25 @@ function offlineBar() {
   if (navigator.onLine && !n) return '';
   return '<div class="offlinebar">' + (!navigator.onLine ? 'Sin conexión' : 'Conectado') + (n ? ' · ' + n + ' cambio' + (n === 1 ? '' : 's') + ' por sincronizar' : '') + '</div>';
 }
+function topBar() {
+  return '<div class="topbar"><span class="tb-brand">' + esc(settings.companyName || 'LD Rental') + '</span>' +
+  '<button class="tb-search" onclick="searchView()" aria-label="Buscar"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button></div>';
+}
 export function render() {
   renderNav();
   const app = $('#app');
   if (!configured()) { app.innerHTML = viewSetup(); return; }
   if (!S.user) { app.innerHTML = viewLogin(); return; }
   if (!S.ready) { app.innerHTML = '<div class="loading">Cargando tu flota…</div>'; return; }
-  const v = { panel: viewPanel, autos: viewAutos, choferes: viewChoferes, cobros: viewCobros, venc: viewVenc, mantenimiento: viewMantenimiento, reportes: viewReportes }[ui.tab]();
-  app.innerHTML = offlineBar() + v;
+  const v = { panel: viewPanel, autos: viewAutos, choferes: viewChoferes, cobros: viewCobros, venc: viewVenc, mas: viewMas }[ui.tab]();
+  app.innerHTML = offlineBar() + topBar() + v;
   renderList();
 }
 export function renderList() {
   const el = $('#list'); if (!el) return;
   if (ui.tab === 'autos') el.innerHTML = listAutos();
   if (ui.tab === 'choferes') el.innerHTML = listChoferes();
-  if (ui.tab === 'mantenimiento') el.innerHTML = listMantenimiento();
+  if (ui.tab === 'mas' && ui.masView === 'mantenimiento') el.innerHTML = listMantenimiento();
+  if (ui.tab === 'mas' && ui.masView === 'multas') el.innerHTML = listMultas();
+  if (ui.tab === 'mas' && ui.masView === 'siniestros') el.innerHTML = listSiniestros();
 }

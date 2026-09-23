@@ -23,22 +23,24 @@ export function onFotoPerfil(input) {
   reader.readAsDataURL(f);
 }
 
+export function setTabChofer(t) {
+  document.querySelectorAll('.tabpanel[data-scope="chofer"]').forEach(el => { el.style.display = el.dataset.tab === t ? '' : 'none'; });
+  document.querySelectorAll('.tabs[data-scope="chofer"] .tab').forEach(b => { b.classList.toggle('on', b.dataset.tab === t); });
+}
+function tabpanelChofer(tab, visible, content) {
+  return '<div class="tabpanel" data-scope="chofer" data-tab="' + tab + '"' + (visible ? '' : ' style="display:none"') + '>' + content + '</div>';
+}
+
 export function driverForm(id) {
   const ex = S.drivers.find(x => x.id === id);
   const d = ex || { docs: {} };
   let h = '<h3>' + (ex ? esc(d.nombre) : 'Nuevo chofer') + '</h3>';
   if (ex && d.inactivo) h += '<div class="card" style="margin-bottom:10px"><span class="badge b-mute">Inactivo</span></div>';
   if (ex && d.prospecto) h += '<div class="card" style="margin-bottom:10px"><span class="badge b-info">Prospecto · ' + esc((ETAPAS_PROSPECTO.find(x => x[0] === d.etapaProspecto) || [0, 'Contacto inicial'])[1]) + '</span></div>';
-  if (ex) {
-    const cars = S.cars.filter(c => c.choferId === d.id); const debt = driverDebt(d.id); const score = driverScore(d.id);
-    const mon = cars.some(c => c.tipo === 'financiado') ? moneyUSD : money;
-    h += '<div class="card"><div class="row between"><span class="muted">Autos</span><span>' + (cars.length ? cars.map(c => plate(c.patente)).join(' ') : 'Ninguno') + '</span></div>' +
-    '<div class="row between"><span class="muted">Deuda</span><b style="color:' + (debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + mon(debt) + '</b></div>' +
-    (score != null ? '<div class="row between"><span class="muted">Puntualidad</span><b>' + score + '%</b></div>' : '') +
-    (!d.prospecto && driverEnRiesgo(d.id) ? '<div class="row between"><span class="muted">Riesgo</span>' + badge('bad', 'En riesgo por atrasos') + '</div>' : '') +
-    (!d.prospecto && driverCalificaBono(d.id) ? '<div class="row between"><span class="muted">Bono</span>' + badge('ok', 'Califica por puntualidad') + '</div>' : '') + '</div>';
-  }
-  h += '<div class="row" style="align-items:center;gap:12px;margin-bottom:10px">' +
+
+  /* ---- Datos ---- */
+  let datos = '';
+  datos += '<div class="row" style="align-items:center;gap:12px;margin-bottom:10px">' +
   '<img id="d_fotoPreview" src="' + esc(d.fotoPerfil || '') + '" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;background:var(--soft);display:' + (d.fotoPerfil ? '' : 'none') + '">' +
   '<label class="btn sec sm filebtn">Foto de perfil<input id="fotoPerfilIn" type="file" accept="image/*" onchange="onFotoPerfil(this)"></label>' +
   '<input type="hidden" id="d_fotoPerfilData" value="' + esc(d.fotoPerfil || '') + '">' +
@@ -65,10 +67,6 @@ export function driverForm(id) {
   '<label class="f"><span>Otros ingresos</span><input id="d_otrosIngresos" value="' + esc(d.otrosIngresos) + '"></label></div>' +
   '<div class="two"><label class="f"><span>Ocupación anterior</span><input id="d_ocupacion" value="' + esc(d.ocupacionAnterior) + '"></label>' +
   '<label class="f"><span>Experiencia previa como chofer</span><input id="d_experiencia" value="' + esc(d.experienciaChofer) + '"></label></div>' +
-  '<div class="sec-t">Financiación y depósito</div>' +
-  (ex ? (() => { const s = sugerirAptoFinanciar(d.id); return '<div class="small muted" style="margin-bottom:8px">Sugerido según puntualidad, antigüedad y sanciones: <b style="color:' + (s.cumple ? 'var(--ok)' : 'var(--muted)') + '">' + (s.cumple ? 'Calificaría' : 'Todavía no calificaría') + '</b></div>'; })() : '') +
-  '<label class="chk"><input type="checkbox" id="d_apto"' + (d.aptoFinanciar ? ' checked' : '') + '><span>Apto para financiar un auto (decisión final)</span></label>' +
-  '<label class="f"><span>Objetivo del depósito de garantía</span><input id="d_depositoObjetivo" inputmode="decimal" value="' + esc(d.depositoObjetivo || '') + '"></label>' +
   '<div class="sec-t">Contacto de emergencia</div><div class="two"><label class="f"><span>Nombre</span><input id="d_emerg_nombre" value="' + esc((d.contactoEmergencia || {}).nombre) + '"></label>' +
   '<label class="f"><span>Teléfono</span><input id="d_emerg_tel" type="tel" value="' + esc((d.contactoEmergencia || {}).tel) + '"></label></div>' +
   '<div class="sec-t">Teléfonos adicionales</div><div id="d_tels">' + (d.otrosTelefonos || []).map(telRow).join('') + '</div>' +
@@ -76,36 +74,81 @@ export function driverForm(id) {
   '<div class="sec-t">Documentación entregada</div>' + DOCS.map(x => '<label class="chk"><input type="checkbox" id="dc_' + x[0] + '"' + (d.docs && d.docs[x[0]] ? ' checked' : '') + '><span>' + x[1] + '</span></label>').join('') +
   '<div class="sec-t">Checklist de onboarding</div>' + ONBOARDING_ITEMS.map(x => '<label class="chk"><input type="checkbox" id="ob_' + x[0] + '"' + (d.onboarding && d.onboarding[x[0]] ? ' checked' : '') + '><span>' + x[1] + '</span></label>').join('') +
   '<div class="sec-t">Archivos</div><div id="files"></div><div id="fstatus" class="small" style="margin:-4px 0 12px;overflow-wrap:anywhere"></div>' +
-  '<label class="f" style="margin-top:14px"><span>Notas</span><textarea id="d_notas">' + esc(d.notas) + '</textarea></label>' +
-  '<div class="row"><button class="btn grow" onclick="saveDriver(' + (ex ? "'" + d.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
+  '<label class="f" style="margin-top:14px"><span>Notas</span><textarea id="d_notas">' + esc(d.notas) + '</textarea></label>';
+
+  /* ---- Financiación ---- */
+  let financiacion = '';
+  if (ex) {
+    const cars = S.cars.filter(c => c.choferId === d.id); const debt = driverDebt(d.id); const score = driverScore(d.id);
+    const mon = cars.some(c => c.tipo === 'financiado') ? moneyUSD : money;
+    financiacion += '<div class="card"><div class="row between"><span class="muted">Autos</span><span>' + (cars.length ? cars.map(c => plate(c.patente)).join(' ') : 'Ninguno') + '</span></div>' +
+    '<div class="row between"><span class="muted">Deuda</span><b style="color:' + (debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + mon(debt) + '</b></div>' +
+    (score != null ? '<div class="row between"><span class="muted">Puntualidad</span><b>' + score + '%</b></div>' : '') +
+    (!d.prospecto && driverEnRiesgo(d.id) ? '<div class="row between"><span class="muted">Riesgo</span>' + badge('bad', 'En riesgo por atrasos') + '</div>' : '') +
+    (!d.prospecto && driverCalificaBono(d.id) ? '<div class="row between"><span class="muted">Bono</span>' + badge('ok', 'Califica por puntualidad') + '</div>' : '') + '</div>';
+  }
+  financiacion += (ex ? (() => { const s = sugerirAptoFinanciar(d.id); return '<div class="small muted" style="margin-bottom:8px">Sugerido según puntualidad, antigüedad y sanciones: <b style="color:' + (s.cumple ? 'var(--ok)' : 'var(--muted)') + '">' + (s.cumple ? 'Calificaría' : 'Todavía no calificaría') + '</b></div>'; })() : '') +
+  '<label class="chk"><input type="checkbox" id="d_apto"' + (d.aptoFinanciar ? ' checked' : '') + '><span>Apto para financiar un auto (decisión final)</span></label>' +
+  '<label class="f"><span>Objetivo del depósito de garantía</span><input id="d_depositoObjetivo" inputmode="decimal" value="' + esc(d.depositoObjetivo || '') + '"></label>';
   if (ex) {
     const DEP = depositosDeChofer(d.id);
     const saldoDep = saldoDeposito(d.id);
-    h += '<div class="sec-t row between">Depósito de garantía<span class="small muted">' + money(saldoDep) + (d.depositoObjetivo ? ' de ' + money(d.depositoObjetivo) : '') + '</span></div>';
-    if (DEP.length) h += DEP.map(x => '<div class="card row"><div class="grow"><div>' + (x.monto >= 0 ? '+' + money(x.monto) : '-' + money(-x.monto)) + ' <span class="small muted">' + fdate(x.fecha) + '</span></div>' + (x.nota ? '<div class="small muted">' + esc(x.nota) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delDeposito(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
-    h += '<button class="btn sec block" style="margin:8px 0 20px" onclick="depositoForm(\'' + d.id + '\')">+ Registrar pago de depósito</button>';
+    financiacion += '<div class="sec-t row between">Depósito de garantía<span class="small muted">' + money(saldoDep) + (d.depositoObjetivo ? ' de ' + money(d.depositoObjetivo) : '') + '</span></div>';
+    if (DEP.length) financiacion += DEP.map(x => '<div class="card row"><div class="grow"><div>' + (x.monto >= 0 ? '+' + money(x.monto) : '-' + money(-x.monto)) + ' <span class="small muted">' + fdate(x.fecha) + '</span></div>' + (x.nota ? '<div class="small muted">' + esc(x.nota) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delDeposito(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    financiacion += '<button class="btn sec block" style="margin:8px 0 20px" onclick="depositoForm(\'' + d.id + '\')">+ Registrar pago de depósito</button>';
+  }
+
+  /* ---- Sanciones y multas ---- */
+  let sanciones = '';
+  if (ex) {
     const San = S.sanciones.filter(s => s.driverId === d.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
-    h += '<div class="sec-t">Sanciones</div>';
-    if (San.length) h += San.map(s => '<div class="card row"><div class="grow"><div class="small muted">' + fdate(s.fecha) + '</div><div>' + esc(s.motivo) + '</div></div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delSancion(\'' + s.id + '\'))">Borrar</button>' : '') + '</div>').join('');
-    else h += '<div class="small muted" style="margin-bottom:8px">Sin sanciones registradas.</div>';
-    h += '<button class="btn sec block" style="margin:8px 0 20px" onclick="sancionForm(\'' + d.id + '\')">+ Agregar sanción</button>';
+    sanciones += '<div class="sec-t">Sanciones</div>';
+    if (San.length) sanciones += San.map(s => '<div class="card row"><div class="grow"><div class="small muted">' + fdate(s.fecha) + '</div><div>' + esc(s.motivo) + '</div></div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delSancion(\'' + s.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    else sanciones += '<div class="small muted" style="margin-bottom:8px">Sin sanciones registradas.</div>';
+    sanciones += '<button class="btn sec block" style="margin:8px 0 20px" onclick="sancionForm(\'' + d.id + '\')">+ Agregar sanción</button>';
     const M = multasDeChofer(d.id);
+    sanciones += '<div class="sec-t">Multas</div>';
     if (M.length) {
       const estLabel = e => (MULTA_ESTADOS.find(x => x[0] === e) || [0, e])[1];
-      h += '<div class="sec-t">Multas</div>' + M.map(m => '<div class="card row tap" onclick="multaForm(\'' + m.carId + '\',\'' + m.id + '\')"><div class="grow"><div>' + money(m.monto) + ' <span class="small muted">' + fdate(m.fecha) + '</span></div><div class="small muted">' + plate((S.cars.find(x => x.id === m.carId) || {}).patente) + '</div></div>' + badge(estadoMultaCls(m.estado), estLabel(m.estado)) + '</div>').join('');
-    }
+      sanciones += M.map(m => '<div class="card row tap" onclick="multaForm(\'' + m.carId + '\',\'' + m.id + '\')"><div class="grow"><div>' + money(m.monto) + ' <span class="small muted">' + fdate(m.fecha) + '</span></div><div class="small muted">' + plate((S.cars.find(x => x.id === m.carId) || {}).patente) + '</div></div>' + badge(estadoMultaCls(m.estado), estLabel(m.estado)) + '</div>').join('');
+    } else sanciones += '<div class="small muted" style="margin-bottom:8px">Sin multas registradas.</div>';
+  }
+
+  /* ---- Historial ---- */
+  let hist = '';
+  if (ex) {
     const H = carHistoryForDriver(d.id);
-    if (H.length) h += '<div class="sec-t">Historial de autos</div>' + H.map(x => '<div class="row between small" style="padding:4px 0"><span>' + esc(x.patente || 'Auto eliminado') + '</span><span class="muted">' + fdate(x.desde) + ' – ' + (x.hasta ? fdate(x.hasta) : 'actual') + '</span></div>').join('');
+    hist += '<div class="sec-t">Historial de autos</div>';
+    if (H.length) hist += H.map(x => '<div class="row between small" style="padding:4px 0"><span>' + esc(x.patente || 'Auto eliminado') + '</span><span class="muted">' + fdate(x.desde) + ' – ' + (x.hasta ? fdate(x.hasta) : 'actual') + '</span></div>').join('');
+    else hist += '<div class="small muted" style="margin-bottom:8px">Sin autos asignados todavía.</div>';
     const portalUrl = d.portalToken ? location.origin + location.pathname + '#/portal/' + d.id + '/' + d.portalToken : '';
-    h += '<div class="sec-t">Portal del chofer</div>' +
+    hist += '<div class="sec-t">Portal del chofer</div>' +
     (portalUrl ? '<div class="card"><div class="small muted" style="margin-bottom:6px">Link de solo lectura para que el chofer vea su deuda, próximo pago y recibos sin loguearse.</div>' +
       '<input readonly value="' + esc(portalUrl) + '" onclick="this.select()" style="margin-bottom:8px">' +
       '<div class="row"><button class="btn sec sm" onclick="copiarLinkPortal(\'' + esc(portalUrl) + '\')">Copiar</button>' +
       '<a class="btn sec sm" target="_blank" href="https://wa.me/?text=' + encodeURIComponent('Hola ' + (d.nombre || '').split(' ')[0] + ', acá podés ver tu estado de cuenta: ' + portalUrl) + '">WhatsApp</a></div></div>'
       : '<div class="small muted" style="margin-bottom:8px">Todavía no generaste el link para este chofer.</div>') +
     '<button class="btn sec block" style="margin:8px 0 20px" onclick="regenerarLinkPortal(\'' + d.id + '\')">' + (portalUrl ? 'Regenerar link' : 'Generar link') + '</button>';
-    h += '<div class="row" style="margin-top:0"><button class="btn sec grow" onclick="toggleInactivo(\'' + d.id + '\')">' + (d.inactivo ? 'Reactivar' : 'Marcar como inactivo') + '</button></div>' +
+    hist += '<div class="row" style="margin-top:0"><button class="btn sec grow" onclick="toggleInactivo(\'' + d.id + '\')">' + (d.inactivo ? 'Reactivar' : 'Marcar como inactivo') + '</button></div>' +
     (canDelete() ? '<div style="margin-top:8px"><button class="btn danger block" onclick="confirmDel(this,()=>delDriver(\'' + d.id + '\'))">Eliminar chofer</button></div>' : '');
+  }
+
+  const saveCancelRow = '<div class="row" style="margin:14px 0"><button class="btn grow" onclick="saveDriver(' + (ex ? "'" + d.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
+
+  if (ex) {
+    h += '<div class="tabs" data-scope="chofer">' +
+      '<button class="tab on" data-tab="datos" onclick="setTabChofer(\'datos\')">Datos</button>' +
+      '<button class="tab" data-tab="financiacion" onclick="setTabChofer(\'financiacion\')">Financiación</button>' +
+      '<button class="tab" data-tab="sanciones" onclick="setTabChofer(\'sanciones\')">Sanciones y multas</button>' +
+      '<button class="tab" data-tab="hist" onclick="setTabChofer(\'hist\')">Historial</button>' +
+    '</div>';
+    h += saveCancelRow;
+    h += tabpanelChofer('datos', true, datos);
+    h += tabpanelChofer('financiacion', false, financiacion);
+    h += tabpanelChofer('sanciones', false, sanciones);
+    h += tabpanelChofer('hist', false, hist);
+  } else {
+    h += datos + financiacion + saveCancelRow;
   }
   openModal(h); renderFiles('drivers', ex ? ex.id : null);
 }

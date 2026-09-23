@@ -115,3 +115,10 @@ nav .dot{position:absolute;top:2px;left:calc(50% + 8px);background:var(--bad);co
 .daycell.b-soft{background:var(--soft-bg);color:var(--soft-c);}
 .daycell.b-ok{background:var(--ok-bg);color:var(--ok);}
 .offlinebar{background:var(--warn-bg);color:var(--warn);font-size:13px;text-align:center;padding:8px;border-radius:10px;margin-bottom:12px;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.tb-brand{font-weight:700;font-size:14px;color:var(--muted);}
+.tb-search{background:none;border:0;color:var(--ink);padding:6px;margin:-6px;border-radius:8px;cursor:pointer;display:flex;}
+.tb-search:active{background:var(--soft);}
+.tabs{display:flex;gap:4px;overflow-x:auto;margin-bottom:10px;-webkit-overflow-scrolling:touch;}
+.tabs .tab{flex:none;background:var(--soft);color:var(--muted);border:0;padding:8px 14px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.tabs .tab.on{background:var(--btn);color:var(--btn-ink);}

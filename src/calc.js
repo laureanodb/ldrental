@@ -420,6 +420,9 @@ export const estadoMultaCls = e => e === 'pagada' ? 'ok' : e === 'vencida' ? 'ba
 export function multasDeChofer(driverId) {
   return S.multas.filter(m => m.choferId === driverId).sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
+export function multasPendientesCount() {
+  return S.multas.filter(m => m.estado === 'pendiente' || m.estado === 'vencida').length;
+}
 export function rankingMultasChoferes() {
   const porChofer = {};
   S.multas.filter(m => m.choferId).forEach(m => {

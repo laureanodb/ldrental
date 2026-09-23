@@ -40,10 +40,7 @@ export function ajustesCard() {
   '<label class="f"><span>Nombre de la empresa</span><input id="a_companyName" value="' + esc(settings.companyName) + '"></label>' +
   (settings.companyLogo ? '<div class="row" style="margin-bottom:10px;align-items:center"><img src="' + settings.companyLogo + '" alt="" style="height:36px"><button class="btn sec sm" onclick="quitarLogo()">Quitar logo</button></div>' : '') +
   '<label class="btn sec block filebtn" style="margin-bottom:10px">' + (settings.companyLogo ? 'Cambiar logo' : 'Subir logo') + '<input id="logoIn" type="file" accept="image/*" onchange="subirLogo(this)"></label>' +
-  '<button class="btn sec block" onclick="guardarNombreEmpresa()">Guardar nombre</button></div>' : '') +
-  '<div class="card"><div class="row between"><span>Proveedores y talleres de confianza</span><button class="btn sec sm" onclick="proveedoresView()">Ver</button></div></div>' +
-  (isAdmin() ? '<div class="card"><div class="row between"><span>Usuarios y permisos</span><button class="btn sec sm" onclick="usuariosView()">Ver</button></div></div>' : '') +
-  (isAdmin() ? '<div class="card"><div class="row between"><span>Auditoría</span><button class="btn sec sm" onclick="auditoriaView()">Ver</button></div></div>' : '');
+  '<button class="btn sec block" onclick="guardarNombreEmpresa()">Guardar nombre</button></div>' : '');
 }
 export function saveAjustes() {
   const w = +val('a_warn') || 15, s = +val('a_soft') || 30;

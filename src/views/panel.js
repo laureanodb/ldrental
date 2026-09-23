@@ -2,9 +2,8 @@ import { S, ui } from '../state.js';
 import { money, moneyUSD, today, esc, num1 } from '../utils.js';
 import { isContract, calc, urgent, driverName, plate, activeCars, cobradoDelMes, cobradoDelMesUSD, cobradoDelMesPorMetodo, financiacionesProximas } from '../calc.js';
 import { METODOS_PAGO } from '../constants.js';
-import { settings, brandH1 } from '../settings.js';
-import { backupCard, alertRow, ajustesCard } from './shared.js';
-import { googleCard } from './google-ui.js';
+import { settings } from '../settings.js';
+import { alertRow } from './shared.js';
 
 export function viewPanel() {
   const flota = activeCars();
@@ -22,11 +21,11 @@ export function viewPanel() {
   const disponibles = flota.filter(c => c.tipo === 'disponible').length;
   const urg = urgent();
   if (!S.cars.length && !S.drivers.length) {
-    return brandH1() + '<p class="sub">Autos, choferes, cobros y vencimientos en un solo lugar.</p>' +
-    '<div class="card empty"><b>Empecemos por lo básico</b>Cargá tus choferes y tus autos. Después registrás cada cobro semanal y la app te dice quién debe y qué vence.<div style="margin-top:16px" class="row" ><button class="btn grow" onclick="driverForm()">Cargar chofer</button><button class="btn grow" onclick="carForm()">Cargar auto</button></div></div>' + backupCard();
+    return '<h1>Panel</h1><p class="sub">Autos, choferes, cobros y vencimientos en un solo lugar.</p>' +
+    '<div class="card empty"><b>Empecemos por lo básico</b>Cargá tus choferes y tus autos. Después registrás cada cobro semanal y la app te dice quién debe y qué vence.<div style="margin-top:16px" class="row" ><button class="btn grow" onclick="driverForm()">Cargar chofer</button><button class="btn grow" onclick="carForm()">Cargar auto</button></div></div>';
   }
   const morosos = infos.filter(x => x.i.debt > 0 && x.c.tipo !== 'financiado').sort((a, b) => b.i.debt - a.i.debt).slice(0, 5);
-  let h = brandH1() + '<p class="sub">' + t0.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) + '</p>';
+  let h = '<h1>Panel</h1><p class="sub">' + t0.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) + '</p>';
   h += '<div class="row" style="margin-bottom:12px"><button class="btn grow" onclick="payForm()">Cobro rápido</button><button class="btn sec" onclick="searchView()">Buscar</button></div>';
   h += '<div class="grid">' +
     '<div class="kpi tap" onclick="ui.showDesgloseCobrado=!ui.showDesgloseCobrado;render()"><div class="n">' + money(cobMes) + (cobMesUSD ? '<div class="small">+ ' + moneyUSD(cobMesUSD) + '</div>' : '') + '</div><div class="l">Cobrado este mes' + (deltaMes != null ? ' <span style="color:' + (deltaMes >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + (deltaMes >= 0 ? '▲' : '▼') + Math.abs(deltaMes) + '%</span>' : '') + '</div></div>' +
@@ -56,5 +55,5 @@ export function viewPanel() {
   if (finProx.length) {
     h += '<h2>Financiaciones por terminar</h2>' + finProx.map(x => '<div class="card tap row between" onclick="carForm(\'' + x.c.id + '\')"><div><div>' + plate(x.c.patente) + '</div><div class="small muted">' + esc(driverName(x.c.choferId)) + '</div></div><div class="right"><b>' + x.restantes + '</b><div class="small muted">' + (x.restantes === 1 ? 'cuota' : 'cuotas') + '</div></div></div>').join('');
   }
-  return h + ajustesCard() + googleCard() + backupCard();
+  return h;
 }
