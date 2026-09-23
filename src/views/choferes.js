@@ -2,6 +2,15 @@ import { S, ui } from '../state.js';
 import { esc, money, moneyUSD } from '../utils.js';
 import { vs, driverDebt, plate, badge, isContract, driverScore, driverEnRiesgo, driverCalificaBono } from '../calc.js';
 import { DOCS, RATINGS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS } from '../constants.js';
+import { copiarLinkPortal } from '../forms/driver.js';
+
+function linkPostulacion() { return location.origin + location.pathname + '#/postulacion'; }
+function tarjetaPostulacion() {
+  const url = linkPostulacion();
+  return '<div class="card" style="margin-bottom:10px"><div class="small muted" style="margin-bottom:6px">Link público para que alguien interesado se postule solo (sin loguearse). Se crea como prospecto.</div>' +
+  '<div class="row"><button class="btn sec sm" onclick="copiarLinkPortal(\'' + esc(url) + '\')">Copiar formulario</button>' +
+  '<a class="btn sec sm" target="_blank" href="https://wa.me/?text=' + encodeURIComponent('¿Te interesa manejar con nosotros? Postulate acá: ' + url) + '">WhatsApp</a></div></div>';
+}
 
 function embudoResumen() {
   const P = S.drivers.filter(d => d.prospecto);
@@ -17,6 +26,7 @@ export function viewChoferes() {
     nProspectos ? '<span class="tap" style="text-decoration:underline" onclick="ui.showProspectos=!ui.showProspectos;renderList()">' + (ui.showProspectos ? 'ocultar' : 'ver') + ' ' + nProspectos + ' prospectos</span>' : ''
   ].filter(Boolean).join(' · ');
   return '<h1>Choferes</h1><p class="sub">' + S.drivers.filter(d => !d.inactivo && !d.prospecto).length + ' en total' + (links ? ' · ' + links : '') + '</p>' +
+  tarjetaPostulacion() +
   (ui.showProspectos ? embudoResumen() : '') +
   '<div class="bar"><input type="search" placeholder="Buscar por nombre o DNI" value="' + esc(ui.qDrivers) + '" oninput="ui.qDrivers=this.value;renderList()"><button class="btn" onclick="driverForm()">Agregar</button></div>' +
   '<label class="f" style="margin-bottom:10px"><span>Ordenar por</span><select onchange="ui.ordenChoferes=this.value;renderList()">' +

@@ -16,6 +16,7 @@ import { activarPush, desactivarPush, guardarHorarioPush } from './push.js';
 import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer } from './forms/driver.js';
 import { goMas } from './views/mas.js';
 import { initPortal } from './portal.js';
+import { initPostulacion } from './postulacion.js';
 import { depositoForm, saveDeposito, delDeposito } from './forms/deposito.js';
 import { payForm, onPayCar, savePay, delPay } from './forms/payment.js';
 import { closeModal, confirmDel } from './modal.js';
@@ -71,6 +72,8 @@ Object.assign(window, {
 const portalMatch = location.hash.match(/^#\/portal\/([^/]+)\/([^/]+)/);
 if (portalMatch) {
   initPortal(decodeURIComponent(portalMatch[1]), decodeURIComponent(portalMatch[2]));
+} else if (location.hash.match(/^#\/postulacion/)) {
+  initPostulacion();
 } else {
   window.addEventListener('online', () => { flushQueue(); render(); });
   window.addEventListener('offline', () => render());

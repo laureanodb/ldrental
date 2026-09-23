@@ -53,6 +53,7 @@ export function driverForm(id) {
   '<div id="canalOrigenOtroBox" style="display:' + (d.canalOrigen === 'otro' ? '' : 'none') + '"><label class="f"><span>¿Cuál?</span><input id="d_canalOrigenOtro" value="' + esc(d.canalOrigenOtro) + '"></label></div>' +
   '<div class="two"><label class="f"><span>DNI</span><input id="d_dni" inputmode="numeric" value="' + esc(d.dni) + '"></label>' +
   '<label class="f"><span>Vence la licencia</span><input id="d_lic" type="date" value="' + esc(d.licVenc) + '"></label></div>' +
+  '<label class="f"><span>Tipo de licencia</span><input id="d_tipoLicencia" placeholder="ej: B1, profesional..." value="' + esc(d.tipoLicencia) + '"></label>' +
   '<label class="f"><span>Teléfono <small>con código de país, ej: +5491155551234</small></span><input id="d_tel" type="tel" value="' + esc(d.tel) + '"></label>' +
   '<div class="two"><label class="f"><span>Fecha de nacimiento</span><input id="d_nac" type="date" value="' + esc(d.fechaNacimiento) + '"></label>' +
   '<label class="f"><span>Calificación</span><select id="d_rating"><option value="">Sin calificar</option>' + RATINGS.map(x => '<option value="' + x[0] + '"' + (d.rating === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
@@ -164,7 +165,7 @@ export async function saveDriver(id) {
   })).filter(t => t.tel);
   const ex = S.drivers.find(x => x.id === id);
   const o = {
-    id: id || uid(), nombre, dni: val('d_dni'), licVenc: val('d_lic'), tel: val('d_tel'), domicilio: val('d_dom'), notas: val('d_notas'), docs,
+    id: id || uid(), nombre, dni: val('d_dni'), licVenc: val('d_lic'), tipoLicencia: val('d_tipoLicencia'), tel: val('d_tel'), domicilio: val('d_dom'), notas: val('d_notas'), docs,
     fechaNacimiento: val('d_nac'), rating: val('d_rating'),
     domicilioMaps: val('d_domMaps'), nacionalidad: val('d_nacionalidad'), estadoCivil: val('d_estadoCivil'),
     referenciaNombre: val('d_refNombre'), referenciaTel: val('d_refTel'), nivelEstudios: val('d_estudios'),
