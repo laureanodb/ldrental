@@ -100,6 +100,18 @@ export function peorItemMantenimiento(c) {
   if (!peor) return null;
   return { cls: peor.e.cls, t: textoEstadoItem(peor.p.label || peor.p.item, peor.e), item: peor.p.item };
 }
+export function agendaMantenimiento() {
+  const out = [];
+  activeCars().forEach(c => {
+    (c.mantenimientoPlan || []).forEach(p => {
+      if (!p.intervaloKm && !p.intervaloMeses) return;
+      const e = estadoPlanItem(c, p);
+      if (e.cls === 'ok' || e.cls === 'soft') return;
+      out.push({ c, p, e, t: textoEstadoItem(p.label || p.item, e) });
+    });
+  });
+  return out.sort((a, b) => CLS_ORDEN[a.e.cls] - CLS_ORDEN[b.e.cls]);
+}
 export function mantenimientoVencidosCount() {
   let n = 0;
   activeCars().forEach(c => (c.mantenimientoPlan || []).forEach(p => {
@@ -325,6 +337,15 @@ export function puntoEquilibrio(c) {
 }
 export function gastoMantenimientoAuto(c) {
   return S.mantenimientos.filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
+}
+export function autosConGastoExcesivo() {
+  const cars = activeCars().filter(c => !c.aReemplazar);
+  const gastos = cars.map(c => ({ c, gasto: gastoMantenimientoAuto(c) }));
+  const conGasto = gastos.filter(x => x.gasto > 0);
+  if (!conGasto.length) return [];
+  const promedio = conGasto.reduce((a, x) => a + x.gasto, 0) / conGasto.length;
+  if (!promedio) return [];
+  return conGasto.filter(x => x.gasto > promedio * 2).map(x => ({ c: x.c, gasto: x.gasto, promedio })).sort((a, b) => b.gasto - a.gasto);
 }
 export function gastosPorCategoria() {
   const out = {};

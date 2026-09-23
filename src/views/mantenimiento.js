@@ -1,6 +1,6 @@
 import { S, ui } from '../state.js';
 import { esc, money, fdate, today, iso } from '../utils.js';
-import { carById, activeCars, peorItemMantenimiento, garantiasPorVencer, rankingTalleresMantenimiento, rankingItemsMantenimiento, proporcionMantenimiento, gastoMantenimientoDelMes, badge, textoRestante } from '../calc.js';
+import { carById, activeCars, garantiasPorVencer, rankingTalleresMantenimiento, rankingItemsMantenimiento, proporcionMantenimiento, gastoMantenimientoDelMes, badge, textoRestante, agendaMantenimiento, autosConGastoExcesivo } from '../calc.js';
 import { render } from '../nav.js';
 
 export function mantenimientosFiltrados() {
@@ -38,11 +38,22 @@ function seccionResumen(L) {
   '</div>';
 }
 
-function seccionEstadoFlota() {
-  const rows = activeCars().map(c => ({ c, peor: peorItemMantenimiento(c) })).filter(x => x.peor);
+function seccionAgendaSemana() {
+  const rows = agendaMantenimiento();
   if (!rows.length) return '';
-  rows.sort((a, b) => (a.peor.cls === 'bad' ? 0 : a.peor.cls === 'warn' ? 1 : 2) - (b.peor.cls === 'bad' ? 0 : b.peor.cls === 'warn' ? 1 : 2));
-  return '<h2>Autos con mantenimiento pendiente</h2>' + rows.map(x => '<div class="card row tap" onclick="mantenimientoForm(\'' + x.c.id + '\',null,\'' + esc(x.peor.item) + '\')"><div class="grow"><div>' + esc(x.c.patente) + '</div></div>' + badge(x.peor.cls, x.peor.t) + '</div>').join('');
+  const vencidos = rows.filter(x => x.e.cls === 'bad');
+  const proximos = rows.filter(x => x.e.cls === 'warn');
+  const fila = x => '<div class="card row tap" onclick="mantenimientoForm(\'' + x.c.id + '\',null,\'' + esc(x.p.item) + '\')"><div class="grow"><div>' + esc(x.c.patente) + ' <span class="small muted">' + esc(x.p.label || x.p.item) + '</span></div></div>' + badge(x.e.cls, textoRestante(x.e)) + '</div>';
+  let h = '<h2>Agenda de mantenimiento</h2><div class="small muted" style="margin-bottom:8px">Todo lo vencido o por vencer pronto en toda la flota, para coordinar con los talleres de una vez.</div>';
+  if (vencidos.length) h += '<div class="sec-t">Vencido</div>' + vencidos.map(fila).join('');
+  if (proximos.length) h += '<div class="sec-t">Por vencer pronto</div>' + proximos.map(fila).join('');
+  return h;
+}
+function seccionGastoExcesivo() {
+  const rows = autosConGastoExcesivo();
+  if (!rows.length) return '';
+  return '<h2>Posible reemplazo por gasto excesivo</h2><div class="small muted" style="margin-bottom:8px">Gastaron más del doble del promedio de la flota en mantenimiento.</div>' +
+  rows.map(x => '<div class="card row tap" onclick="carForm(\'' + x.c.id + '\')"><div class="grow"><div>' + esc(x.c.patente) + '</div><div class="small muted">Promedio de la flota: ' + money(Math.round(x.promedio)) + '</div></div><b style="color:var(--bad)">' + money(x.gasto) + '</b></div>').join('');
 }
 
 function seccionGarantias() {
@@ -101,7 +112,8 @@ export function viewMantenimiento() {
   '<div class="row" style="margin-bottom:14px"><button class="btn grow" onclick="mantenimientoForm()">+ Registrar mantenimiento</button>' +
   '<button class="btn sec" onclick="syncMantenimientoSheetsUI()">Exportar</button></div>';
   h += seccionResumen(L);
-  h += seccionEstadoFlota();
+  h += seccionAgendaSemana();
+  h += seccionGastoExcesivo();
   h += seccionGarantias();
   h += seccionGrafico();
   h += seccionRankingTalleres();
