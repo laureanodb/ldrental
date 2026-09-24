@@ -18,15 +18,25 @@ export function gastoForm(carId) {
   '<div id="g_proveedorOtroBox" style="display:none"><label class="f"><span>Nombre del proveedor</span><input id="g_proveedorOtro"></label></div>' +
   '<label class="f"><span>Descripción</span><textarea id="g_desc"></textarea></label>' +
   '<label class="chk"><input type="checkbox" id="g_sinFactura"><span>Sin factura</span></label>' +
-  '<div class="row"><button class="btn grow" onclick="saveGasto(\'' + c.id + '\')">Guardar</button><button class="btn sec" onclick="carForm(\'' + c.id + '\')">Cancelar</button></div>';
+  '<div class="row"><button class="btn grow" onclick="saveGasto(\'' + c.id + '\', this)">Guardar</button><button class="btn sec" onclick="carForm(\'' + c.id + '\')">Cancelar</button></div>';
   openModal(h);
 }
-export async function saveGasto(carId) {
+let gastoDupArmed = null;
+export async function saveGasto(carId, btn) {
   const costo = +val('g_costo');
   if (!costo || costo <= 0) { toast('Poné el costo del gasto'); return; }
+  const fecha = val('g_fecha') || iso(today());
+  const categoria = val('g_cat');
+  const dup = S.gastos.some(g => g.carId === carId && g.fecha === fecha && +g.costo === costo && g.categoria === categoria);
+  if (dup && gastoDupArmed !== btn) {
+    gastoDupArmed = btn;
+    toast('Ya existe un gasto igual ese día para este auto. Tocá Guardar de nuevo para confirmar');
+    return;
+  }
+  gastoDupArmed = null;
   const selProveedor = val('g_proveedorSel');
   const proveedor = selProveedor === '__otro__' ? val('g_proveedorOtro') : selProveedor;
-  const o = { id: uid(), carId, categoria: val('g_cat'), fecha: val('g_fecha') || iso(today()), costo, km: val('g_km'), proveedor, descripcion: val('g_desc'), sinFactura: document.getElementById('g_sinFactura').checked };
+  const o = { id: uid(), carId, categoria, fecha, costo, km: val('g_km'), proveedor, descripcion: val('g_desc'), sinFactura: document.getElementById('g_sinFactura').checked };
   if (await save('gastos', o)) { closeModal(); toast('Gasto registrado'); }
 }
 export async function delGasto(id) {

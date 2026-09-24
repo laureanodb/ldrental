@@ -326,7 +326,51 @@ export function alerts() {
     const key = 'recordatorio:' + r.id; if (isSnoozed(key)) return;
     out.push(Object.assign({ who: r.texto, sub: 'Recordatorio', kind: 'recordatorio', id: r.id, key }, s));
   });
+  activeCars().forEach(c => {
+    if (!alertaRoturaProbable(c)) return;
+    const key = 'car:' + c.id + ':rotura'; if (isSnoozed(key)) return;
+    out.push({ who: c.patente || 'Auto sin patente', sub: 'Posible rotura', kind: 'car', id: c.id, key, d: 10, cls: 'warn', t: 'Gasto de mantenimiento en aumento' });
+  });
+  activeDrivers().forEach(d => {
+    if (d.prospecto || !driverCambioPatron(d.id)) return;
+    const key = 'driver:' + d.id + ':cambiopatron'; if (isSnoozed(key)) return;
+    out.push({ who: d.nombre, sub: 'Empezó a atrasarse', kind: 'driver', id: d.id, key, d: 15, cls: 'soft', t: 'Antes cumplía y ahora tiene atraso' });
+  });
+  activeCars().forEach(c => {
+    if (!autoBajaRentabilidadSostenida(c)) return;
+    const key = 'car:' + c.id + ':bajarenta'; if (isSnoozed(key)) return;
+    out.push({ who: c.patente || 'Auto sin patente', sub: 'Rentabilidad negativa sostenida', kind: 'car', id: c.id, key, d: 20, cls: 'warn', t: 'Gasta más de lo que cobra hace tiempo' });
+  });
+  const diasSinCobros = diasSinCobrosGlobal();
+  if (diasSinCobros != null && diasSinCobros >= 7) {
+    const key = 'sistema:sincobros'; if (!isSnoozed(key)) {
+      out.push({ who: 'Sin cobros cargados', sub: 'Recordatorio', kind: 'sistema', id: '', key, d: 0, cls: 'soft', t: 'Hace ' + diasSinCobros + ' días que no se carga ningún cobro' });
+    }
+  }
   return out.sort((a, b) => a.d - b.d);
+}
+export function alertaRoturaProbable(c) {
+  const MH = S.mantenimientos.filter(m => m.carId === c.id).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  if (MH.length < 3) return false;
+  const ultimos = MH.slice(-3).map(m => +m.costo || 0);
+  return ultimos[0] > 0 && ultimos[0] < ultimos[1] && ultimos[1] < ultimos[2];
+}
+export function driverCambioPatron(driverId) {
+  const score = driverScore(driverId);
+  if (score == null || score < 85) return false;
+  const { lateWeeks } = driverWeeksInfo(driverId);
+  return lateWeeks >= 1 && lateWeeks < settings.riesgoSemanas;
+}
+export function autoBajaRentabilidadSostenida(c) {
+  if (c.tipo === 'financiado' || !c.inicio) return false;
+  if (days(parse(c.inicio), today()) < 90) return false;
+  const r = rentabilidadAuto(c);
+  return r.neta != null && r.neta < 0;
+}
+export function diasSinCobrosGlobal() {
+  if (!S.payments.length) return null;
+  const ultima = S.payments.reduce((max, p) => (!max || p.fecha > max ? p.fecha : max), null);
+  return ultima ? days(parse(ultima), today()) : null;
 }
 export const urgent = () => alerts().filter(a => a.d <= settings.avisoWarn);
 export const driverName = id => { const d = S.drivers.find(x => x.id === id); return d ? d.nombre : ''; };
