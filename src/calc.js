@@ -3,6 +3,7 @@ import { VENC, TIPOS, MANTENIMIENTO_ITEMS, COLS } from './constants.js';
 import { days, parse, today, iso, esc, fdate, money, num1 } from './utils.js';
 import { settings } from './settings.js';
 import { isSnoozed } from './snooze.js';
+import { isEnTramite } from './tramite.js';
 
 export const isContract = c => c.tipo === 'alquiler' || c.tipo === 'financiado';
 export const activeCars = () => S.cars.filter(c => !c.vendido);
@@ -352,7 +353,10 @@ export function alerts() {
       out.push({ who: 'Sin cobros cargados', sub: 'Recordatorio', kind: 'sistema', id: '', key, d: 0, cls: 'soft', t: 'Hace ' + diasSinCobros + ' días que no se carga ningún cobro' });
     }
   }
-  return out.sort((a, b) => a.d - b.d);
+  return out.filter(a => {
+    const carId = a.kind === 'car' ? a.id : a.kind === 'multa' ? a.carId : null;
+    return !(carId && isSnoozed('car:' + carId + ':all'));
+  }).map(a => Object.assign(a, { enTramite: isEnTramite(a.key) })).sort((a, b) => a.d - b.d);
 }
 export function alertaRoturaProbable(c) {
   const MH = S.mantenimientos.filter(m => m.carId === c.id).sort((a, b) => a.fecha.localeCompare(b.fecha));

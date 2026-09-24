@@ -25,6 +25,7 @@ Deno.serve(async () => {
 
     const sb = createClient(supabaseUrl, serviceKey);
     const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const hoyIso = hoy.toISOString().slice(0, 10);
 
     const [{ data: carsRaw }, { data: paymentsRaw }, { data: multasRaw }] = await Promise.all([
       sb.from('cars').select('id,data'),
@@ -69,9 +70,10 @@ Deno.serve(async () => {
       return new Response(JSON.stringify({ ok: true, enviado: false, motivo: 'nada urgente' }), { headers: { 'Content-Type': 'application/json' } });
     }
 
-    const { data: subs } = await sb.from('push_subscriptions').select('id,endpoint,p256dh,auth,prefs');
-    let enviados = 0, fallidos = 0;
+    const { data: subs } = await sb.from('push_subscriptions').select('id,endpoint,p256dh,auth,prefs,ultimo_envio');
+    let enviados = 0, fallidos = 0, agrupados = 0;
     for (const s of subs || []) {
+      if (s.ultimo_envio === hoyIso) { agrupados++; continue; }
       const prefs = s.prefs || {};
       const partes: string[] = [];
       if (vencUrgentes && prefs.vencimientos !== false) partes.push(vencTexto);
@@ -85,6 +87,7 @@ Deno.serve(async () => {
           JSON.stringify({ title: 'Mi Flota', body, url: './' })
         );
         enviados++;
+        await sb.from('push_subscriptions').update({ ultimo_envio: hoyIso }).eq('id', s.id);
       } catch (e: any) {
         fallidos++;
         if (e && (e.statusCode === 404 || e.statusCode === 410)) {
@@ -92,7 +95,7 @@ Deno.serve(async () => {
         }
       }
     }
-    return new Response(JSON.stringify({ ok: true, enviado: enviados > 0, enviados, fallidos }), { headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ ok: true, enviado: enviados > 0, enviados, fallidos, agrupados }), { headers: { 'Content-Type': 'application/json' } });
   } catch (e) {
     return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }

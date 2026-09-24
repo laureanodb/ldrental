@@ -4,6 +4,7 @@ import { badge, usoDeDatos } from '../calc.js';
 import { settings, saveSettings } from '../settings.js';
 import { PANEL_KPIS } from '../constants.js';
 import { snooze } from '../snooze.js';
+import { isEnTramite, marcarEnTramite, quitarEnTramite } from '../tramite.js';
 import { toast, openModal } from '../modal.js';
 import { render } from '../nav.js';
 import { isAdmin } from '../roles.js';
@@ -149,7 +150,14 @@ export function backupCard() {
 }
 export function alertRow(a) {
   const open = a.kind === 'car' ? "carForm('" + a.id + "')" : a.kind === 'multa' ? "multaForm('" + a.carId + "','" + a.id + "')" : a.kind === 'proveedor' ? "proveedoresView('" + a.id + "')" : a.kind === 'recordatorio' ? "recordatoriosView('" + a.id + "')" : a.kind === 'sistema' ? "go('cobros')" : "driverForm('" + a.id + "')";
-  return '<div class="card row"><div class="grow tap" onclick="' + open + '"><div>' + esc(a.who) + '</div><div class="small muted">' + esc(a.sub) + '</div></div>' +
-  '<div class="right">' + badge(a.cls, a.t) + '<div style="margin-top:4px"><button class="btn sec sm" onclick="snoozeAlert(\'' + esc(a.key) + '\')">Posponer</button></div></div></div>';
+  const enTramite = isEnTramite(a.key);
+  const vencCls = a.d < 0 ? ' alert-vencida' : (a.d <= 7 ? ' alert-proxima' : '');
+  return '<div class="card row' + vencCls + '"><div class="grow tap" onclick="' + open + '"><div>' + esc(a.who) + '</div><div class="small muted">' + esc(a.sub) + '</div></div>' +
+  '<div class="right">' + badge(a.cls, a.t) + (enTramite ? ' ' + badge('info', 'En trámite') : '') +
+  '<div style="margin-top:4px;display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap">' +
+  '<button class="btn sec sm" onclick="toggleEnTramite(\'' + esc(a.key) + '\')">' + (enTramite ? 'Quitar trámite' : 'En trámite') + '</button>' +
+  '<button class="btn sec sm" onclick="snoozeAlert(\'' + esc(a.key) + '\')">Posponer</button></div></div></div>';
 }
 export function snoozeAlert(key) { snooze(key, 7); toast('Pospuesto 7 días'); render(); }
+export function toggleEnTramite(key) { if (isEnTramite(key)) quitarEnTramite(key); else marcarEnTramite(key); render(); }
+export function silenciarAlertasAuto(id) { snooze('car:' + id + ':all', 30); toast('Alertas de este auto silenciadas por 30 días'); render(); }

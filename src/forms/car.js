@@ -292,6 +292,9 @@ export function carForm(id) {
 
   const saveCancelRow = '<div class="row stickysave"><button class="btn grow" onclick="saveCar(this' + (ex ? ",'" + c.id + "'" : ',null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
   let accionesRow = ex ? '<div class="row" style="margin-top:20px"><button class="btn sec grow" onclick="' + (c.vendido ? "toggleVendido('" + c.id + "')" : "venderAutoForm('" + c.id + "')") + '">' + (c.vendido ? 'Restaurar de vendidos' : 'Marcar como vendido') + '</button></div>' : '';
+  if (ex && !c.vendido) {
+    accionesRow += '<div class="row" style="margin-top:8px"><button class="btn sec grow" onclick="silenciarAlertasAuto(\'' + c.id + '\')">Silenciar alertas 30 días</button></div>';
+  }
   if (ex && canDelete()) {
     const nPagos = S.payments.filter(p => p.carId === c.id).length;
     const nOtros = S.gastos.filter(g => g.carId === c.id).length + S.mantenimientos.filter(m => m.carId === c.id).length + S.multas.filter(m => m.carId === c.id).length;
