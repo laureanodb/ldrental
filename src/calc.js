@@ -689,6 +689,29 @@ export function driverEnRiesgo(driverId) {
   const { lateWeeks } = driverWeeksInfo(driverId);
   return settings.riesgoSemanas > 0 && lateWeeks >= settings.riesgoSemanas;
 }
+export function estadoGeneralChofer(d) {
+  const orden = { ok: 0, soft: 1, warn: 2, bad: 3 };
+  let peor = 'ok';
+  const marcar = cls => { if (orden[cls] > orden[peor]) peor = cls; };
+  const sLic = vs(d.licVenc); if (sLic) marcar(sLic.cls);
+  const sAnt = vs(d.antecedentesVenc); if (sAnt) marcar(sAnt.cls);
+  if (driverDebt(d.id) > 0) marcar('warn');
+  if (driverEnRiesgo(d.id)) marcar('bad');
+  if (S.multas.some(m => m.choferId === d.id && (m.estado === 'pendiente' || m.estado === 'vencida'))) marcar('warn');
+  return peor;
+}
+export function promedioIngresos3MesesChofer(driverId) {
+  const t = today();
+  let total = 0, totalUSD = 0;
+  for (let i = 0; i < 3; i++) {
+    const desde = iso(new Date(t.getFullYear(), t.getMonth() - i, 1));
+    const hasta = iso(new Date(t.getFullYear(), t.getMonth() - i + 1, 0));
+    S.payments.filter(p => p.choferId === driverId && p.fecha >= desde && p.fecha <= hasta).forEach(p => {
+      if (p.tipo === 'cuota') totalUSD += (+p.monto || 0); else total += (+p.monto || 0);
+    });
+  }
+  return { promedio: Math.round(total / 3), promedioUSD: Math.round(totalUSD / 3) };
+}
 export function rankingMensualChoferes() {
   const inicioMes = new Date(today().getFullYear(), today().getMonth(), 1);
   const inicioMesIso = iso(inicioMes);

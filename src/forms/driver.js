@@ -1,7 +1,7 @@
 import { $, esc, val, uid, money, moneyUSD, fdate, iso, today } from '../utils.js';
 import { S } from '../state.js';
 import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS, CANALES_PROSPECTO, METODOS_PAGO, COMUNICACION_TIPOS } from '../constants.js';
-import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer } from '../calc.js';
+import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer, estadoGeneralChofer, promedioIngresos3MesesChofer } from '../calc.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -38,6 +38,11 @@ export function driverForm(id) {
   let h = '<h3>' + (ex ? esc(d.nombre) : 'Nuevo chofer') + '</h3>';
   if (ex && d.inactivo) h += '<div class="card" style="margin-bottom:10px"><span class="badge b-mute">Inactivo</span></div>';
   if (ex && d.prospecto) h += '<div class="card row between" style="margin-bottom:10px"><span class="badge b-info">Prospecto · ' + esc((ETAPAS_PROSPECTO.find(x => x[0] === d.etapaProspecto) || [0, 'Contacto inicial'])[1]) + '</span><button class="btn sm" onclick="aprobarProspecto(\'' + d.id + '\')">Aprobar y dar de alta</button></div>';
+  if (ex && !d.inactivo && !d.prospecto) {
+    const estGen = estadoGeneralChofer(d);
+    const estLabel = { ok: 'Todo al día', soft: 'Todo al día', warn: 'Algo pendiente', bad: 'Requiere atención' }[estGen];
+    h += '<div class="card" style="margin-bottom:10px">' + badge(estGen, estLabel) + '</div>';
+  }
   if (ex && !d.prospecto) {
     const autoAsignado = S.cars.find(c => c.choferId === d.id && !c.vendido);
     h += '<div class="card" style="margin-bottom:10px">' + (autoAsignado ?
@@ -106,13 +111,17 @@ export function driverForm(id) {
     financiacion += '<div class="card"><div class="row between"><span class="muted">Autos</span><span>' + (cars.length ? cars.map(c => plate(c.patente)).join(' ') : 'Ninguno') + '</span></div>' +
     '<div class="row between"><span class="muted">Deuda</span><b style="color:' + (debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + mon(debt) + '</b></div>' +
     (score != null ? '<div class="row between"><span class="muted">Puntualidad</span><b>' + score + '%</b></div>' : '') +
+    (() => { const pr = promedioIngresos3MesesChofer(d.id); return (pr.promedio || pr.promedioUSD) ? '<div class="row between"><span class="muted">Promedio mensual (3 meses)</span><b>' + (pr.promedio ? money(pr.promedio) : '') + (pr.promedioUSD ? (pr.promedio ? ' + ' : '') + moneyUSD(pr.promedioUSD) : '') + '</b></div>' : ''; })() +
     (!d.prospecto && driverEnRiesgo(d.id) ? '<div class="row between"><span class="muted">Riesgo</span>' + badge('bad', 'En riesgo por atrasos') + '</div>' : '') +
     (!d.prospecto && driverCalificaBono(d.id) ? '<div class="row between"><span class="muted">Bono</span>' + badge('ok', 'Califica por puntualidad') + '</div>' : '') +
     (() => { const m = metodoPreferidoChofer(d.id); return m ? '<div class="row between small"><span class="muted">Método de pago habitual</span><span>' + esc((METODOS_PAGO.find(x => x[0] === m) || [0, m])[1]) + '</span></div>' : ''; })() + '</div>';
   }
   financiacion += (ex ? (() => { const s = sugerirAptoFinanciar(d.id); return '<div class="small muted" style="margin-bottom:8px">Sugerido según puntualidad, antigüedad y sanciones: <b style="color:' + (s.cumple ? 'var(--ok)' : 'var(--muted)') + '">' + (s.cumple ? 'Calificaría' : 'Todavía no calificaría') + '</b></div>'; })() : '') +
   '<label class="chk"><input type="checkbox" id="d_apto"' + (d.aptoFinanciar ? ' checked' : '') + '><span>Apto para financiar un auto (decisión final)</span></label>' +
-  '<label class="f"><span>Objetivo del depósito de garantía</span><input id="d_depositoObjetivo" inputmode="decimal" value="' + esc(d.depositoObjetivo || '') + '"></label>';
+  '<label class="f"><span>Objetivo del depósito de garantía</span><input id="d_depositoObjetivo" inputmode="decimal" value="' + esc(d.depositoObjetivo || '') + '"></label>' +
+  '<div class="sec-t">Garante / aval</div>' +
+  '<div class="two"><label class="f"><span>Nombre</span><input id="d_garanteNombre" value="' + esc(d.garanteNombre) + '"></label>' +
+  '<label class="f"><span>Teléfono</span><input id="d_garanteTel" type="tel" value="' + esc(d.garanteTel) + '"></label></div>';
   if (ex) {
     const DEP = depositosDeChofer(d.id);
     const saldoDep = saldoDeposito(d.id);
@@ -201,6 +210,7 @@ export async function saveDriver(id) {
     referenciaNombre: val('d_refNombre'), referenciaTel: val('d_refTel'), nivelEstudios: val('d_estudios'),
     otrosIngresos: val('d_otrosIngresos'), ocupacionAnterior: val('d_ocupacion'), experienciaChofer: val('d_experiencia'),
     aptoFinanciar: document.getElementById('d_apto').checked, depositoObjetivo: +val('d_depositoObjetivo') || 0,
+    garanteNombre: val('d_garanteNombre'), garanteTel: val('d_garanteTel'),
     contactoEmergencia: { nombre: val('d_emerg_nombre'), tel: val('d_emerg_tel') },
     otrosTelefonos, inactivo: (ex || {}).inactivo || false, favorito: (ex || {}).favorito || false, prospecto: document.getElementById('d_prospecto').checked,
     etapaProspecto: val('d_etapaProspecto'), referidoPor: val('d_referidoPor'), onboarding,
