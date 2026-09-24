@@ -1,5 +1,5 @@
 import { S, ui } from '../state.js';
-import { esc, money, moneyUSD, today } from '../utils.js';
+import { esc, money, moneyUSD, today, fdate } from '../utils.js';
 import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, planRenovacionFlota, badge } from '../calc.js';
 import { canVerFinanzas } from '../roles.js';
 import { GASTO_CATS, CANALES_PROSPECTO, MOTIVOS_REEMPLAZO } from '../constants.js';
@@ -128,6 +128,16 @@ function seccionProspectosPorCanal() {
   (sinDato ? '<div class="card row between small muted"><span>Sin especificar</span><b>' + sinDato + '</b></div>' : '');
 }
 
+function seccionReclamosSeguro() {
+  if (!canVerFinanzas()) return '';
+  const G = S.gastos.filter(g => g.reclamoSeguro && g.reclamoEstado !== 'aprobado' && g.reclamoEstado !== 'rechazado');
+  if (!G.length) return '';
+  const cls = e => e === 'presentado' ? 'info' : 'warn';
+  return '<h2>Reclamos al seguro pendientes</h2>' + G.map(g => {
+    const c = S.cars.find(x => x.id === g.carId);
+    return '<div class="card row tap" onclick="reclamoSeguroForm(\'' + g.id + '\')"><div class="grow"><div>' + money(g.costo) + ' <span class="small muted">' + (c ? plate(c.patente) : '') + '</span></div><div class="small muted">' + fdate(g.fecha) + (g.descripcion ? ' · ' + esc(g.descripcion) : '') + '</div></div>' + badge(cls(g.reclamoEstado), g.reclamoEstado === 'presentado' ? 'Presentado' : 'Pendiente') + '</div>';
+  }).join('');
+}
 function seccionMapaCalorGastos() {
   if (!canVerFinanzas()) return '';
   const { meses, filas, max } = mapaCalorGastos(6);
@@ -276,6 +286,7 @@ export function viewReportes() {
   h += seccionComparativaChoferes();
   h += seccionTablaComparativaChoferes();
   h += seccionGastosPorCategoria();
+  h += seccionReclamosSeguro();
   h += seccionMapaCalorGastos();
   h += seccionPlanRenovacion();
   h += seccionMantenimiento();

@@ -1,7 +1,7 @@
 import { S, ui } from '../state.js';
 import { money, moneyUSD, today, esc, num1 } from '../utils.js';
-import { isContract, calc, urgent, driverName, plate, activeCars, cobradoDelMes, cobradoDelMesUSD, cobradoDelMesPorMetodo, financiacionesProximas, financiacionesCompletadasSinTransferir, badge } from '../calc.js';
-import { METODOS_PAGO } from '../constants.js';
+import { isContract, calc, urgent, driverName, plate, activeCars, cobradoDelMes, cobradoDelMesUSD, cobradoDelMesPorMetodo, financiacionesProximas, financiacionesCompletadasSinTransferir, resumenEstadoFlota, badge } from '../calc.js';
+import { METODOS_PAGO, TIPOS } from '../constants.js';
 import { settings } from '../settings.js';
 import { alertRow } from './shared.js';
 
@@ -27,6 +27,16 @@ export function viewPanel() {
   const morosos = infos.filter(x => x.i.debt > 0 && x.c.tipo !== 'financiado').sort((a, b) => b.i.debt - a.i.debt).slice(0, 5);
   let h = '<h1>Panel</h1><p class="sub">' + t0.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) + '</p>';
   h += '<div class="row" style="margin-bottom:12px"><button class="btn grow" onclick="payForm()">Cobro rápido</button><button class="btn sec" onclick="gastoGeneralForm()">Gasto rápido</button><button class="btn sec" onclick="searchView()">Buscar</button></div>';
+  const ef = resumenEstadoFlota();
+  if (ef.total) {
+    h += '<div class="card" style="margin-bottom:12px"><div class="small muted" style="margin-bottom:6px">Flota de un vistazo · ' + ef.total + ' auto' + (ef.total === 1 ? '' : 's') + '</div>' +
+    '<div class="row" style="flex-wrap:wrap;gap:6px 12px">' + Object.keys(TIPOS).filter(k => ef.porTipo[k]).map(k => '<span class="small">' + ef.porTipo[k] + ' ' + esc(TIPOS[k].toLowerCase()) + '</span>').join('') + '</div>' +
+    '<div class="row" style="flex-wrap:wrap;gap:6px 12px;margin-top:6px">' +
+    (ef.porEstado.ok + ef.porEstado.soft ? '<span class="small" style="color:var(--ok)">● ' + (ef.porEstado.ok + ef.porEstado.soft) + ' al día</span>' : '') +
+    (ef.porEstado.warn ? '<span class="small" style="color:var(--warn)">● ' + ef.porEstado.warn + ' con pendientes</span>' : '') +
+    (ef.porEstado.bad ? '<span class="small" style="color:var(--bad)">● ' + ef.porEstado.bad + ' vencidos</span>' : '') +
+    '</div></div>';
+  }
   const kpis = {
     cobrado: '<div class="kpi tap" onclick="ui.showDesgloseCobrado=!ui.showDesgloseCobrado;render()"><div class="n">' + money(cobMes) + (cobMesUSD ? '<div class="small">+ ' + moneyUSD(cobMesUSD) + '</div>' : '') + '</div><div class="l">Cobrado este mes' + (deltaMes != null ? ' <span style="color:' + (deltaMes >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + (deltaMes >= 0 ? '▲' : '▼') + Math.abs(deltaMes) + '%</span>' : '') + '</div></div>',
     esperado: '<div class="kpi"><div class="n">' + money(esperado) + (esperadoUSD ? '<div class="small">+ ' + moneyUSD(esperadoUSD) + '</div>' : '') + '</div><div class="l">Esperado por semana</div></div>',

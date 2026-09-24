@@ -42,6 +42,16 @@ async function enviarAccionPortal(body, statusEl, btn) {
 
 function renderPortal(app, j) {
   let h = '<p class="sub">Hola ' + esc(j.nombre || '') + '</p>';
+  const anuncios = (settings.anuncios || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5);
+  if (anuncios.length) {
+    h += '<div class="sec-t">Anuncios</div>' + anuncios.map(a => '<div class="card"><div>' + esc(a.texto) + '</div><div class="small muted" style="margin-top:4px">' + fdate(a.fecha) + '</div></div>').join('');
+  }
+  if (settings.telefonoEmergencia || settings.protocoloEmergencia) {
+    h += '<details class="card" style="margin-bottom:14px"><summary style="cursor:pointer">Protocolo de emergencia</summary>' +
+    (settings.telefonoEmergencia ? '<a class="btn block" style="margin-top:10px" href="tel:' + esc(settings.telefonoEmergencia) + '">Llamar a ' + esc(settings.telefonoEmergencia) + '</a>' : '') +
+    (settings.protocoloEmergencia ? '<div class="small" style="white-space:pre-wrap;margin-top:10px">' + esc(settings.protocoloEmergencia) + '</div>' : '') +
+    '</details>';
+  }
   const autos = j.autos || [];
   if (!autos.length) {
     h += '<div class="card empty">No tenés un auto asignado en este momento.</div>';

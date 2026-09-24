@@ -61,19 +61,24 @@ Deno.serve(async () => {
 
     const multasPendientes = multas.filter((m: any) => m.estado === 'pendiente' || m.estado === 'vencida').length;
 
-    const partes: string[] = [];
-    if (vencUrgentes) partes.push(vencUrgentes + ' vencimiento' + (vencUrgentes === 1 ? '' : 's') + ' urgente' + (vencUrgentes === 1 ? '' : 's'));
-    if (choferesConDeuda) partes.push(choferesConDeuda + ' chofer' + (choferesConDeuda === 1 ? '' : 'es') + ' con deuda');
-    if (multasPendientes) partes.push(multasPendientes + ' multa' + (multasPendientes === 1 ? '' : 's') + ' pendiente' + (multasPendientes === 1 ? '' : 's'));
+    const vencTexto = vencUrgentes + ' vencimiento' + (vencUrgentes === 1 ? '' : 's') + ' urgente' + (vencUrgentes === 1 ? '' : 's');
+    const deudaTexto = choferesConDeuda + ' chofer' + (choferesConDeuda === 1 ? '' : 'es') + ' con deuda';
+    const multasTexto = multasPendientes + ' multa' + (multasPendientes === 1 ? '' : 's') + ' pendiente' + (multasPendientes === 1 ? '' : 's');
 
-    if (!partes.length) {
+    if (!vencUrgentes && !choferesConDeuda && !multasPendientes) {
       return new Response(JSON.stringify({ ok: true, enviado: false, motivo: 'nada urgente' }), { headers: { 'Content-Type': 'application/json' } });
     }
-    const body = partes.join(' · ');
 
-    const { data: subs } = await sb.from('push_subscriptions').select('id,endpoint,p256dh,auth');
+    const { data: subs } = await sb.from('push_subscriptions').select('id,endpoint,p256dh,auth,prefs');
     let enviados = 0, fallidos = 0;
     for (const s of subs || []) {
+      const prefs = s.prefs || {};
+      const partes: string[] = [];
+      if (vencUrgentes && prefs.vencimientos !== false) partes.push(vencTexto);
+      if (choferesConDeuda && prefs.deuda !== false) partes.push(deudaTexto);
+      if (multasPendientes && prefs.multas !== false) partes.push(multasTexto);
+      if (!partes.length) continue;
+      const body = partes.join(' · ');
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
@@ -87,7 +92,7 @@ Deno.serve(async () => {
         }
       }
     }
-    return new Response(JSON.stringify({ ok: true, enviado: true, body, enviados, fallidos }), { headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ ok: true, enviado: enviados > 0, enviados, fallidos }), { headers: { 'Content-Type': 'application/json' } });
   } catch (e) {
     return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }

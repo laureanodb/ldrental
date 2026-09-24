@@ -20,8 +20,8 @@ import { reciboPDF, reciboCompartir } from './recibo.js';
 import { descargarReporteEjecutivo } from './reporte-ejecutivo.js';
 import { contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato } from './contrato.js';
 import { exportarExcel } from './export-excel.js';
-import { activarPush, desactivarPush, guardarHorarioPush } from './push.js';
-import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer } from './forms/driver.js';
+import { activarPush, desactivarPush, guardarHorarioPush, guardarPreferenciasPush } from './push.js';
+import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion } from './forms/driver.js';
 import { goMas } from './views/mas.js';
 import { initPortal } from './portal.js';
 import { initPostulacion } from './postulacion.js';
@@ -30,8 +30,8 @@ import { payForm, onPayCar, savePay, delPay, toggleDepositado } from './forms/pa
 import { closeModal, confirmDel } from './modal.js';
 import { attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile } from './files.js';
 import { backup, pickRestore, doRestore, exportCSV, cancelRestore } from './backup.js';
-import { saveAjustes, snoozeAlert, guardarNombreEmpresa, subirLogo, quitarLogo } from './views/shared.js';
-import { gastoForm, saveGasto, delGasto } from './forms/gasto.js';
+import { saveAjustes, snoozeAlert, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm, anunciosForm, agregarAnuncio, borrarAnuncio } from './views/shared.js';
+import { gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro } from './forms/gasto.js';
 import { gastosGeneralesView, gastoGeneralForm, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, saveGastoRecurrente, delGastoRecurrente } from './forms/gastos-generales.js';
 import { sancionForm, saveSancion, delSancion } from './forms/sancion.js';
 import { inspeccionForm, saveInspeccion, delInspeccion } from './forms/inspeccion.js';
@@ -65,16 +65,17 @@ Object.assign(window, {
   mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, mantAtajoFecha,
   multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta,
   siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro,
-  reciboPDF, reciboCompartir, descargarReporteEjecutivo, exportarExcel, activarPush, desactivarPush, guardarHorarioPush,
+  reciboPDF, reciboCompartir, descargarReporteEjecutivo, exportarExcel, activarPush, desactivarPush, guardarHorarioPush, guardarPreferenciasPush,
   contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato,
-  driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer,
+  driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion,
   depositoForm, saveDeposito, delDeposito,
   payForm, onPayCar, savePay, delPay, toggleDepositado,
   closeModal, confirmDel,
   attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile,
   backup, pickRestore, doRestore, exportCSV, cancelRestore,
-  saveAjustes, snoozeAlert, guardarNombreEmpresa, subirLogo, quitarLogo,
-  gastoForm, saveGasto, delGasto,
+  saveAjustes, snoozeAlert, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm,
+  anunciosForm, agregarAnuncio, borrarAnuncio,
+  gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro,
   gastosGeneralesView, gastoGeneralForm, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, saveGastoRecurrente, delGastoRecurrente,
   sancionForm, saveSancion, delSancion,
   inspeccionForm, saveInspeccion, delInspeccion,

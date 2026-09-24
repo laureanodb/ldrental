@@ -1,6 +1,6 @@
 import { $, esc, val, uid, money, moneyUSD, fdate, iso, today } from '../utils.js';
 import { S } from '../state.js';
-import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS, CANALES_PROSPECTO, METODOS_PAGO } from '../constants.js';
+import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS, CANALES_PROSPECTO, METODOS_PAGO, COMUNICACION_TIPOS } from '../constants.js';
 import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer } from '../calc.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
@@ -55,6 +55,7 @@ export function driverForm(id) {
   '<div class="two"><label class="f"><span>DNI</span><input id="d_dni" inputmode="numeric" value="' + esc(d.dni) + '"></label>' +
   '<label class="f"><span>Vence la licencia</span><input id="d_lic" type="date" value="' + esc(d.licVenc) + '"></label></div>' +
   '<label class="f"><span>Tipo de licencia</span><input id="d_tipoLicencia" placeholder="ej: B1, profesional..." value="' + esc(d.tipoLicencia) + '"></label>' +
+  '<label class="f"><span>Vence el certificado de antecedentes</span><input id="d_antecedentesVenc" type="date" value="' + esc(d.antecedentesVenc) + '"></label>' +
   '<label class="f"><span>Teléfono <small>con código de país, ej: +5491155551234</small></span><input id="d_tel" type="tel" value="' + esc(d.tel) + '"></label>' +
   '<div class="two"><label class="f"><span>Fecha de nacimiento</span><input id="d_nac" type="date" value="' + esc(d.fechaNacimiento) + '"></label>' +
   '<label class="f"><span>Calificación</span><select id="d_rating"><option value="">Sin calificar</option>' + RATINGS.map(x => '<option value="' + x[0] + '"' + (d.rating === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
@@ -137,6 +138,13 @@ export function driverForm(id) {
       '<a class="btn sec sm" target="_blank" href="https://wa.me/?text=' + encodeURIComponent('Hola ' + (d.nombre || '').split(' ')[0] + ', acá podés ver tu estado de cuenta: ' + portalUrl) + '">WhatsApp</a></div></div>'
       : '<div class="small muted" style="margin-bottom:8px">Todavía no generaste el link para este chofer.</div>') +
     '<button class="btn sec block" style="margin:8px 0 20px" onclick="regenerarLinkPortal(\'' + d.id + '\')">' + (portalUrl ? 'Regenerar link' : 'Generar link') + '</button>';
+    const COM = (d.comunicaciones || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
+    hist += '<div class="sec-t">Historial de comunicaciones</div>' +
+    '<div class="two"><label class="f"><span>Tipo</span><select id="cm_tipo">' + COMUNICACION_TIPOS.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label>' +
+    '<label class="f"><span>Fecha</span><input id="cm_fecha" type="date" value="' + iso(today()) + '"></label></div>' +
+    '<label class="f"><span>Notas</span><textarea id="cm_notas" placeholder="ej: llamó por atraso en el pago, dijo que paga el viernes"></textarea></label>' +
+    '<button class="btn sec block" style="margin-bottom:14px" onclick="agregarComunicacion(\'' + d.id + '\')">Agregar</button>' +
+    (COM.length ? COM.map(c => '<div class="card row"><div class="grow"><div>' + esc((COMUNICACION_TIPOS.find(x => x[0] === c.tipo) || [0, c.tipo])[1]) + '</div><div class="small muted">' + fdate(c.fecha) + (c.notas ? ' · ' + esc(c.notas) : '') + '</div></div><button class="btn danger sm" onclick="confirmDel(this,()=>borrarComunicacion(\'' + d.id + '\',\'' + c.id + '\'))">Borrar</button></div>').join('') : '<div class="small muted" style="margin-bottom:20px">Sin comunicaciones registradas.</div>');
   }
 
   const saveCancelRow = '<div class="row" style="margin:14px 0"><button class="btn grow" onclick="saveDriver(' + (ex ? "'" + d.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
@@ -175,7 +183,7 @@ export async function saveDriver(id) {
   })).filter(t => t.tel);
   const ex = S.drivers.find(x => x.id === id);
   const o = {
-    id: id || uid(), nombre, dni: val('d_dni'), licVenc: val('d_lic'), tipoLicencia: val('d_tipoLicencia'), tel: val('d_tel'), domicilio: val('d_dom'), notas: val('d_notas'), docs,
+    id: id || uid(), nombre, dni: val('d_dni'), licVenc: val('d_lic'), tipoLicencia: val('d_tipoLicencia'), antecedentesVenc: val('d_antecedentesVenc'), tel: val('d_tel'), domicilio: val('d_dom'), notas: val('d_notas'), docs,
     fechaNacimiento: val('d_nac'), rating: val('d_rating'),
     domicilioMaps: val('d_domMaps'), nacionalidad: val('d_nacionalidad'), estadoCivil: val('d_estadoCivil'),
     referenciaNombre: val('d_refNombre'), referenciaTel: val('d_refTel'), nivelEstudios: val('d_estudios'),
@@ -189,6 +197,17 @@ export async function saveDriver(id) {
     files: (ex || {}).files || []
   };
   if (await save('drivers', o)) { closeModal(); toast('Chofer guardado'); }
+}
+export async function agregarComunicacion(id) {
+  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const notas = val('cm_notas');
+  const comunicaciones = (d.comunicaciones || []).concat([{ id: uid(), tipo: val('cm_tipo'), fecha: val('cm_fecha') || iso(today()), notas }]);
+  if (await save('drivers', Object.assign({}, d, { comunicaciones }))) { toast('Comunicación registrada'); driverForm(id); }
+}
+export async function borrarComunicacion(id, comId) {
+  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const comunicaciones = (d.comunicaciones || []).filter(c => c.id !== comId);
+  if (await save('drivers', Object.assign({}, d, { comunicaciones }))) { toast('Borrado'); driverForm(id); }
 }
 export async function regenerarLinkPortal(id) {
   const d = S.drivers.find(x => x.id === id); if (!d) return;

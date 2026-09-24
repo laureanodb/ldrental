@@ -253,6 +253,11 @@ export function alerts() {
     const key = 'driver:' + d.id + ':lic'; if (isSnoozed(key)) return;
     out.push(Object.assign({ who: d.nombre, sub: 'Licencia', kind: 'driver', id: d.id, key }, s));
   });
+  activeDrivers().forEach(d => {
+    const s = vs(d.antecedentesVenc); if (!s) return;
+    const key = 'driver:' + d.id + ':antecedentes'; if (isSnoozed(key)) return;
+    out.push(Object.assign({ who: d.nombre, sub: 'Certificado de antecedentes', kind: 'driver', id: d.id, key }, s));
+  });
   S.multas.filter(m => m.estado === 'pendiente' || m.estado === 'vencida').forEach(m => {
     const s = vs(m.fechaLimitePago); if (!s) return;
     const key = 'multa:' + m.id; if (isSnoozed(key)) return;
@@ -481,6 +486,17 @@ export function autosConGastoExcesivo() {
   const promedio = conGasto.reduce((a, x) => a + x.gasto, 0) / conGasto.length;
   if (!promedio) return [];
   return conGasto.filter(x => x.gasto > promedio * 2).map(x => ({ c: x.c, gasto: x.gasto, promedio })).sort((a, b) => b.gasto - a.gasto);
+}
+export function resumenEstadoFlota() {
+  const flota = activeCars();
+  const porTipo = { alquiler: 0, financiado: 0, disponible: 0, taller: 0 };
+  const porEstado = { ok: 0, soft: 0, warn: 0, bad: 0 };
+  flota.forEach(c => {
+    if (porTipo[c.tipo] != null) porTipo[c.tipo]++;
+    const e = estadoGeneralAuto(c);
+    if (porEstado[e] != null) porEstado[e]++;
+  });
+  return { total: flota.length, porTipo, porEstado };
 }
 export function planRenovacionFlota() {
   const t = today();

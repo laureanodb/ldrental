@@ -1,7 +1,7 @@
 import { S, ui } from '../state.js';
 import { esc, money, moneyUSD } from '../utils.js';
 import { isContract, calc, vs, driverName, plate, tipoBadge, badge, peorItemMantenimiento, estadoGeneralAuto } from '../calc.js';
-import { VENC, MOTIVOS_REEMPLAZO, TIPOS } from '../constants.js';
+import { VENC, MOTIVOS_REEMPLAZO, TIPOS, CUMPLIMIENTO_NORMATIVO_ITEMS } from '../constants.js';
 
 export function viewAutos() {
   const nVendidos = S.cars.filter(c => c.vendido).length;
@@ -34,6 +34,10 @@ export function listAutos() {
     if (c.aReemplazar) b += ' ' + badge('warn', 'A reemplazar: ' + (MOTIVOS_REEMPLAZO.find(x => x[0] === c.motivoReemplazo) || [0, 'motivo'])[1]);
     if (!c.vendido && S.siniestros.some(s => s.carId === c.id && s.estado !== 'cerrado')) b += ' ' + badge('bad', 'Siniestro abierto');
     if (c.files && c.files.length) b += ' ' + badge('mute', c.files.length + (c.files.length === 1 ? ' archivo' : ' archivos'));
+    if (!c.vendido) {
+      const gotCn = CUMPLIMIENTO_NORMATIVO_ITEMS.filter(x => c.cumplimientoNormativo && c.cumplimientoNormativo[x[0]]).length;
+      if (gotCn < CUMPLIMIENTO_NORMATIVO_ITEMS.length) b += ' ' + badge('soft', 'Cumplimiento ' + gotCn + '/' + CUMPLIMIENTO_NORMATIVO_ITEMS.length);
+    }
     (c.tags || []).forEach(tg => b += ' ' + badge('mute', tg));
     const estGen = !c.vendido ? estadoGeneralAuto(c) : null;
     const dotColor = { ok: 'var(--ok)', soft: 'var(--ok)', warn: 'var(--warn)', bad: 'var(--bad)' }[estGen];

@@ -65,6 +65,9 @@ export const MCATS = [['factura', 'Factura del taller'], ['foto', 'Foto del trab
 export const TCATS = [['acta', 'Foto del acta/infracción'], ['comprobante', 'Comprobante de pago'], ['otro', 'Otro']];
 export const ACCEPT = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 
+export const RECLAMO_SEGURO_ESTADOS = [['pendiente', 'Pendiente de presentar'], ['presentado', 'Presentado a la aseguradora'], ['aprobado', 'Aprobado'], ['rechazado', 'Rechazado']];
+export const COMUNICACION_TIPOS = [['llamada', 'Llamada'], ['mensaje', 'Mensaje / WhatsApp'], ['reunion', 'Reunión presencial'], ['otro', 'Otro']];
+export const CUMPLIMIENTO_NORMATIVO_ITEMS = [['vtv', 'VTV vigente'], ['seguro', 'Seguro vigente'], ['habilitacion', 'Habilitación de transporte tramitada'], ['cedula', 'Cédula verde/azul al día'], ['titulo', 'Título de propiedad en regla']];
 export const TRANSMISIONES = [['manual', 'Manual'], ['automatica', 'Automática']];
 export const COBERTURAS_SEGURO = [['todo_riesgo', 'Todo riesgo'], ['terceros_completo', 'Terceros completo'], ['terceros_basico', 'Terceros básico']];
 export const ELEMENTOS_SEGURIDAD = [['matafuegos', 'Matafuegos'], ['baliza', 'Baliza'], ['botiquin', 'Botiquín'], ['cinturones', 'Cinturones de seguridad']];

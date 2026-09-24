@@ -18,7 +18,7 @@ function urlBase64ToUint8Array(base64String) {
   return out;
 }
 
-const cache = { checked: false, checking: false, estado: 'inactivo' };
+const cache = { checked: false, checking: false, estado: 'inactivo', prefs: { vencimientos: true, deuda: true, multas: true } };
 export function pushEstadoCache() { return cache; }
 export async function refrescarPushEstado() {
   if (cache.checking) return;
@@ -30,6 +30,11 @@ export async function refrescarPushEstado() {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       cache.estado = sub ? 'activo' : 'inactivo';
+      if (sub) {
+        const j = sub.toJSON();
+        const r = await sb.from('push_subscriptions').select('prefs').eq('endpoint', j.endpoint).maybeSingle();
+        if (r.data && r.data.prefs) cache.prefs = Object.assign({ vencimientos: true, deuda: true, multas: true }, r.data.prefs);
+      }
     }
   } catch (e) { cache.estado = 'inactivo'; }
   cache.checked = true; cache.checking = false;
@@ -64,6 +69,25 @@ export async function guardarHorarioPush() {
   const r = await sb.rpc('set_push_schedule', { hora_utc: horaUTC });
   if (r.error) { toast('No se pudo guardar el horario: ' + r.error.message); return; }
   toast('Horario guardado. El resumen diario va a llegar a las ' + horaAR + ':00 (hora Argentina).');
+}
+export async function guardarPreferenciasPush() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return;
+    const prefs = {
+      vencimientos: document.getElementById('pp_venc').checked,
+      deuda: document.getElementById('pp_deuda').checked,
+      multas: document.getElementById('pp_multas').checked,
+    };
+    const j = sub.toJSON();
+    const r = await sb.from('push_subscriptions').update({ prefs }).eq('endpoint', j.endpoint);
+    if (r.error) { toast('No se pudo guardar: ' + r.error.message); return; }
+    cache.prefs = prefs;
+    toast('Preferencias guardadas');
+  } catch (e) {
+    toast('No se pudo guardar: ' + ((e && e.message) || 'error'));
+  }
 }
 export async function desactivarPush() {
   try {

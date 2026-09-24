@@ -1,6 +1,6 @@
 import { S } from '../state.js';
 import { $, val, uid, iso, today, esc, fdate, money, moneyUSD, parse } from '../utils.js';
-import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS, MOTIVOS_REEMPLAZO, TIPOS_SINIESTRO, SINIESTRO_ESTADOS, ASEGURADORAS, TRANSMISIONES, COBERTURAS_SEGURO, ELEMENTOS_SEGURIDAD } from '../constants.js';
+import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS, MOTIVOS_REEMPLAZO, TIPOS_SINIESTRO, SINIESTRO_ESTADOS, ASEGURADORAS, TRANSMISIONES, COBERTURAS_SEGURO, ELEMENTOS_SEGURIDAD, CUMPLIMIENTO_NORMATIVO_ITEMS, RECLAMO_SEGURO_ESTADOS } from '../constants.js';
 import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas, estadoGeneralAuto } from '../calc.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
@@ -124,6 +124,7 @@ export function carForm(id) {
   '<label class="f"><span>Dónde están</span><input id="c_llavesUbicacion" value="' + esc(c.llavesUbicacion) + '"></label></div>' +
   '<div class="two"><label class="f"><span>Última inspección mecánica general</span><input id="c_ultimaInspeccionGeneral" type="date" value="' + esc(c.ultimaInspeccionGeneral) + '"></label>' +
   '<label class="f"><span>Último lavado / detailing</span><input id="c_ultimoLavado" type="date" value="' + esc(c.ultimoLavado) + '"></label></div>' +
+  '<div class="sec-t">Cumplimiento normativo para dar de alta</div>' + CUMPLIMIENTO_NORMATIVO_ITEMS.map(x => '<label class="chk"><input type="checkbox" id="cn_' + x[0] + '"' + (c.cumplimientoNormativo && c.cumplimientoNormativo[x[0]] ? ' checked' : '') + '><span>' + x[1] + '</span></label>').join('') +
   '<div class="sec-t">Estado de flota</div>' +
   '<label class="chk"><input type="checkbox" id="c_soloAlquiler"' + (c.soloAlquiler ? ' checked' : '') + '><span>Solo alquiler, nunca financiado</span></label>' +
   '<label class="chk"><input type="checkbox" id="c_enPreparacion"' + (c.enPreparacion ? ' checked' : '') + '><span>En preparación (todavía no disponible para asignar)</span></label>' +
@@ -231,7 +232,7 @@ export function carForm(id) {
     const G = S.gastos.filter(g => g.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     const totalGastos = G.reduce((a, g) => a + (+g.costo || 0), 0);
     gastos += '<div class="sec-t row between">Gastos<span class="small muted">' + money(totalGastos) + ' en total</span></div>';
-    if (G.length) gastos += G.map(g => '<div class="card row"><div class="grow"><div>' + money(g.costo) + ' <span class="small muted">' + esc(gastoCatLabel(g.categoria)) + (g.sinFactura ? ' · sin factura' : '') + '</span></div><div class="small muted">' + fdate(g.fecha) + (g.proveedor ? ' · ' + esc(g.proveedor) : '') + (g.descripcion ? ' · ' + esc(g.descripcion) : '') + '</div></div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delGasto(\'' + g.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    if (G.length) gastos += G.map(g => '<div class="card row"><div class="grow tap" onclick="' + (g.reclamoSeguro ? "reclamoSeguroForm('" + g.id + "')" : '') + '"><div>' + money(g.costo) + ' <span class="small muted">' + esc(gastoCatLabel(g.categoria)) + (g.sinFactura ? ' · sin factura' : '') + '</span></div><div class="small muted">' + fdate(g.fecha) + (g.proveedor ? ' · ' + esc(g.proveedor) : '') + (g.descripcion ? ' · ' + esc(g.descripcion) : '') + '</div>' + (g.reclamoSeguro ? badge(g.reclamoEstado === 'aprobado' ? 'ok' : g.reclamoEstado === 'rechazado' ? 'bad' : 'warn', 'Seguro: ' + (RECLAMO_SEGURO_ESTADOS.find(x => x[0] === g.reclamoEstado) || [0, g.reclamoEstado])[1]) : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="event.stopPropagation();confirmDel(this,()=>delGasto(\'' + g.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     gastos += '<button class="btn sec block" style="margin:8px 0 20px" onclick="gastoForm(\'' + c.id + '\')">+ Agregar gasto</button>';
     const MU = S.multas.filter(m => m.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     const estLabel = e => (MULTA_ESTADOS.find(x => x[0] === e) || [0, e])[1];
@@ -356,6 +357,7 @@ export async function saveCar(id) {
     gastosPatentamiento: +val('c_gastosPatentamiento') || 0, titularRegistral: val('c_titularRegistral'),
     copiasLlave: +val('c_copiasLlave') || 0, llavesUbicacion: val('c_llavesUbicacion'),
     ultimaInspeccionGeneral: val('c_ultimaInspeccionGeneral'), ultimoLavado: val('c_ultimoLavado'),
+    cumplimientoNormativo: Object.fromEntries(CUMPLIMIENTO_NORMATIVO_ITEMS.map(x => [x[0], document.getElementById('cn_' + x[0]).checked])),
     elementosSeguridad: Object.fromEntries(ELEMENTOS_SEGURIDAD.map(x => [x[0], document.getElementById('es_' + x[0]).checked])),
     bateria12vFecha: val('c_bateria12vFecha'),
     neumaticosMarca: val('c_neumaticosMarca'), rodadoPulgadas: val('c_rodadoPulgadas'),
