@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { VENC, TIPOS, MANTENIMIENTO_ITEMS } from './constants.js';
+import { VENC, TIPOS, MANTENIMIENTO_ITEMS, COLS } from './constants.js';
 import { days, parse, today, iso, esc, fdate, money, num1 } from './utils.js';
 import { settings } from './settings.js';
 import { isSnoozed } from './snooze.js';
@@ -528,6 +528,16 @@ export function proyeccionFlujoCaja(semanas) {
     }
   });
   return out;
+}
+export function usoDeDatos() {
+  let registros = 0, bytes = 0;
+  const porColeccion = COLS.map(c => {
+    const arr = S[c] || [];
+    const b = new Blob ? new Blob([JSON.stringify(arr)]).size : JSON.stringify(arr).length;
+    registros += arr.length; bytes += b;
+    return { col: c, n: arr.length, bytes: b };
+  }).filter(x => x.n);
+  return { registros, bytes, porColeccion: porColeccion.sort((a, b) => b.bytes - a.bytes) };
 }
 export const plate = p => '<span class="plate">' + esc(p || 'Sin patente') + '</span>';
 export const badge = (cls, t) => '<span class="badge b-' + cls + '">' + esc(t) + '</span>';

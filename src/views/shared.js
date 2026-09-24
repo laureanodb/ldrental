@@ -1,6 +1,6 @@
 import { S } from '../state.js';
 import { esc, val } from '../utils.js';
-import { badge } from '../calc.js';
+import { badge, usoDeDatos } from '../calc.js';
 import { settings, saveSettings } from '../settings.js';
 import { snooze } from '../snooze.js';
 import { toast } from '../modal.js';
@@ -73,9 +73,17 @@ export function subirLogo(input) {
   reader.readAsDataURL(f);
 }
 export function quitarLogo() { saveSettings({ companyLogo: '' }); toast('Logo quitado'); render(); }
+function fmtBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(0) + ' KB';
+  return (b / (1024 * 1024)).toFixed(1) + ' MB';
+}
 export function backupCard() {
+  const u = usoDeDatos();
   return '<h2>Copia de seguridad</h2><div class="card"><div class="small muted" style="margin-bottom:10px">Descargá un archivo con todos tus autos, choferes y cobros y guardalo en tu celular, Drive o mail. Sirve para recuperar todo si algo se pierde. Las fotos y PDF adjuntos no van dentro del archivo.</div>' +
   '<div class="row">' + '<button class="btn grow" onclick="backup()">Descargar copia</button>' + '<label class="btn sec grow filebtn">Restaurar copia<input id="restoreIn" type="file" onchange="pickRestore(this)"></label></div></div>' +
+  '<div class="card"><div class="row between"><span class="muted">Uso de datos</span><b>' + u.registros + ' registros · ' + fmtBytes(u.bytes) + '</b></div>' +
+  u.porColeccion.slice(0, 6).map(x => '<div class="row between small" style="padding:2px 0"><span class="muted">' + esc(x.col) + '</span><span>' + x.n + ' · ' + fmtBytes(x.bytes) + '</span></div>').join('') + '</div>' +
   (canVerFinanzas() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Exportá todos los datos a un archivo Excel (una hoja por sección) para analizarlos o compartirlos.</div>' +
   '<button class="btn sec block" onclick="exportarExcel()">Exportar todo a Excel</button></div>' : '') +
   '<button class="btn sec block" style="margin-top:8px" onclick="logout()">Cerrar sesión (' + esc(S.user && S.user.email || '') + ')</button>';
