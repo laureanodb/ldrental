@@ -3,15 +3,19 @@
 // en el chofer, devuelve su deuda, próximo pago, cronograma de cuotas si
 // es financiado, datos del auto asignado y los últimos pagos. No expone
 // nada de otros choferes ni de la operación en general.
-// POST { id, t, accion: 'service'|'encuesta', ... }: valida el mismo token
-// y manda una notificación push a la empresa (no guarda nada en la base,
-// es un aviso best-effort). El token se genera y se puede regenerar desde
-// la ficha del chofer en la app.
+// POST { id, t, accion: 'service'|'encuesta'|'foto', ... }: valida el mismo
+// token. 'service' y 'encuesta' solo mandan una notificación push a la
+// empresa (no guardan nada, es un aviso best-effort). 'foto' sube una
+// imagen (base64) al bucket de documentos y la agrega a los archivos del
+// auto asignado al chofer (valida que el auto sea suyo). El token se
+// genera y se puede regenerar desde la ficha del chofer en la app.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
 
 const METODOS: Record<string, string> = { efectivo: 'Efectivo', transferencia: 'Transferencia', mercadopago: 'MercadoPago', otro: 'Otro' };
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, apikey, content-type' };
+const BUCKET = Deno.env.get('DOCUMENTOS_BUCKET') || 'documentos';
+const MAX_FOTO_BYTES = 8 * 1024 * 1024;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
@@ -65,6 +69,25 @@ Deno.serve(async (req) => {
         const rating = Math.max(1, Math.min(5, +body.rating || 0));
         const comentario = String(body.comentario || '').trim().slice(0, 300);
         await avisarPush(sb, 'Encuesta de satisfacción', (d.nombre || 'Chofer') + ' · ' + rating + '/5' + (comentario ? ' — ' + comentario : ''));
+      } else if (accion === 'foto') {
+        const carId = String(body.carId || '');
+        const dataUrl = String(body.imagen || '');
+        const m = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
+        if (!carId || !m) return json({ ok: false, error: 'Foto inválida' }, 400);
+        const { data: carRow } = await sb.from('cars').select('id,data').eq('id', carId).maybeSingle();
+        if (!carRow || !carRow.data || carRow.data.choferId !== driverId) return json({ ok: false, error: 'Auto no asignado a este chofer' }, 403);
+        const contentType = m[1];
+        const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0));
+        if (bytes.byteLength > MAX_FOTO_BYTES) return json({ ok: false, error: 'La foto es muy pesada' }, 400);
+        const ext = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
+        const path = new Date().getFullYear() + '/portal-' + crypto.randomUUID() + '.' + ext;
+        const up = await sb.storage.from(BUCKET).upload(path, bytes, { contentType, upsert: false });
+        if (up.error) return json({ ok: false, error: 'No se pudo subir: ' + up.error.message }, 500);
+        const c = Object.assign({ id: carRow.id }, carRow.data);
+        const files = (c.files || []).concat([{ id: path, name: 'foto-chofer-' + new Date().toISOString().slice(0, 10) + '.' + ext, cat: 'fotos', type: contentType, size: bytes.byteLength, fecha: new Date().toISOString().slice(0, 10), subidoPorChofer: true }]);
+        const upd = await sb.from('cars').update({ data: Object.assign({}, c, { files }) }).eq('id', carId);
+        if (upd.error) return json({ ok: false, error: 'No se pudo guardar: ' + upd.error.message }, 500);
+        await avisarPush(sb, 'Foto subida por ' + (d.nombre || 'un chofer'), c.patente ? 'Auto ' + c.patente : 'Foto nueva en un auto');
       } else {
         return json({ ok: false, error: 'Acción inválida' }, 400);
       }
@@ -119,7 +142,7 @@ Deno.serve(async (req) => {
           }
         }
       }
-      return { patente: c.patente || '', marca: c.marca || '', modelo: c.modelo || '', vtv: c.vtv || '', seguro: c.seguro || '', tipo: c.tipo, monto: +c.monto || 0, moneda, debt, proximo, cuotas: +c.cuotas || 0, cuotaActual, saldo };
+      return { id: c.id, patente: c.patente || '', marca: c.marca || '', modelo: c.modelo || '', vtv: c.vtv || '', seguro: c.seguro || '', tipo: c.tipo, monto: +c.monto || 0, moneda, debt, proximo, cuotas: +c.cuotas || 0, cuotaActual, saldo };
     });
 
     const pagos = payments.filter((p: any) => p.fecha).sort((a: any, b: any) => b.fecha.localeCompare(a.fecha)).slice(0, 20)

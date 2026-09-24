@@ -80,6 +80,11 @@ function renderPortal(app, j) {
     '<label class="f"><span>Motivo</span><textarea id="pt_motivo" placeholder="ej: cambio de aceite, ruido en el freno..."></textarea></label>' +
     '<button class="btn sec block" id="pt_btn">Pedir turno</button>' +
     '<div class="small muted" id="pt_status" style="margin-top:6px"></div></div>';
+    h += '<div class="sec-t">Subir una foto del auto</div><div class="card">' +
+    '<label class="f"><span>Auto</span><select id="ph_car">' + autos.map(a => '<option value="' + esc(a.id) + '">' + esc(a.patente) + '</option>').join('') + '</select></label>' +
+    '<label class="btn sec block filebtn">Elegir foto<input id="ph_file" type="file" accept="image/*" capture="environment"></label>' +
+    '<button class="btn sec block" id="ph_btn" style="margin-top:8px">Subir</button>' +
+    '<div class="small muted" id="ph_status" style="margin-top:6px"></div></div>';
   }
   h += '<div class="sec-t">¿Cómo te está yendo con nosotros?</div><div class="card">' +
   '<div class="row" style="gap:6px;margin-bottom:8px">' + [1, 2, 3, 4, 5].map(n => '<button type="button" class="btn sec sm" data-rating="' + n + '">' + n + ' ★</button>').join('') + '</div>' +
@@ -105,6 +110,37 @@ function renderPortal(app, j) {
   if (enBtn) enBtn.addEventListener('click', () => {
     if (!ratingSel) { wrap.querySelector('#en_status').textContent = 'Elegí una calificación'; return; }
     enviarAccionPortal({ accion: 'encuesta', rating: ratingSel, comentario: wrap.querySelector('#en_comentario').value }, wrap.querySelector('#en_status'), enBtn);
+  });
+  const phBtn = wrap.querySelector('#ph_btn');
+  if (phBtn) phBtn.addEventListener('click', async () => {
+    const inp = wrap.querySelector('#ph_file');
+    const statusEl = wrap.querySelector('#ph_status');
+    const f = inp.files && inp.files[0];
+    if (!f) { statusEl.textContent = 'Elegí una foto primero'; return; }
+    statusEl.textContent = 'Preparando…';
+    let imagen;
+    try { imagen = await comprimirImagen(f); } catch (e) { statusEl.textContent = 'No se pudo procesar la foto'; return; }
+    await enviarAccionPortal({ accion: 'foto', carId: wrap.querySelector('#ph_car').value, imagen }, statusEl, phBtn);
+    inp.value = '';
+  });
+}
+
+function comprimirImagen(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const max = 1280;
+      let w = img.width, h = img.height;
+      if (w > max || h > max) { const s = max / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen')); };
+    img.src = url;
   });
 }
 

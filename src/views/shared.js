@@ -9,7 +9,14 @@ import { render } from '../nav.js';
 import { isAdmin } from '../roles.js';
 import { pushSoportado, pushConfigurado, pushEstadoCache, refrescarPushEstado } from '../push.js';
 import { canVerFinanzas } from '../roles.js';
+import { biometricSoportado, biometricRegistrado } from '../biometric.js';
 
+function biometricCard() {
+  if (!biometricSoportado()) return '';
+  const on = biometricRegistrado();
+  return '<div class="card"><div class="row between"><div><div>Acceso con huella / rostro</div><div class="small muted">' + (on ? 'Activado en este dispositivo.' : 'Entrá más rápido usando la biometría del dispositivo, sin escribir la contraseña.') + '</div></div>' +
+  '<button class="btn sec sm" onclick="' + (on ? 'desactivarBiometria()' : 'activarBiometria()') + '">' + (on ? 'Desactivar' : 'Activar') + '</button></div></div>';
+}
 function pushCard() {
   if (!pushSoportado() || !pushConfigurado()) return '';
   const cache = pushEstadoCache();
@@ -36,6 +43,7 @@ export function ajustesCard() {
   PANEL_KPIS.map(x => '<label class="chk"><input type="checkbox" class="a_kpi" value="' + x[0] + '"' + (settings.panelKpis.includes(x[0]) ? ' checked' : '') + '><span>' + x[1] + '</span></label>').join('') +
   '<button class="btn sec block" style="margin-top:10px" onclick="saveAjustes()">Guardar ajustes</button></div>' +
   pushCard() +
+  biometricCard() +
   (isAdmin() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Umbrales y políticas de la flota.</div>' +
   '<div class="two"><label class="f"><span>Depósito: avisar si baja de <small>%</small></span><input id="a_depPct" inputmode="numeric" value="' + settings.depositoAvisoPct + '"></label>' +
   '<label class="f"><span>Multas: límite acumulado</span><input id="a_multaUmbral" inputmode="numeric" value="' + settings.multaUmbral + '"></label></div>' +

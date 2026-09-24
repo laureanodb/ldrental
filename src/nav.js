@@ -33,7 +33,8 @@ export function go(t) { ui.tab = t; render(); window.scrollTo(0, 0); }
 function offlineBar() {
   const n = queueLength();
   if (navigator.onLine && !n) return '';
-  return '<div class="offlinebar">' + (!navigator.onLine ? 'Sin conexión' : 'Conectado') + (n ? ' · ' + n + ' cambio' + (n === 1 ? '' : 's') + ' por sincronizar' : '') + '</div>';
+  return '<div class="offlinebar row between"><span>' + (!navigator.onLine ? 'Sin conexión' : 'Conectado') + (n ? ' · ' + n + ' cambio' + (n === 1 ? '' : 's') + ' por sincronizar' : '') + '</span>' +
+  (navigator.onLine && n ? '<span class="tap" style="text-decoration:underline" onclick="sincronizarAhora()">Reintentar</span>' : '') + '</div>';
 }
 function topBar() {
   return '<div class="topbar"><span class="tb-brand">' + esc(settings.companyName || 'LD Rental') + '</span>' +

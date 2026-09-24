@@ -35,7 +35,7 @@ export function renderFiles(col, id) {
   if (gallery.length) {
     h += '<div class="photogrid">' + gallery.map(f =>
       '<div class="phototile tap" onclick="viewFile(\'' + esc(f.id) + '\',\'' + esc(f.name) + '\')"><img alt="" data-path="' + esc(f.id) + '">' +
-      '<div class="small muted" style="text-align:center;margin-top:2px">' + fdate(f.fecha) + '</div>' +
+      '<div class="small muted" style="text-align:center;margin-top:2px">' + fdate(f.fecha) + (f.subidoPorChofer ? ' · chofer' : '') + '</div>' +
       (as ? '<button class="btn danger sm" onclick="event.stopPropagation();confirmDel(this,()=>delFile(\'' + col + '\',\'' + id + '\',\'' + esc(f.id) + '\'))">Quitar</button>' : '') + '</div>'
     ).join('') + '</div>';
   }

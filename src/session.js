@@ -10,12 +10,14 @@ import { loadOwnProfile } from './roles.js';
 import { brandH1 } from './settings.js';
 import { generarGastosRecurrentes } from './recurrentes.js';
 import { checkChangelog } from './changelog.js';
+import { biometricRegistrado } from './biometric.js';
 
 export function viewSetup() {
   return '<div class="login">' + brandH1() + '<div class="card"><b>Falta configurar la conexión</b><p class="small muted">Completá VITE_SUPABASE_URL y VITE_SUPABASE_KEY en el archivo .env, con los datos de tu proyecto de Supabase.</p></div></div>';
 }
 export function viewLogin() {
   return '<div class="login">' + brandH1() + '<p class="sub">Ingresá con tu usuario</p>' +
+  (biometricRegistrado() ? '<button class="btn block" style="margin-bottom:10px" onclick="loginConBiometria()">Entrar con huella / rostro</button><div class="small muted" style="text-align:center;margin-bottom:14px">o con tu contraseña</div>' : '') +
   '<label class="f"><span>Email</span><input id="l_email" type="email" autocomplete="username" inputmode="email" autocapitalize="none"></label>' +
   '<label class="f"><span>Contraseña</span><input id="l_pass" type="password" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doLogin()"></label>' +
   '<button class="btn block" onclick="doLogin()">Entrar</button><div id="l_err" class="small" style="color:var(--bad);margin-top:10px"></div></div>';
@@ -28,7 +30,10 @@ export async function doLogin() {
   const r = await sb.auth.signInWithPassword({ email, password });
   if (r.error) { err.style.color = 'var(--bad)'; err.textContent = /invalid login/i.test(r.error.message) ? 'Email o contraseña incorrectos.' : r.error.message; }
 }
-export async function logout() { await sb.auth.signOut(); }
+export async function logout() {
+  try { localStorage.removeItem('flota-biometria'); } catch (e) {}
+  await sb.auth.signOut();
+}
 export async function start() {
   S.ready = false; render();
   await flushQueue();
