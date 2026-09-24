@@ -482,6 +482,30 @@ export function puntoEquilibrio(c) {
 export function gastoMantenimientoAuto(c) {
   return S.mantenimientos.filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
 }
+export function lineaDeTiempoAuto(c) {
+  const out = [];
+  (c.historialChoferes || []).forEach(x => {
+    out.push({ fecha: x.desde, texto: 'Asignado a ' + (S.drivers.find(d => d.id === x.choferId) || {}).nombre || 'chofer eliminado' });
+    if (x.hasta) out.push({ fecha: x.hasta, texto: 'Desasignado de ' + ((S.drivers.find(d => d.id === x.choferId) || {}).nombre || 'chofer eliminado') });
+  });
+  (c.montoHistorial || []).forEach(x => out.push({ fecha: x.fecha, texto: 'Monto actualizado a ' + money(x.monto) }));
+  (c.vencHistorial || []).forEach(x => out.push({ fecha: x.cambiado, texto: (VENC.find(v => v[0] === x.tipo) || [0, x.tipo])[1] + ' actualizado' }));
+  S.mantenimientos.filter(m => m.carId === c.id).forEach(m => out.push({ fecha: m.fecha, texto: 'Mantenimiento: ' + (m.label || m.item) + ' — ' + money(m.costo) }));
+  S.gastos.filter(g => g.carId === c.id).forEach(g => out.push({ fecha: g.fecha, texto: 'Gasto: ' + money(g.costo) }));
+  S.multas.filter(m => m.carId === c.id).forEach(m => out.push({ fecha: m.fecha, texto: 'Multa registrada — ' + money(m.monto) }));
+  S.siniestros.filter(s => s.carId === c.id).forEach(s => out.push({ fecha: s.fecha, texto: 'Siniestro registrado' }));
+  S.inspecciones.filter(x => x.carId === c.id).forEach(x => out.push({ fecha: x.fecha, texto: (x.tipo === 'entrega' ? 'Inspección de entrega' : 'Inspección de recepción') }));
+  if (c.vendido && c.fechaVenta) out.push({ fecha: c.fechaVenta, texto: 'Auto vendido' });
+  return out.filter(x => x.fecha).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 25);
+}
+export function mejorPeorMesAuto(c) {
+  const porMes = {};
+  S.payments.filter(p => p.carId === c.id).forEach(p => { const k = p.fecha.slice(0, 7); porMes[k] = (porMes[k] || 0) + (+p.monto || 0); });
+  const entries = Object.entries(porMes);
+  if (entries.length < 2) return null;
+  entries.sort((a, b) => b[1] - a[1]);
+  return { mejor: entries[0], peor: entries[entries.length - 1] };
+}
 export function costoTotalAuto(c) {
   const gastos = S.gastos.filter(g => g.carId === c.id).reduce((a, g) => a + (+g.costo || 0), 0);
   const mant = S.mantenimientos.filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);

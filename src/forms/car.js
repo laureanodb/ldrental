@@ -1,7 +1,7 @@
 import { S } from '../state.js';
-import { $, val, uid, iso, today, esc, fdate, money, moneyUSD, parse } from '../utils.js';
+import { $, val, uid, iso, today, esc, fdate, money, moneyUSD, parse, days } from '../utils.js';
 import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS, MOTIVOS_REEMPLAZO, TIPOS_SINIESTRO, SINIESTRO_ESTADOS, ASEGURADORAS, TRANSMISIONES, COBERTURAS_SEGURO, ELEMENTOS_SEGURIDAD, CUMPLIMIENTO_NORMATIVO_ITEMS, RECLAMO_SEGURO_ESTADOS } from '../constants.js';
-import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas, estadoGeneralAuto } from '../calc.js';
+import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas, estadoGeneralAuto, mejorPeorMesAuto, lineaDeTiempoAuto } from '../calc.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -62,11 +62,15 @@ export function carForm(id) {
   else if (ex) {
     const estGen = estadoGeneralAuto(c);
     const estLabel = { ok: 'Todo al día', soft: 'Todo al día', warn: 'Algo pendiente', bad: 'Vencido / atención' }[estGen];
-    h += '<div class="card" style="margin-bottom:10px">' + badge(estGen, estLabel) + '</div>';
+    const aceite = (c.mantenimientoPlan || []).find(p => p.item === 'aceite' && (p.intervaloKm || p.intervaloMeses));
+    const eAceite = aceite ? estadoPlanItem(c, aceite) : null;
+    h += '<div class="card" style="margin-bottom:10px">' + badge(estGen, estLabel) + (eAceite ? ' ' + badge(eAceite.cls, 'Aceite: ' + textoRestante(eAceite)) : '') + '</div>';
   }
   if (ex && !c.vendido) {
+    const asigActual = c.choferId ? (c.historialChoferes || []).slice().reverse().find(hh => hh.choferId === c.choferId && !hh.hasta) : null;
+    const tiempoConChofer = asigActual ? days(parse(asigActual.desde), today()) : null;
     h += '<div class="card" style="margin-bottom:10px">' + (c.choferId ?
-      '<div class="row between"><div><div class="small muted">Chofer asignado</div><b>' + esc(driverName(c.choferId)) + '</b></div>' +
+      '<div class="row between"><div><div class="small muted">Chofer asignado' + (tiempoConChofer != null ? ' · hace ' + (tiempoConChofer < 30 ? tiempoConChofer + ' días' : Math.round(tiempoConChofer / 30) + ' meses') : '') + '</div><b>' + esc(driverName(c.choferId)) + '</b></div>' +
       '<div class="row"><button class="btn sec sm" onclick="asignarChoferForm(\'' + c.id + '\')">Cambiar</button>' +
       (c.tipo === 'alquiler' ? '<button class="btn danger sm" onclick="confirmDel(this,()=>quitarChofer(\'' + c.id + '\'))">Quitar</button>' : '') + '</div></div>'
       : '<div class="row between"><span class="muted">Sin chofer asignado</span><button class="btn sm" onclick="asignarChoferForm(\'' + c.id + '\')">Asignar chofer</button></div>') +
@@ -191,7 +195,14 @@ export function carForm(id) {
       '<label class="chk"><input type="checkbox" id="c_tituloTransferido"' + (c.tituloTransferido ? ' checked' : '') + '><span>Título transferido al chofer</span></label>' +
       '<label class="f"><span>Fecha de transferencia</span><input id="c_tituloTransferidoFecha" type="date" value="' + esc(c.tituloTransferidoFecha || iso(today())) + '"></label></div>';
     }
-    if (c.choferId) contrato += '<div class="row" style="margin:8px 0"><button class="btn sec grow" onclick="contratoForm(\'' + c.id + '\')">Generar contrato</button></div>';
+    if (c.choferId) contrato += '<div class="row" style="margin:8px 0"><button class="btn sec grow" onclick="contratoForm(\'' + c.id + '\')">Generar contrato</button><button class="btn sec" onclick="generarConstanciaCesion(\'' + c.id + '\')">Constancia de uso</button></div>';
+    const mp = mejorPeorMesAuto(c);
+    if (mp) {
+      const mesLabel = k => new Date(k + '-02').toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+      contrato += '<div class="sec-t">Mejor y peor mes</div><div class="card">' +
+      '<div class="row between small"><span class="muted">Mejor: ' + esc(mesLabel(mp.mejor[0])) + '</span><b style="color:var(--ok)">' + money(mp.mejor[1]) + '</b></div>' +
+      '<div class="row between small" style="margin-top:2px"><span class="muted">Peor: ' + esc(mesLabel(mp.peor[0])) + '</span><b style="color:var(--bad)">' + money(mp.peor[1]) + '</b></div></div>';
+    }
   }
   contrato += '<div id="contrato"><label class="f"><span>Chofer</span><select id="c_chofer"><option value="">Elegir chofer</option>' + S.drivers.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre))).map(d => '<option value="' + d.id + '"' + (c.choferId === d.id ? ' selected' : '') + '>' + esc(d.nombre) + '</option>').join('') + '</select></label>' +
   '<div id="finbox" class="two"><label class="f"><span id="lbltotal">Total a pagar en cuotas</span><input id="c_total" inputmode="decimal" value="' + esc(c.total || '') + '" oninput="autoCuota()"></label>' +
@@ -267,6 +278,11 @@ export function carForm(id) {
         '<div class="row between small"><span class="muted">Precio de venta</span><span>' + money(r.precioVenta) + '</span></div>' +
         '<div class="row between" style="margin-top:6px"><b>Resultado</b><b style="color:' + (r.resultado >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(r.resultado) + '</b></div></div>';
       }
+    }
+    const LT = lineaDeTiempoAuto(c);
+    if (LT.length) {
+      hist += '<div class="sec-t" style="margin-top:0">Línea de tiempo</div><div class="card">' +
+      LT.map(x => '<div class="row between small" style="padding:3px 0"><span>' + esc(x.texto) + '</span><span class="muted">' + fdate(x.fecha) + '</span></div>').join('') + '</div>';
     }
     const I = S.inspecciones.filter(x => x.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     hist += '<div class="sec-t">Inspecciones de entrega/recepción</div>';
@@ -439,7 +455,8 @@ export function venderAutoForm(id) {
   const c = S.cars.find(x => x.id === id); if (!c) return;
   const h = '<h3>Marcar como vendido — ' + esc(c.patente) + '</h3>' +
   '<label class="f"><span>Precio de venta</span><input id="cv_precio" inputmode="decimal"></label>' +
-  '<label class="f"><span>Fecha de venta</span><input id="cv_fecha" type="date" value="' + iso(today()) + '"></label>' +
+  '<div class="two"><label class="f"><span>Fecha de venta</span><input id="cv_fecha" type="date" value="' + iso(today()) + '"></label>' +
+  '<label class="f"><span>Km al vender</span><input id="cv_km" inputmode="numeric" value="' + esc(c.km || '') + '"></label></div>' +
   '<div class="row"><button class="btn grow" onclick="confirmarVenta(\'' + c.id + '\')">Confirmar venta</button><button class="btn sec" onclick="carForm(\'' + c.id + '\')">Cancelar</button></div>';
   openModal(h);
 }
@@ -447,7 +464,9 @@ export async function confirmarVenta(id) {
   const c = S.cars.find(x => x.id === id); if (!c) return;
   const precioVenta = +val('cv_precio') || 0;
   const fechaVenta = val('cv_fecha') || iso(today());
-  if (await save('cars', Object.assign({}, c, { vendido: true, precioVenta, fechaVenta }))) {
+  const kmVenta = +val('cv_km') || 0;
+  const kmHistorial = kmVenta && kmVenta !== (+c.km || 0) ? (c.kmHistorial || []).concat([{ fecha: fechaVenta, km: kmVenta }]) : c.kmHistorial;
+  if (await save('cars', Object.assign({}, c, { vendido: true, precioVenta, fechaVenta, km: kmVenta || c.km, kmHistorial }))) {
     await save('recordatorios', { id: uid(), texto: 'Dar de baja el seguro y la patente de ' + (c.patente || 'auto vendido'), fecha: iso(today()), hecho: false });
     closeModal(); toast('Auto marcado como vendido');
   }

@@ -21,7 +21,7 @@ import { multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta }
 import { siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro } from './forms/siniestro.js';
 import { reciboPDF, reciboCompartir } from './recibo.js';
 import { descargarReporteEjecutivo } from './reporte-ejecutivo.js';
-import { contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato } from './contrato.js';
+import { contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion } from './contrato.js';
 import { exportarExcel } from './export-excel.js';
 import { activarPush, desactivarPush, guardarHorarioPush, guardarPreferenciasPush } from './push.js';
 import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion } from './forms/driver.js';
@@ -71,7 +71,7 @@ Object.assign(window, {
   multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta,
   siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro,
   reciboPDF, reciboCompartir, descargarReporteEjecutivo, exportarExcel, activarPush, desactivarPush, guardarHorarioPush, guardarPreferenciasPush,
-  contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato,
+  contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion,
   driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion,
   depositoForm, saveDeposito, delDeposito,
   payForm, onPayCar, savePay, delPay, toggleDepositado,

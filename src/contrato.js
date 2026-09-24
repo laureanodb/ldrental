@@ -7,6 +7,31 @@ import { TIPOS } from './constants.js';
 
 let firmaCtx = null, firmaTrazada = false, firmaDrawing = false, firmaUltimo = null;
 
+export async function generarConstanciaCesion(carId) {
+  const c = carById(carId);
+  if (!c) { toast('Auto no encontrado'); return; }
+  if (!c.choferId) { toast('Asigná un chofer al auto antes de generar la constancia'); return; }
+  const d = S.drivers.find(x => x.id === c.choferId);
+  if (!d) { toast('Chofer no encontrado'); return; }
+  const { jsPDF } = await import('jspdf');
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  let y = 24;
+  doc.setFontSize(16); doc.text(settings.companyName || 'LD Rental', 14, y); y += 10;
+  doc.setFontSize(13); doc.text('Constancia de cesión de uso de vehículo', 14, y); y += 12;
+  doc.setFontSize(11);
+  const linea = t => { doc.text(t, 14, y, { maxWidth: 180 }); y += 9; };
+  linea('Por medio de la presente, ' + (settings.companyName || 'LD Rental') + ' hace constar que el vehículo detallado a continuación se encuentra cedido en uso a:');
+  y += 2;
+  linea('Conductor: ' + d.nombre + (d.dni ? ' — DNI ' + d.dni : ''));
+  linea('Vehículo: ' + [c.marca, c.modelo].filter(Boolean).join(' ') + ' — Patente ' + (c.patente || '—'));
+  if (c.anio) linea('Año: ' + c.anio);
+  linea('Fecha de emisión: ' + fdate(iso(today())));
+  y += 6;
+  linea('Esta constancia certifica la autorización de uso del vehículo mencionado, a los fines que el interesado estime corresponder.');
+  doc.save('constancia-cesion-' + (c.patente || 'auto') + '-' + iso(today()) + '.pdf');
+  toast('Constancia descargada');
+}
+
 export function contratoForm(carId) {
   const c = carById(carId);
   if (!c) { toast('Auto no encontrado'); return; }
