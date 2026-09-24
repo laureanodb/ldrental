@@ -36,8 +36,14 @@ function offlineBar() {
   return '<div class="offlinebar row between"><span>' + (!navigator.onLine ? 'Sin conexión' : 'Conectado') + (n ? ' · ' + n + ' cambio' + (n === 1 ? '' : 's') + ' por sincronizar' : '') + '</span>' +
   (navigator.onLine && n ? '<span class="tap" style="text-decoration:underline" onclick="sincronizarAhora()">Reintentar</span>' : '') + '</div>';
 }
+function syncDot() {
+  const n = queueLength();
+  const cls = !navigator.onLine ? 'bad' : n ? 'warn' : 'ok';
+  const title = !navigator.onLine ? 'Sin conexión' : n ? n + ' cambio' + (n === 1 ? '' : 's') + ' por sincronizar (tocá para reintentar)' : 'Todo sincronizado';
+  return '<span class="syncdot ' + cls + '" title="' + esc(title) + '"' + (navigator.onLine && n ? ' onclick="sincronizarAhora()"' : '') + '></span>';
+}
 function topBar() {
-  return '<div class="topbar"><span class="tb-brand">' + esc(settings.companyName || 'LD Rental') + '</span>' +
+  return '<div class="topbar"><span class="tb-brand">' + esc(settings.companyName || 'LD Rental') + syncDot() + '</span>' +
   '<button class="tb-search" onclick="searchView()" aria-label="Buscar"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button></div>';
 }
 export function render() {

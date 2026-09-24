@@ -4,6 +4,7 @@ import { S, sb, setSb, setAs, configured } from './state.js';
 import { $, val } from './utils.js';
 import { COLS } from './constants.js';
 import { load, flushQueue } from './data.js';
+import { readCachedCollection } from './offline.js';
 import { render } from './nav.js';
 import { makeStorage } from './storage.js';
 import { loadOwnProfile } from './roles.js';
@@ -35,15 +36,20 @@ export async function logout() {
   try { localStorage.removeItem('flota-biometria'); } catch (e) {}
   await sb.auth.signOut();
 }
+const PRIORITY_COLS = ['cars', 'drivers', 'payments'];
 export async function start() {
-  S.ready = false; render();
+  S.ready = false;
+  COLS.forEach(c => { const cached = readCachedCollection(c); if (cached) S[c] = cached; });
+  if (PRIORITY_COLS.every(c => S[c].length)) S.ready = true;
+  render();
   await flushQueue();
-  await Promise.all([...COLS.map(load), loadOwnProfile()]);
+  await Promise.all([...PRIORITY_COLS.map(load), loadOwnProfile()]);
   S.ready = true; render();
-  generarGastosRecurrentes();
   checkChangelog();
   iniciarAlertasSupervisor();
   cargarSettingsServidor().then(changed => { if (changed) render(); });
+  const resto = COLS.filter(c => !PRIORITY_COLS.includes(c));
+  Promise.all(resto.map(load)).then(() => { render(); generarGastosRecurrentes(); });
   if (!S.chan) {
     S.chan = sb.channel('flota');
     const timers = {};

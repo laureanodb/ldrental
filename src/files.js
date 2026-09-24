@@ -148,11 +148,11 @@ export async function addLink(col, id) {
 async function shrink(f) {
   try {
     const bmp = await createImageBitmap(f);
-    const k = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
-    if (k === 1 && f.type === 'image/jpeg' && f.size < 1.5e6) return f;
+    const k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    if (k === 1 && f.type === 'image/jpeg' && f.size < 700e3) return f;
     const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
     cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
-    const b = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.85));
+    const b = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.75));
     if (!b) return f;
     return (ACCEPT.includes(f.type) && b.size >= f.size) ? f : b;
   } catch (e) { return f; }

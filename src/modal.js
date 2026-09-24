@@ -9,9 +9,12 @@ export function openModal(html) {
 export function closeModal() { $('#modal').classList.remove('open'); $('#modal').innerHTML = ''; document.body.style.overflow = ''; }
 
 let toastT;
-export function toast(m) {
+export function toast(m, type) {
   let t = document.querySelector('.toast'); if (t) t.remove();
-  t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t);
+  const esError = type === 'error' || /^no se pudo|error al|inválid|falta[n]?\s/i.test(m);
+  t = document.createElement('div'); t.className = 'toast ' + (esError ? 'bad' : 'ok');
+  t.textContent = (esError ? '⚠ ' : '✓ ') + m;
+  document.body.appendChild(t);
   clearTimeout(toastT); toastT = setTimeout(() => t.remove(), 3200);
 }
 

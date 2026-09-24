@@ -28,7 +28,7 @@ export function viewChoferes() {
   return '<h1>Choferes</h1><p class="sub">' + S.drivers.filter(d => !d.inactivo && !d.prospecto).length + ' en total' + (links ? ' · ' + links : '') + '</p>' +
   tarjetaPostulacion() +
   (ui.showProspectos ? embudoResumen() : '') +
-  '<div class="bar"><input type="search" placeholder="Buscar por nombre o DNI" value="' + esc(ui.qDrivers) + '" oninput="ui.qDrivers=this.value;renderList()"><button class="btn" onclick="altaRapidaChoferForm()">Agregar</button></div>' +
+  '<div class="bar"><input type="search" placeholder="Buscar por nombre o DNI" value="' + esc(ui.qDrivers) + '" oninput="ui.qDrivers=this.value;ui.choferesLimite=30;renderList()"><button class="btn" onclick="altaRapidaChoferForm()">Agregar</button></div>' +
   '<label class="f" style="margin-bottom:10px"><span>Ordenar por</span><select onchange="ui.ordenChoferes=this.value;renderList()">' +
   '<option value="nombre"' + (ui.ordenChoferes === 'nombre' ? ' selected' : '') + '>Nombre (A-Z)</option>' +
   '<option value="deuda"' + (ui.ordenChoferes === 'deuda' ? ' selected' : '') + '>Deuda (mayor primero)</option>' +
@@ -45,7 +45,10 @@ export function listChoferes() {
       return String(a.nombre).localeCompare(String(b.nombre));
     });
   if (!L.length) return '<div class="card empty">' + (S.drivers.length ? 'Ningún chofer coincide.' : '<b>Todavía no cargaste choferes</b>Tocá "Agregar" para empezar.') + '</div>';
-  return L.map(d => {
+  const limite = ui.choferesLimite || 30;
+  const visibles = L.slice(0, limite);
+  const restantes = L.length - visibles.length;
+  return visibles.map(d => {
     const cars = S.cars.filter(c => c.choferId === d.id);
     const debt = driverDebt(d.id);
     const mon = cars.some(c => isContract(c) && c.tipo === 'financiado') ? moneyUSD : money;
@@ -69,5 +72,5 @@ export function listChoferes() {
     const avatar = d.fotoPerfil ? '<img src="' + d.fotoPerfil + '" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;margin-right:8px;vertical-align:-8px">' : '';
     return '<div class="card tap" onclick="driverForm(\'' + d.id + '\')"><div class="row between"><b><span class="tap" style="margin-right:4px" onclick="event.stopPropagation();toggleFavoritoChofer(\'' + d.id + '\')">' + (d.favorito ? '★' : '☆') + '</span>' + avatar + esc(d.nombre) + '</b><div>' + cars.map(c => plate(c.patente)).join(' ') + '</div></div>' +
     '<div class="small muted">' + esc(d.tel || 'Sin teléfono') + '</div><div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">' + b + '</div></div>';
-  }).join('');
+  }).join('') + (restantes > 0 ? '<button class="btn sec block" style="margin-top:8px" onclick="ui.choferesLimite=(ui.choferesLimite||30)+30;renderList()">Cargar más (quedan ' + restantes + ')</button>' : '');
 }

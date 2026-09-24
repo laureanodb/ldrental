@@ -57,6 +57,7 @@ export function ajustesCard() {
   '<label class="f"><span>Puntos de licencia: límite de aviso</span><input id="a_puntosLimite" inputmode="numeric" value="' + settings.puntosLimite + '"></label></div>' +
   '<label class="f"><span>Auto disponible sin asignar: avisar a los <small>días</small></span><input id="a_autoParadoDias" inputmode="numeric" value="' + settings.autoParadoDias + '"></label>' +
   '<label class="f"><span>Cobros: solo admin puede borrar/editar los de más de <small>días</small></span><input id="a_cobroEdicionDias" inputmode="numeric" value="' + settings.cobroEdicionDias + '"></label>' +
+  '<label class="f"><span>Avisar si el almacenamiento de archivos supera <small>MB</small></span><input id="a_almacenamientoMB" inputmode="numeric" value="' + settings.almacenamientoAvisoMB + '"></label>' +
   '<button class="btn sec block" onclick="saveAjustes()">Guardar ajustes</button></div>' : '') +
   (isAdmin() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Nombre, teléfono y logo que aparecen en el login, el panel y los QR de los autos.</div>' +
   '<label class="f"><span>Nombre de la empresa</span><input id="a_companyName" value="' + esc(settings.companyName) + '"></label>' +
@@ -87,6 +88,7 @@ export function saveAjustes() {
     puntosLimite: +val('a_puntosLimite') || settings.puntosLimite,
     autoParadoDias: +val('a_autoParadoDias') || settings.autoParadoDias,
     cobroEdicionDias: +val('a_cobroEdicionDias') || settings.cobroEdicionDias,
+    almacenamientoAvisoMB: +val('a_almacenamientoMB') || settings.almacenamientoAvisoMB,
   });
   saveSettings(patch);
   toast('Ajustes guardados'); render();
@@ -145,7 +147,9 @@ export function backupCard() {
   return '<h2>Copia de seguridad</h2><div class="card"><div class="small muted" style="margin-bottom:10px">Descargá un archivo con todos tus autos, choferes y cobros y guardalo en tu celular, Drive o mail. Sirve para recuperar todo si algo se pierde. Las fotos y PDF adjuntos no van dentro del archivo.</div>' +
   '<div class="row">' + '<button class="btn grow" onclick="backup()">Descargar copia</button>' + '<label class="btn sec grow filebtn">Restaurar copia<input id="restoreIn" type="file" onchange="pickRestore(this)"></label></div></div>' +
   '<div class="card"><div class="row between"><span class="muted">Uso de datos</span><b>' + u.registros + ' registros · ' + fmtBytes(u.bytes) + '</b></div>' +
-  u.porColeccion.slice(0, 6).map(x => '<div class="row between small" style="padding:2px 0"><span class="muted">' + esc(x.col) + '</span><span>' + x.n + ' · ' + fmtBytes(x.bytes) + '</span></div>').join('') + '</div>' +
+  u.porColeccion.slice(0, 6).map(x => '<div class="row between small" style="padding:2px 0"><span class="muted">' + esc(x.col) + '</span><span>' + x.n + ' · ' + fmtBytes(x.bytes) + '</span></div>').join('') +
+  (isAdmin() ? '<button class="btn sec block" style="margin-top:8px" onclick="buscarArchivosHuerfanos()">Buscar archivos huérfanos</button>' : '') +
+  (isAdmin() ? '<button class="btn sec block" style="margin-top:8px" onclick="archivarCobrosViejosForm()">Archivar cobros viejos</button>' : '') + '</div>' +
   (canVerFinanzas() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Exportá todos los datos a un archivo Excel (una hoja por sección) para analizarlos o compartirlos.</div>' +
   '<button class="btn sec block" onclick="exportarExcel()">Exportar todo a Excel</button></div>' : '') +
   '<button class="btn sec block" style="margin-top:8px" onclick="logout()">Cerrar sesión (' + esc(S.user && S.user.email || '') + ')</button>';

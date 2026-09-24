@@ -32,7 +32,8 @@ import { depositoForm, saveDeposito, delDeposito } from './forms/deposito.js';
 import { payForm, onPayCar, savePay, delPay, toggleDepositado } from './forms/payment.js';
 import { closeModal, confirmDel } from './modal.js';
 import { attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile } from './files.js';
-import { backup, pickRestore, doRestore, exportCSV, cancelRestore } from './backup.js';
+import { backup, pickRestore, doRestore, exportCSV, cancelRestore, archivarCobrosViejosForm, actualizarInfoArchivar, archivarCobrosViejos } from './backup.js';
+import { buscarArchivosHuerfanos, confirmarBorrarHuerfanos } from './huerfanos.js';
 import { saveAjustes, snoozeAlert, toggleEnTramite, silenciarAlertasAuto, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm, anunciosForm, agregarAnuncio, borrarAnuncio } from './views/shared.js';
 import { gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro, elegirCategoriaGasto } from './forms/gasto.js';
 import { gastosGeneralesView, gastoGeneralForm, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, saveGastoRecurrente, delGastoRecurrente } from './forms/gastos-generales.js';
@@ -77,7 +78,8 @@ Object.assign(window, {
   payForm, onPayCar, savePay, delPay, toggleDepositado,
   closeModal, confirmDel,
   attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile,
-  backup, pickRestore, doRestore, exportCSV, cancelRestore,
+  backup, pickRestore, doRestore, exportCSV, cancelRestore, archivarCobrosViejosForm, actualizarInfoArchivar, archivarCobrosViejos,
+  buscarArchivosHuerfanos, confirmarBorrarHuerfanos,
   saveAjustes, snoozeAlert, toggleEnTramite, silenciarAlertasAuto, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm,
   anunciosForm, agregarAnuncio, borrarAnuncio,
   gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro, elegirCategoriaGasto,
