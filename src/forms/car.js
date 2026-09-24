@@ -34,6 +34,16 @@ function actualizarHistorialTaller(ex, newTipo) {
   if (newTipo === 'taller') historial = historial.concat([{ desde: hoy, hasta: null }]);
   return historial;
 }
+function actualizarHistorialVenc(ex, nuevos) {
+  let historial = (ex && ex.vencHistorial) || [];
+  const hoy = iso(today());
+  VENC.forEach(v => {
+    const prev = ex ? (ex[v[0]] || '') : '';
+    const next = nuevos[v[0]] || '';
+    if (next && next !== prev) historial = historial.concat([{ tipo: v[0], fechaAnterior: prev, fechaNueva: next, cambiado: hoy }]);
+  });
+  return historial;
+}
 
 export function setTabAuto(t) {
   document.querySelectorAll('.tabpanel[data-scope="auto"]').forEach(el => { el.style.display = el.dataset.tab === t ? '' : 'none'; });
@@ -200,6 +210,11 @@ export function carForm(id) {
     if (HM.length) {
       hist += '<div class="sec-t">Historial de monto semanal</div>' + HM.map(x => '<div class="row between small" style="padding:4px 0"><span>' + (c.tipo === 'financiado' ? moneyUSD(x.monto) : money(x.monto)) + '</span><span class="muted">' + fdate(x.fecha) + '</span></div>').join('');
     }
+    const HV = (c.vencHistorial || []).slice().sort((a, b) => b.cambiado.localeCompare(a.cambiado));
+    if (HV.length) {
+      const vencLabel = t => (VENC.find(v => v[0] === t) || [0, t])[1];
+      hist += '<div class="sec-t">Historial de vencimientos resueltos</div>' + HV.map(x => '<div class="row between small" style="padding:4px 0"><span>' + esc(vencLabel(x.tipo)) + (x.fechaAnterior ? ': ' + fdate(x.fechaAnterior) + ' → ' + fdate(x.fechaNueva) : ': cargado ' + fdate(x.fechaNueva)) + '</span><span class="muted">' + fdate(x.cambiado) + '</span></div>').join('');
+    }
   }
 
   const saveCancelRow = '<div class="row" style="margin:14px 0"><button class="btn grow" onclick="saveCar(' + (ex ? "'" + c.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
@@ -276,6 +291,7 @@ export async function saveCar(id) {
     montoHistorial: actualizarHistorialMonto(ex, con ? (+val('c_monto') || 0) : 0),
   };
   VENC.forEach(v => { o[v[0]] = val('v_' + v[0]); });
+  o.vencHistorial = actualizarHistorialVenc(ex, o);
   if (con) {
     if (!o.choferId) { toast('Elegí el chofer (cargalo primero en Choferes)'); return; }
     if (!o.monto || !o.inicio) { toast('Completá el monto semanal y la fecha de inicio'); return; }

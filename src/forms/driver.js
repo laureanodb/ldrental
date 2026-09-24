@@ -37,7 +37,7 @@ export function driverForm(id) {
   const d = ex || { docs: {} };
   let h = '<h3>' + (ex ? esc(d.nombre) : 'Nuevo chofer') + '</h3>';
   if (ex && d.inactivo) h += '<div class="card" style="margin-bottom:10px"><span class="badge b-mute">Inactivo</span></div>';
-  if (ex && d.prospecto) h += '<div class="card" style="margin-bottom:10px"><span class="badge b-info">Prospecto · ' + esc((ETAPAS_PROSPECTO.find(x => x[0] === d.etapaProspecto) || [0, 'Contacto inicial'])[1]) + '</span></div>';
+  if (ex && d.prospecto) h += '<div class="card row between" style="margin-bottom:10px"><span class="badge b-info">Prospecto · ' + esc((ETAPAS_PROSPECTO.find(x => x[0] === d.etapaProspecto) || [0, 'Contacto inicial'])[1]) + '</span><button class="btn sm" onclick="aprobarProspecto(\'' + d.id + '\')">Aprobar y dar de alta</button></div>';
 
   /* ---- Datos ---- */
   let datos = '';
@@ -204,6 +204,10 @@ export async function copiarLinkPortal(url) {
 export async function toggleInactivo(id) {
   const d = S.drivers.find(x => x.id === id); if (!d) return;
   if (await save('drivers', Object.assign({}, d, { inactivo: !d.inactivo }))) { closeModal(); toast(d.inactivo ? 'Chofer reactivado' : 'Chofer marcado como inactivo'); }
+}
+export async function aprobarProspecto(id) {
+  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  if (await save('drivers', Object.assign({}, d, { prospecto: false, etapaProspecto: 'aprobado' }))) { toast('Chofer dado de alta'); driverForm(id); }
 }
 export async function delDriver(id) {
   await purgeFiles(S.drivers.find(x => x.id === id));

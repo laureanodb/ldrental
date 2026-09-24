@@ -13,7 +13,7 @@ import { reciboPDF, reciboCompartir } from './recibo.js';
 import { contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato } from './contrato.js';
 import { exportarExcel } from './export-excel.js';
 import { activarPush, desactivarPush, guardarHorarioPush } from './push.js';
-import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion } from './forms/driver.js';
+import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion } from './forms/driver.js';
 import { goMas } from './views/mas.js';
 import { initPortal } from './portal.js';
 import { initPostulacion } from './postulacion.js';
@@ -53,7 +53,7 @@ Object.assign(window, {
   siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro,
   reciboPDF, reciboCompartir, exportarExcel, activarPush, desactivarPush, guardarHorarioPush,
   contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato,
-  driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion,
+  driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion,
   depositoForm, saveDeposito, delDeposito,
   payForm, onPayCar, savePay, delPay,
   closeModal, confirmDel,
