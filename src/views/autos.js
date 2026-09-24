@@ -26,6 +26,7 @@ export function listAutos() {
     if (c.vendido) b += badge('mute', 'Vendido');
     else if (isContract(c) && i.debt > 0) b += badge('bad', 'Debe ' + mon(i.debt));
     else if (isContract(c)) b += badge('ok', 'Al día');
+    if (!c.vendido && c.enPreparacion) b += ' ' + badge('warn', 'En preparación');
     if (!c.vendido && c.reservado) b += ' ' + badge('info', 'Reservado' + (c.reservadoPara ? ': ' + c.reservadoPara : ''));
     if (!c.vendido && al && al.d <= 30) b += ' ' + badge(al.cls, 'Doc: ' + al.t.replace('Vence ', 'vence '));
     const serv = !c.vendido && peorItemMantenimiento(c);

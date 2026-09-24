@@ -1,5 +1,5 @@
 import { S } from '../state.js';
-import { $, val, uid, iso, today, esc, fdate, money, moneyUSD } from '../utils.js';
+import { $, val, uid, iso, today, esc, fdate, money, moneyUSD, parse } from '../utils.js';
 import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS, MOTIVOS_REEMPLAZO, TIPOS_SINIESTRO, SINIESTRO_ESTADOS, ASEGURADORAS } from '../constants.js';
 import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas } from '../calc.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
@@ -7,6 +7,7 @@ import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
 import { canDelete } from '../roles.js';
 import { inflacionAcumulada } from '../inflacion.js';
+import { settings } from '../settings.js';
 
 const gastoCatLabel = k => (GASTO_CATS.find(x => x[0] === k) || [0, 'Gasto'])[1];
 
@@ -100,10 +101,29 @@ export function carForm(id) {
   '<label class="chk"><input type="checkbox" id="c_gpsAlerta"' + (c.gpsAlerta ? ' checked' : '') + '><span>GPS roto / con alerta' + (c.gpsAlerta ? '' : ' (pone el auto en taller al guardar)') + '</span></label>' +
   '<div class="sec-t">Estado de flota</div>' +
   '<label class="chk"><input type="checkbox" id="c_soloAlquiler"' + (c.soloAlquiler ? ' checked' : '') + '><span>Solo alquiler, nunca financiado</span></label>' +
+  '<label class="chk"><input type="checkbox" id="c_enPreparacion"' + (c.enPreparacion ? ' checked' : '') + '><span>En preparación (todavía no disponible para asignar)</span></label>' +
   '<label class="chk"><input type="checkbox" id="c_reservado" onchange="document.getElementById(\'reservadoBox\').style.display=this.checked?\'\':\'none\'"' + (c.reservado ? ' checked' : '') + '><span>Reservado</span></label>' +
   '<div id="reservadoBox" style="display:' + (c.reservado ? '' : 'none') + '"><label class="f"><span>Reservado para</span><input id="c_reservadoPara" value="' + esc(c.reservadoPara) + '"></label></div>' +
   '<label class="chk"><input type="checkbox" id="c_aReemplazar" onchange="document.getElementById(\'reemplazoBox\').style.display=this.checked?\'\':\'none\'"' + (c.aReemplazar ? ' checked' : '') + '><span>Marcar para reemplazar</span></label>' +
   '<div id="reemplazoBox" style="display:' + (c.aReemplazar ? '' : 'none') + '"><label class="f"><span>Motivo</span><select id="c_motivoReemplazo">' + MOTIVOS_REEMPLAZO.map(x => '<option value="' + x[0] + '"' + (c.motivoReemplazo === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
+  '<div class="sec-t">Neumáticos</div>' +
+  ['di', 'dd', 'ti', 'td'].map(pos => {
+    const n = (c.neumaticos || {})[pos] || {};
+    const label = { di: 'Del. izquierdo', dd: 'Del. derecho', ti: 'Tras. izquierdo', td: 'Tras. derecho' }[pos];
+    return '<div class="two"><label class="f"><span>' + label + ' · fecha</span><input id="nm_' + pos + '_fecha" type="date" value="' + esc(n.fecha || '') + '"></label>' +
+    '<label class="f"><span>Profundidad <small>mm</small></span><input id="nm_' + pos + '_prof" inputmode="numeric" value="' + esc(n.profundidad || '') + '"></label></div>';
+  }).join('') +
+  (ex ? '<div class="sec-t">Accesorios instalados</div>' +
+  ((c.accesorios || []).length ? c.accesorios.map((a, i) => {
+    let garTxt = '';
+    if (a.garantiaMeses && a.fecha) {
+      const d = parse(a.fecha); d.setMonth(d.getMonth() + (+a.garantiaMeses));
+      garTxt = (d < today() ? 'Garantía vencida' : 'Garantía hasta ' + fdate(iso(d)));
+    }
+    return '<div class="card row tap" onclick="accesorioForm(\'' + c.id + '\',' + i + ')"><div class="grow"><div>' + esc(a.nombre) + '</div><div class="small muted">' + fdate(a.fecha) + (garTxt ? ' · ' + garTxt : '') + '</div></div></div>';
+  }).join('') : '<div class="small muted" style="margin-bottom:8px">Sin accesorios registrados.</div>') +
+  '<button class="btn sec block" style="margin:8px 0 20px" onclick="accesorioForm(\'' + c.id + '\')">+ Agregar accesorio</button>' +
+  '<button class="btn sec block" style="margin-bottom:20px" onclick="qrAutoForm(\'' + c.id + '\')">Generar QR para reportar problemas</button>' : '') +
   '<div class="sec-t">Archivos</div><div id="files"></div><div id="fstatus" class="small" style="margin:-4px 0 12px;overflow-wrap:anywhere"></div>' +
   '<label class="f"><span>Notas</span><textarea id="c_notas">' + esc(c.notas) + '</textarea></label>';
 
@@ -279,8 +299,17 @@ export async function saveCar(id) {
     dondeDuerme: val('c_dondeDuerme'), dondeDuermeMaps: val('c_dondeDuermeMaps'),
     gpsTipo: val('c_gpsTipo'), gpsAlerta: document.getElementById('c_gpsAlerta').checked,
     soloAlquiler: document.getElementById('c_soloAlquiler').checked,
+    enPreparacion: document.getElementById('c_enPreparacion').checked,
     reservado: document.getElementById('c_reservado').checked, reservadoPara: val('c_reservadoPara'),
     aReemplazar: document.getElementById('c_aReemplazar').checked, motivoReemplazo: val('c_motivoReemplazo'),
+    neumaticos: {
+      di: { fecha: val('nm_di_fecha'), profundidad: +val('nm_di_prof') || 0 },
+      dd: { fecha: val('nm_dd_fecha'), profundidad: +val('nm_dd_prof') || 0 },
+      ti: { fecha: val('nm_ti_fecha'), profundidad: +val('nm_ti_prof') || 0 },
+      td: { fecha: val('nm_td_fecha'), profundidad: +val('nm_td_prof') || 0 },
+    },
+    accesorios: (ex || {}).accesorios || [],
+    disponibleDesde: tipo === 'disponible' ? ((ex && ex.tipo === 'disponible' && ex.disponibleDesde) || iso(today())) : '',
     vendido: (ex || {}).vendido || false,
     files: (ex || {}).files || [],
     ajustesDeuda: (ex || {}).ajustesDeuda || [],
@@ -334,6 +363,45 @@ export async function delCar(id) {
   await purgeFiles(S.cars.find(x => x.id === id));
   for (const p of S.payments.filter(p => p.carId === id)) await remove('payments', p.id);
   if (await remove('cars', id)) { closeModal(); toast('Auto eliminado'); }
+}
+export function accesorioForm(carId, idx) {
+  const c = S.cars.find(x => x.id === carId); if (!c) return;
+  const a = idx != null ? (c.accesorios || [])[idx] : null;
+  const h = '<h3>' + (a ? 'Editar accesorio' : 'Nuevo accesorio') + ' — ' + esc(c.patente) + '</h3>' +
+  '<label class="f"><span>Nombre</span><input id="ac_nombre" placeholder="GPS, cámara, alarma..." value="' + esc(a ? a.nombre : '') + '"></label>' +
+  '<div class="two"><label class="f"><span>Fecha de instalación</span><input id="ac_fecha" type="date" value="' + esc(a ? a.fecha : iso(today())) + '"></label>' +
+  '<label class="f"><span>Garantía <small>meses</small></span><input id="ac_garantia" inputmode="numeric" value="' + esc(a ? a.garantiaMeses || '' : '') + '"></label></div>' +
+  '<label class="f"><span>Notas</span><textarea id="ac_notas">' + esc(a ? a.notas : '') + '</textarea></label>' +
+  '<div class="row"><button class="btn grow" onclick="saveAccesorio(\'' + c.id + '\',' + (idx != null ? idx : 'null') + ')">Guardar</button><button class="btn sec" onclick="carForm(\'' + c.id + '\')">Cancelar</button></div>' +
+  (a ? '<div style="margin-top:8px"><button class="btn danger block" onclick="delAccesorio(\'' + c.id + '\',' + idx + ')">Eliminar accesorio</button></div>' : '');
+  openModal(h);
+}
+export async function saveAccesorio(carId, idx) {
+  const c = S.cars.find(x => x.id === carId); if (!c) return;
+  const nombre = val('ac_nombre');
+  if (!nombre) { toast('Poné un nombre'); return; }
+  const o = { nombre, fecha: val('ac_fecha') || iso(today()), garantiaMeses: +val('ac_garantia') || 0, notas: val('ac_notas') };
+  const accesorios = (c.accesorios || []).slice();
+  if (idx != null) accesorios[idx] = o; else accesorios.push(o);
+  if (await save('cars', Object.assign({}, c, { accesorios }))) { toast('Accesorio guardado'); carForm(carId); }
+}
+export async function delAccesorio(carId, idx) {
+  const c = S.cars.find(x => x.id === carId); if (!c) return;
+  const accesorios = (c.accesorios || []).slice(); accesorios.splice(idx, 1);
+  if (await save('cars', Object.assign({}, c, { accesorios }))) { toast('Accesorio eliminado'); carForm(carId); }
+}
+export function qrAutoForm(id) {
+  const c = S.cars.find(x => x.id === id); if (!c) return;
+  const tel = (settings.companyPhone || '').replace(/\D/g, '');
+  if (!tel) { toast('Cargá el teléfono de la empresa en Ajustes primero'); return; }
+  const msg = 'Reporto un problema con el auto ' + (c.patente || '');
+  const waUrl = 'https://wa.me/' + tel + '?text=' + encodeURIComponent(msg);
+  const qrImg = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=' + encodeURIComponent(waUrl);
+  const h = '<h3>QR para reportar un problema — ' + esc(c.patente) + '</h3>' +
+  '<div class="small muted" style="margin-bottom:10px">Imprimí este QR y pegalo en el auto. Al escanearlo, se abre WhatsApp con un mensaje pre-armado a tu número.</div>' +
+  '<div style="text-align:center"><img src="' + qrImg + '" alt="QR" style="width:220px;height:220px"></div>' +
+  '<div class="row" style="margin-top:14px"><button class="btn sec grow" onclick="carForm(\'' + c.id + '\')">Volver</button></div>';
+  openModal(h);
 }
 /* Actualización silenciosa de km desde otros formularios (cobro, inspección, mantenimiento).
    Nunca retrocede el km ni interrumpe el flujo del formulario que la llama. */

@@ -301,6 +301,13 @@ export function alerts() {
     const s = p.fechaPago ? vs(p.fechaPago) : { d: 0, cls: 'warn', t: 'Pago pendiente' };
     out.push(Object.assign({ who: p.nombre, sub: 'Cuenta por pagar: ' + money(p.deudaPendiente), kind: 'proveedor', id: p.id, key }, s));
   });
+  activeCars().forEach(c => {
+    if (c.tipo !== 'disponible' || !c.disponibleDesde) return;
+    const dias = days(parse(c.disponibleDesde), today());
+    if (dias < settings.autoParadoDias) return;
+    const key = 'car:' + c.id + ':parado'; if (isSnoozed(key)) return;
+    out.push({ who: c.patente || 'Auto sin patente', sub: 'Auto parado sin generar ingresos', kind: 'car', id: c.id, key, d: 0, cls: 'warn', t: dias + ' días disponible sin asignar' });
+  });
   return out.sort((a, b) => a.d - b.d);
 }
 export const urgent = () => alerts().filter(a => a.d <= settings.avisoWarn);

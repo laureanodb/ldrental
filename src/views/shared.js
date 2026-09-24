@@ -37,12 +37,14 @@ export function ajustesCard() {
   '<label class="f"><span>Chofer en riesgo: semanas de atraso</span><input id="a_riesgoSemanas" inputmode="numeric" value="' + settings.riesgoSemanas + '"></label>' +
   '<div class="two"><label class="f"><span>Multas: recargo por pago tardío <small>%</small></span><input id="a_multaRecargo" inputmode="numeric" value="' + settings.multaRecargoPct + '"></label>' +
   '<label class="f"><span>Puntos de licencia: límite de aviso</span><input id="a_puntosLimite" inputmode="numeric" value="' + settings.puntosLimite + '"></label></div>' +
+  '<label class="f"><span>Auto disponible sin asignar: avisar a los <small>días</small></span><input id="a_autoParadoDias" inputmode="numeric" value="' + settings.autoParadoDias + '"></label>' +
   '<button class="btn sec block" onclick="saveAjustes()">Guardar ajustes</button></div>' : '') +
-  (isAdmin() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Nombre y logo que aparecen en el login y el panel.</div>' +
+  (isAdmin() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Nombre, teléfono y logo que aparecen en el login, el panel y los QR de los autos.</div>' +
   '<label class="f"><span>Nombre de la empresa</span><input id="a_companyName" value="' + esc(settings.companyName) + '"></label>' +
+  '<label class="f"><span>Teléfono de WhatsApp <small>para QR de reporte</small></span><input id="a_companyPhone" type="tel" placeholder="5491122334455" value="' + esc(settings.companyPhone) + '"></label>' +
   (settings.companyLogo ? '<div class="row" style="margin-bottom:10px;align-items:center"><img src="' + settings.companyLogo + '" alt="" style="height:36px"><button class="btn sec sm" onclick="quitarLogo()">Quitar logo</button></div>' : '') +
   '<label class="btn sec block filebtn" style="margin-bottom:10px">' + (settings.companyLogo ? 'Cambiar logo' : 'Subir logo') + '<input id="logoIn" type="file" accept="image/*" onchange="subirLogo(this)"></label>' +
-  '<button class="btn sec block" onclick="guardarNombreEmpresa()">Guardar nombre</button></div>' : '');
+  '<button class="btn sec block" onclick="guardarNombreEmpresa()">Guardar</button></div>' : '');
 }
 export function saveAjustes() {
   const w = +val('a_warn') || 15, s = +val('a_soft') || 30;
@@ -58,13 +60,14 @@ export function saveAjustes() {
     riesgoSemanas: +val('a_riesgoSemanas') || settings.riesgoSemanas,
     multaRecargoPct: +val('a_multaRecargo') || settings.multaRecargoPct,
     puntosLimite: +val('a_puntosLimite') || settings.puntosLimite,
+    autoParadoDias: +val('a_autoParadoDias') || settings.autoParadoDias,
   });
   saveSettings(patch);
   toast('Ajustes guardados'); render();
 }
 export function guardarNombreEmpresa() {
-  saveSettings({ companyName: val('a_companyName') || 'LD Rental' });
-  toast('Nombre guardado'); render();
+  saveSettings({ companyName: val('a_companyName') || 'LD Rental', companyPhone: val('a_companyPhone') });
+  toast('Guardado'); render();
 }
 export function subirLogo(input) {
   const f = input.files && input.files[0]; if (!f) return;
