@@ -7,7 +7,7 @@ export function viewAutos() {
   const nVendidos = S.cars.filter(c => c.vendido).length;
   return '<h1>Autos</h1><p class="sub">' + S.cars.filter(c => !c.vendido).length + ' en total' + (nVendidos ? ' · <span class="tap" style="text-decoration:underline" onclick="ui.showVendidos=!ui.showVendidos;renderList()">' + (ui.showVendidos ? 'ocultar' : 'ver') + ' ' + nVendidos + ' vendidos</span>' : '') + ' · <span class="tap" style="text-decoration:underline" onclick="mapaFlotaView()">ver mapa</span></p>' +
   (ui.filtroAutoTipo ? '<div class="card row between" style="margin-bottom:10px"><span class="small">Filtrando: ' + esc(TIPOS[ui.filtroAutoTipo] || ui.filtroAutoTipo) + '</span><span class="tap small" style="text-decoration:underline" onclick="ui.filtroAutoTipo=\'\';renderList()">Quitar filtro</span></div>' : '') +
-  '<div class="bar"><input type="search" placeholder="Buscar patente, marca o chofer" value="' + esc(ui.qCars) + '" oninput="ui.qCars=this.value;renderList()"><button class="btn" onclick="carForm()">Agregar</button></div>' +
+  '<div class="bar"><input type="search" placeholder="Buscar patente, marca o chofer" value="' + esc(ui.qCars) + '" oninput="ui.qCars=this.value;renderList()"><button class="btn" onclick="altaRapidaAutoForm()">Agregar</button></div>' +
   '<label class="f" style="margin-bottom:10px"><span>Ordenar por</span><select onchange="ui.ordenAutos=this.value;renderList()">' +
   '<option value="patente"' + (ui.ordenAutos === 'patente' ? ' selected' : '') + '>Patente (A-Z)</option>' +
   '<option value="deuda"' + (ui.ordenAutos === 'deuda' ? ' selected' : '') + '>Deuda (mayor primero)</option>' +
@@ -16,7 +16,10 @@ export function viewAutos() {
 }
 export function listAutos() {
   const q = ui.qCars.trim().toLowerCase();
-  const L = S.cars.filter(c => (ui.showVendidos || !c.vendido) && (!ui.filtroAutoTipo || c.tipo === ui.filtroAutoTipo) && (!q || [c.patente, c.marca, c.modelo, driverName(c.choferId), (c.tags || []).join(' ')].join(' ').toLowerCase().includes(q)))
+  const qPatente = q.replace(/[\s-]/g, '');
+  const L = S.cars.filter(c => (ui.showVendidos || !c.vendido) && (!ui.filtroAutoTipo || c.tipo === ui.filtroAutoTipo) &&
+    (!q || [c.patente, c.marca, c.modelo, driverName(c.choferId), (c.tags || []).join(' ')].join(' ').toLowerCase().includes(q) ||
+    (qPatente && String(c.patente || '').toLowerCase().replace(/[\s-]/g, '').includes(qPatente))))
     .sort((a, b) => (Boolean(b.favorito) - Boolean(a.favorito)) || (ui.ordenAutos === 'deuda' ? calc(b).debt - calc(a).debt : ui.ordenAutos === 'monto' ? (+b.monto || 0) - (+a.monto || 0) : String(a.patente).localeCompare(String(b.patente))));
   if (!L.length) return '<div class="card empty">' + (S.cars.length ? 'Ningún auto coincide con la búsqueda.' : '<b>Todavía no cargaste autos</b>Tocá "Agregar" para empezar.') + '</div>';
   return L.map(c => {

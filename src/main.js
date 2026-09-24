@@ -5,7 +5,8 @@ import { init } from './session.js';
 import { go, render, renderList } from './nav.js';
 import { doLogin, logout } from './session.js';
 import { activarBiometria, desactivarBiometria, loginConBiometria } from './biometric.js';
-import { asignarChoferForm, guardarAsignacionChofer, quitarChofer, asignarAutoForm, guardarAsignacionAuto, quitarAutoDeChofer, onAsignacionTipo } from './forms/asignacion.js';
+import { asignarChoferForm, guardarAsignacionChofer, quitarChofer, asignarAutoForm, guardarAsignacionAuto, quitarAutoDeChofer, onAsignacionTipo, calcularCuotaAsignacion } from './forms/asignacion.js';
+import { altaRapidaAutoForm, onAltaRapidaAutoTipo, guardarAltaRapidaAuto, altaRapidaChoferForm, guardarAltaRapidaChofer } from './forms/alta-rapida.js';
 import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento } from './forms/car.js';
 import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
 import { calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi } from './forms/calculadora.js';
@@ -33,7 +34,7 @@ import { closeModal, confirmDel } from './modal.js';
 import { attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile } from './files.js';
 import { backup, pickRestore, doRestore, exportCSV, cancelRestore } from './backup.js';
 import { saveAjustes, snoozeAlert, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm, anunciosForm, agregarAnuncio, borrarAnuncio } from './views/shared.js';
-import { gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro } from './forms/gasto.js';
+import { gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro, elegirCategoriaGasto } from './forms/gasto.js';
 import { gastosGeneralesView, gastoGeneralForm, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, saveGastoRecurrente, delGastoRecurrente } from './forms/gastos-generales.js';
 import { sancionForm, saveSancion, delSancion } from './forms/sancion.js';
 import { inspeccionForm, saveInspeccion, delInspeccion } from './forms/inspeccion.js';
@@ -56,7 +57,8 @@ import { syncDriveUI } from './google-drive.js';
 Object.assign(window, {
   ui, go, render, renderList, sincronizarAhora: flushQueue,
   doLogin, logout, activarBiometria, desactivarBiometria, loginConBiometria,
-  asignarChoferForm, guardarAsignacionChofer, quitarChofer, asignarAutoForm, guardarAsignacionAuto, quitarAutoDeChofer, onAsignacionTipo,
+  asignarChoferForm, guardarAsignacionChofer, quitarChofer, asignarAutoForm, guardarAsignacionAuto, quitarAutoDeChofer, onAsignacionTipo, calcularCuotaAsignacion,
+  altaRapidaAutoForm, onAltaRapidaAutoTipo, guardarAltaRapidaAuto, altaRapidaChoferForm, guardarAltaRapidaChofer,
   carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento,
   recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio,
   calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, compararAutosForm, renderComparacionAutos,
@@ -78,7 +80,7 @@ Object.assign(window, {
   backup, pickRestore, doRestore, exportCSV, cancelRestore,
   saveAjustes, snoozeAlert, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm,
   anunciosForm, agregarAnuncio, borrarAnuncio,
-  gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro,
+  gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro, elegirCategoriaGasto,
   gastosGeneralesView, gastoGeneralForm, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, saveGastoRecurrente, delGastoRecurrente,
   sancionForm, saveSancion, delSancion,
   inspeccionForm, saveInspeccion, delInspeccion,

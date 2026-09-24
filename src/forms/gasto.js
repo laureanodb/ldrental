@@ -9,7 +9,12 @@ import { carForm } from './car.js';
 export function gastoForm(carId) {
   const c = carById(carId);
   if (!c) { toast('Auto no encontrado'); return; }
+  const FRECUENTES = ['combustible', 'service', 'patente', 'seguro'];
   const h = '<h3>Nuevo gasto — ' + esc(c.patente) + '</h3>' +
+  '<div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:10px">' + FRECUENTES.map(k => {
+    const cat = GASTO_CATS.find(x => x[0] === k);
+    return cat ? '<button type="button" class="btn sec sm" onclick="elegirCategoriaGasto(\'' + k + '\')">' + esc(cat[1].replace(/ \(.*\)/, '')) + '</button>' : '';
+  }).join('') + '</div>' +
   '<div class="two"><label class="f"><span>Categoría</span><select id="g_cat">' + GASTO_CATS.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label>' +
   '<label class="f"><span>Fecha</span><input id="g_fecha" type="date" value="' + iso(today()) + '"></label></div>' +
   '<div class="two"><label class="f"><span>Costo</span><input id="g_costo" inputmode="decimal"></label>' +
@@ -21,6 +26,11 @@ export function gastoForm(carId) {
   '<label class="chk"><input type="checkbox" id="g_reclamoSeguro"><span>A reclamar al seguro</span></label>' +
   '<div class="row"><button class="btn grow" onclick="saveGasto(\'' + c.id + '\', this)">Guardar</button><button class="btn sec" onclick="carForm(\'' + c.id + '\')">Cancelar</button></div>';
   openModal(h);
+}
+export function elegirCategoriaGasto(cat) {
+  const sel = document.getElementById('g_cat'); if (!sel) return;
+  sel.value = cat;
+  const costo = document.getElementById('g_costo'); if (costo) costo.focus();
 }
 let gastoDupArmed = null;
 export async function saveGasto(carId, btn) {

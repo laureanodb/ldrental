@@ -22,7 +22,7 @@ export function viewPanel() {
   const urg = urgent();
   if (!S.cars.length && !S.drivers.length) {
     return '<h1>Panel</h1><p class="sub">Autos, choferes, cobros y vencimientos en un solo lugar.</p>' +
-    '<div class="card empty"><b>Empecemos por lo básico</b>Cargá tus choferes y tus autos. Después registrás cada cobro semanal y la app te dice quién debe y qué vence.<div style="margin-top:16px" class="row" ><button class="btn grow" onclick="driverForm()">Cargar chofer</button><button class="btn grow" onclick="carForm()">Cargar auto</button></div></div>';
+    '<div class="card empty"><b>Empecemos por lo básico</b>Cargá tus choferes y tus autos. Después registrás cada cobro semanal y la app te dice quién debe y qué vence.<div style="margin-top:16px" class="row" ><button class="btn grow" onclick="altaRapidaChoferForm()">Cargar chofer</button><button class="btn grow" onclick="altaRapidaAutoForm()">Cargar auto</button></div></div>';
   }
   const morosos = infos.filter(x => x.i.debt > 0 && x.c.tipo !== 'financiado').sort((a, b) => b.i.debt - a.i.debt).slice(0, 5);
   let h = '<h1>Panel</h1><p class="sub">' + t0.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) + '</p>';

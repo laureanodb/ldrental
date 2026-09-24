@@ -88,6 +88,7 @@ nav .dot{position:absolute;top:2px;left:calc(50% + 8px);background:var(--bad);co
 @keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.sheet{animation:none}}
 .sheet h3{margin:0 0 12px;font-size:20px;}
+.stickysave{position:sticky;bottom:calc(-24px - env(safe-area-inset-bottom,0px));margin:14px -16px calc(-24px - env(safe-area-inset-bottom,0px));padding:10px 16px calc(20px + env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1px solid var(--line);z-index:1;}
 .sec-t{font-weight:700;margin:16px 0 8px;font-size:15px;}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:20;font-size:14px;max-width:90%;}
 .loading{padding:60px 0;text-align:center;color:var(--muted);}

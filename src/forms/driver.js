@@ -158,7 +158,7 @@ export function driverForm(id) {
     (COM.length ? COM.map(c => '<div class="card row"><div class="grow"><div>' + esc((COMUNICACION_TIPOS.find(x => x[0] === c.tipo) || [0, c.tipo])[1]) + '</div><div class="small muted">' + fdate(c.fecha) + (c.notas ? ' · ' + esc(c.notas) : '') + '</div></div><button class="btn danger sm" onclick="confirmDel(this,()=>borrarComunicacion(\'' + d.id + '\',\'' + c.id + '\'))">Borrar</button></div>').join('') : '<div class="small muted" style="margin-bottom:20px">Sin comunicaciones registradas.</div>');
   }
 
-  const saveCancelRow = '<div class="row" style="margin:14px 0"><button class="btn grow" onclick="saveDriver(' + (ex ? "'" + d.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
+  const saveCancelRow = '<div class="row stickysave"><button class="btn grow" onclick="saveDriver(' + (ex ? "'" + d.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
   const accionesRow = ex ? '<div class="row" style="margin-top:20px"><button class="btn sec grow" onclick="toggleInactivo(\'' + d.id + '\')">' + (d.inactivo ? 'Reactivar' : 'Marcar como inactivo') + '</button></div>' +
     (canDelete() ? '<div style="margin-top:8px"><button class="btn danger block" onclick="confirmDel(this,()=>delDriver(\'' + d.id + '\'))">Eliminar chofer</button></div>' : '') : '';
 

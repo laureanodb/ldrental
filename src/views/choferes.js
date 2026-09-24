@@ -28,7 +28,7 @@ export function viewChoferes() {
   return '<h1>Choferes</h1><p class="sub">' + S.drivers.filter(d => !d.inactivo && !d.prospecto).length + ' en total' + (links ? ' · ' + links : '') + '</p>' +
   tarjetaPostulacion() +
   (ui.showProspectos ? embudoResumen() : '') +
-  '<div class="bar"><input type="search" placeholder="Buscar por nombre o DNI" value="' + esc(ui.qDrivers) + '" oninput="ui.qDrivers=this.value;renderList()"><button class="btn" onclick="driverForm()">Agregar</button></div>' +
+  '<div class="bar"><input type="search" placeholder="Buscar por nombre o DNI" value="' + esc(ui.qDrivers) + '" oninput="ui.qDrivers=this.value;renderList()"><button class="btn" onclick="altaRapidaChoferForm()">Agregar</button></div>' +
   '<label class="f" style="margin-bottom:10px"><span>Ordenar por</span><select onchange="ui.ordenChoferes=this.value;renderList()">' +
   '<option value="nombre"' + (ui.ordenChoferes === 'nombre' ? ' selected' : '') + '>Nombre (A-Z)</option>' +
   '<option value="deuda"' + (ui.ordenChoferes === 'deuda' ? ' selected' : '') + '>Deuda (mayor primero)</option>' +

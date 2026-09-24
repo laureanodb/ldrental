@@ -8,15 +8,20 @@ import { driverForm } from './driver.js';
 
 function campos(prefix, tipo, c) {
   return '<label class="f"><span>Tipo</span><select id="' + prefix + '_tipo" onchange="onAsignacionTipo(\'' + prefix + '\')"><option value="alquiler"' + (tipo === 'alquiler' ? ' selected' : '') + '>Alquiler</option><option value="financiado"' + (tipo === 'financiado' ? ' selected' : '') + '>Financiado</option></select></label>' +
-  '<div id="' + prefix + '_finbox" class="two" style="display:' + (tipo === 'financiado' ? '' : 'none') + '"><label class="f"><span>Total a pagar (USD)</span><input id="' + prefix + '_total" inputmode="decimal" value="' + esc((c && c.total) || '') + '"></label>' +
-  '<label class="f"><span>Cantidad de cuotas</span><input id="' + prefix + '_cuotas" inputmode="numeric" value="' + esc((c && c.cuotas) || '') + '"></label></div>' +
-  '<label class="f"><span id="' + prefix + '_lblmonto">' + (tipo === 'financiado' ? 'Cuota semanal (USD)' : 'Alquiler semanal') + '</span><input id="' + prefix + '_monto" inputmode="decimal" value="' + esc((c && c.monto) || '') + '"></label>' +
+  '<div id="' + prefix + '_finbox" class="two" style="display:' + (tipo === 'financiado' ? '' : 'none') + '"><label class="f"><span>Total a pagar (USD)</span><input id="' + prefix + '_total" inputmode="decimal" value="' + esc((c && c.total) || '') + '" oninput="calcularCuotaAsignacion(\'' + prefix + '\')"></label>' +
+  '<label class="f"><span>Cantidad de cuotas</span><input id="' + prefix + '_cuotas" inputmode="numeric" value="' + esc((c && c.cuotas) || '') + '" oninput="calcularCuotaAsignacion(\'' + prefix + '\')"></label></div>' +
+  '<label class="f"><span id="' + prefix + '_lblmonto">' + (tipo === 'financiado' ? 'Cuota semanal (USD)' : 'Alquiler semanal') + '</span><input id="' + prefix + '_monto" inputmode="decimal" value="' + esc((c && c.monto) || '') + '" oninput="this.dataset.touched=1"></label>' +
   '<label class="f"><span>Fecha de inicio</span><input id="' + prefix + '_inicio" type="date" value="' + esc((c && c.inicio) || iso(today())) + '"></label>';
 }
 export function onAsignacionTipo(prefix) {
   const t = val(prefix + '_tipo');
   document.getElementById(prefix + '_finbox').style.display = t === 'financiado' ? '' : 'none';
   document.getElementById(prefix + '_lblmonto').textContent = t === 'financiado' ? 'Cuota semanal (USD)' : 'Alquiler semanal';
+}
+export function calcularCuotaAsignacion(prefix) {
+  const m = document.getElementById(prefix + '_monto'); if (!m || m.dataset.touched) return;
+  const t = +val(prefix + '_total'), n = +val(prefix + '_cuotas');
+  if (t && n) m.value = Math.round(t / n);
 }
 
 async function liberarAuto(c) {
