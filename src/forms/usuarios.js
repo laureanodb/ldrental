@@ -3,10 +3,16 @@ import { S, sb } from '../state.js';
 import { openModal, toast } from '../modal.js';
 import { isAdmin } from '../roles.js';
 
+function formatoIngreso(iso) {
+  if (!iso) return 'nunca';
+  return new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 function renderUsuarios(list) {
-  return '<div id="us_list">' + list.map(p => '<div class="card"><div class="row between"><b>' + esc(p.email) + '</b>' + (p.activo ? '' : '<span class="badge b-mute">Inactivo</span>') + '</div>' +
-  '<div class="row" style="margin-top:8px;gap:8px">' +
+  return '<div id="us_list">' + list.map(p => '<div class="card"><div class="row between"><b>' + esc(p.email) + '</b>' + (p.activo ? '' : '<span class="badge b-mute">Inactivo' + (p.inactivo_hasta ? ' hasta ' + esc(p.inactivo_hasta) : '') + '</span>') + '</div>' +
+  '<div class="small muted">Último ingreso: ' + formatoIngreso(p.ultimo_ingreso) + '</div>' +
+  '<div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">' +
   '<select onchange="cambiarRol(\'' + p.id + '\',this.value)"' + (p.id === S.user.id ? ' disabled' : '') + '><option value="empleado"' + (p.rol === 'empleado' ? ' selected' : '') + '>Empleado</option><option value="supervisor"' + (p.rol === 'supervisor' ? ' selected' : '') + '>Supervisor</option><option value="admin"' + (p.rol === 'admin' ? ' selected' : '') + '>Admin</option></select>' +
+  (p.activo ? '<input type="date" id="us_hasta_' + p.id + '" style="width:auto" title="Hasta (dejar vacío = indefinido)">' : '') +
   '<button class="btn sec sm"' + (p.id === S.user.id ? ' disabled' : '') + ' onclick="toggleActivo(\'' + p.id + '\',' + !p.activo + ')">' + (p.activo ? 'Revocar acceso' : 'Restaurar acceso') + '</button>' +
   '</div></div>').join('') + '</div>';
 }
@@ -32,7 +38,9 @@ export async function cambiarRol(id, rol) {
   toast('Rol actualizado'); usuariosView();
 }
 export async function toggleActivo(id, activo) {
-  const r = await sb.from('profiles').update({ activo }).eq('id', id);
+  const hastaEl = document.getElementById('us_hasta_' + id);
+  const hasta = (!activo && hastaEl && hastaEl.value) ? hastaEl.value : null;
+  const r = await sb.from('profiles').update({ activo, inactivo_hasta: hasta }).eq('id', id);
   if (r.error) { toast('No se pudo cambiar: ' + r.error.message); return; }
-  toast(activo ? 'Acceso restaurado' : 'Acceso revocado'); usuariosView();
+  toast(activo ? 'Acceso restaurado' : ('Acceso revocado' + (hasta ? ' hasta ' + hasta : ''))); usuariosView();
 }

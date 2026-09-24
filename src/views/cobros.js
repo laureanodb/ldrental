@@ -2,7 +2,7 @@ import { S, ui } from '../state.js';
 import { esc, money, moneyUSD, fdate, num1, parse, today, days } from '../utils.js';
 import { isContract, calc, carById, badge, plate, driverName, proyeccionFlujoCaja } from '../calc.js';
 import { METODOS_PAGO } from '../constants.js';
-import { canDelete, canVerFinanzas } from '../roles.js';
+import { canDelete, canVerFinanzas, puedeEditarCobro } from '../roles.js';
 
 const metodoLabel = m => (METODOS_PAGO.find(x => x[0] === m) || [])[1];
 const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -86,7 +86,8 @@ export function viewCobros() {
   if (!P.length) h += '<div class="card muted">Todavía no hay cobros registrados.</div>';
   P.slice(0, 40).forEach(p => {
     const c = carById(p.carId);
-    h += '<div class="card row"><div class="grow"><div>' + (p.tipo === 'cuota' ? moneyUSD(p.monto) : money(p.monto)) + ' <span class="small muted">' + esc(p.tipo === 'alquiler' ? 'alquiler' : p.tipo === 'cuota' ? 'cuota' : 'otro') + '</span>' + (p.parcial ? ' ' + badge('warn', 'Parcial') : '') + (p.depositado ? ' ' + badge('ok', 'Depositado') : '') + '</div><div class="small muted">' + fdate(p.fecha) + ' · ' + esc(c ? c.patente : 'auto eliminado') + (p.choferId && driverName(p.choferId) ? ' · ' + esc(driverName(p.choferId)) : '') + (metodoLabel(p.metodo) ? ' · ' + esc(metodoLabel(p.metodo)) : '') + (p.nota ? ' · ' + esc(p.nota) : '') + '</div></div>' + (canVerFinanzas() ? '<button class="btn sec sm" onclick="toggleDepositado(\'' + p.id + '\')">' + (p.depositado ? 'Sin depositar' : 'Depositado') + '</button><button class="btn sec sm" onclick="reciboPDF(\'' + p.id + '\')">Recibo</button><button class="btn sec sm" onclick="reciboCompartir(\'' + p.id + '\')">Compartir</button>' : '') + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delPay(\'' + p.id + '\'))">Borrar</button>' : '') + '</div>';
+    const editable = puedeEditarCobro(p);
+    h += '<div class="card row"><div class="grow"><div>' + (p.tipo === 'cuota' ? moneyUSD(p.monto) : money(p.monto)) + ' <span class="small muted">' + esc(p.tipo === 'alquiler' ? 'alquiler' : p.tipo === 'cuota' ? 'cuota' : 'otro') + '</span>' + (p.parcial ? ' ' + badge('warn', 'Parcial') : '') + (p.depositado ? ' ' + badge('ok', 'Depositado') : '') + '</div><div class="small muted">' + fdate(p.fecha) + ' · ' + esc(c ? c.patente : 'auto eliminado') + (p.choferId && driverName(p.choferId) ? ' · ' + esc(driverName(p.choferId)) : '') + (metodoLabel(p.metodo) ? ' · ' + esc(metodoLabel(p.metodo)) : '') + (p.nota ? ' · ' + esc(p.nota) : '') + (!editable ? '<div class="small muted">Cobro antiguo: solo un admin puede editarlo o borrarlo</div>' : '') + '</div></div>' + (canVerFinanzas() ? (editable ? '<button class="btn sec sm" onclick="toggleDepositado(\'' + p.id + '\')">' + (p.depositado ? 'Sin depositar' : 'Depositado') + '</button>' : '') + '<button class="btn sec sm" onclick="reciboPDF(\'' + p.id + '\')">Recibo</button><button class="btn sec sm" onclick="reciboCompartir(\'' + p.id + '\')">Compartir</button>' : '') + (canDelete() && editable ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delPay(\'' + p.id + '\'))">Borrar</button>' : '') + '</div>';
   });
   if (P.length > 40) h += '<div class="small muted" style="text-align:center">Se muestran los últimos 40. Exportá para ver todos.</div>';
   return h;

@@ -7,6 +7,7 @@ import { load, flushQueue } from './data.js';
 import { render } from './nav.js';
 import { makeStorage } from './storage.js';
 import { loadOwnProfile } from './roles.js';
+import { iniciarAlertasSupervisor, detenerAlertasSupervisor } from './admin-alertas.js';
 import { brandH1 } from './settings.js';
 import { generarGastosRecurrentes } from './recurrentes.js';
 import { checkChangelog } from './changelog.js';
@@ -41,6 +42,7 @@ export async function start() {
   S.ready = true; render();
   generarGastosRecurrentes();
   checkChangelog();
+  iniciarAlertasSupervisor();
   if (!S.chan) {
     S.chan = sb.channel('flota');
     const timers = {};
@@ -52,6 +54,7 @@ export async function start() {
 }
 export function stop() {
   if (S.chan) { try { sb.removeChannel(S.chan); } catch (e) {} S.chan = null; }
+  detenerAlertasSupervisor();
   COLS.forEach(c => S[c] = []); S.ready = false; S.profile = null; S.profilesEnabled = false;
 }
 

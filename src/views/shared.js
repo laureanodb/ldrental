@@ -56,6 +56,7 @@ export function ajustesCard() {
   '<div class="two"><label class="f"><span>Multas: recargo por pago tardío <small>%</small></span><input id="a_multaRecargo" inputmode="numeric" value="' + settings.multaRecargoPct + '"></label>' +
   '<label class="f"><span>Puntos de licencia: límite de aviso</span><input id="a_puntosLimite" inputmode="numeric" value="' + settings.puntosLimite + '"></label></div>' +
   '<label class="f"><span>Auto disponible sin asignar: avisar a los <small>días</small></span><input id="a_autoParadoDias" inputmode="numeric" value="' + settings.autoParadoDias + '"></label>' +
+  '<label class="f"><span>Cobros: solo admin puede borrar/editar los de más de <small>días</small></span><input id="a_cobroEdicionDias" inputmode="numeric" value="' + settings.cobroEdicionDias + '"></label>' +
   '<button class="btn sec block" onclick="saveAjustes()">Guardar ajustes</button></div>' : '') +
   (isAdmin() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Nombre, teléfono y logo que aparecen en el login, el panel y los QR de los autos.</div>' +
   '<label class="f"><span>Nombre de la empresa</span><input id="a_companyName" value="' + esc(settings.companyName) + '"></label>' +
@@ -85,6 +86,7 @@ export function saveAjustes() {
     multaRecargoPct: +val('a_multaRecargo') || settings.multaRecargoPct,
     puntosLimite: +val('a_puntosLimite') || settings.puntosLimite,
     autoParadoDias: +val('a_autoParadoDias') || settings.autoParadoDias,
+    cobroEdicionDias: +val('a_cobroEdicionDias') || settings.cobroEdicionDias,
   });
   saveSettings(patch);
   toast('Ajustes guardados'); render();
