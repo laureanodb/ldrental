@@ -46,6 +46,7 @@ export function viewMas() {
     ['Gastos generales', 'gastosGeneralesView()'],
     ['Proveedores y talleres', 'proveedoresView()'],
     ['Mapa de flota', 'mapaFlotaView()'],
+    ['Mantenimiento preventivo en lote', 'mantenimientoLoteForm()'],
   ]);
   h += grupo('Análisis', [['Reportes', "goMas('reportes')"], ['Reporte personalizado', 'reportePersonalizadoForm()']]);
   h += grupo('Herramientas', [

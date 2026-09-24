@@ -11,7 +11,7 @@ import { settings } from '../settings.js';
 
 const gastoCatLabel = k => (GASTO_CATS.find(x => x[0] === k) || [0, 'Gasto'])[1];
 
-function actualizarHistorialChoferes(ex, newChoferId) {
+export function actualizarHistorialChoferes(ex, newChoferId) {
   const prevChoferId = ex ? ex.choferId : '';
   let historial = (ex && ex.historialChoferes) || [];
   if (prevChoferId === newChoferId) return historial;
@@ -130,7 +130,8 @@ export function carForm(id) {
   '<label class="chk"><input type="checkbox" id="c_reservado" onchange="document.getElementById(\'reservadoBox\').style.display=this.checked?\'\':\'none\'"' + (c.reservado ? ' checked' : '') + '><span>Reservado</span></label>' +
   '<div id="reservadoBox" style="display:' + (c.reservado ? '' : 'none') + '"><label class="f"><span>Reservado para</span><input id="c_reservadoPara" value="' + esc(c.reservadoPara) + '"></label></div>' +
   '<label class="chk"><input type="checkbox" id="c_aReemplazar" onchange="document.getElementById(\'reemplazoBox\').style.display=this.checked?\'\':\'none\'"' + (c.aReemplazar ? ' checked' : '') + '><span>Marcar para reemplazar</span></label>' +
-  '<div id="reemplazoBox" style="display:' + (c.aReemplazar ? '' : 'none') + '"><label class="f"><span>Motivo</span><select id="c_motivoReemplazo">' + MOTIVOS_REEMPLAZO.map(x => '<option value="' + x[0] + '"' + (c.motivoReemplazo === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
+  '<div id="reemplazoBox" style="display:' + (c.aReemplazar ? '' : 'none') + '"><label class="f"><span>Motivo</span><select id="c_motivoReemplazo">' + MOTIVOS_REEMPLAZO.map(x => '<option value="' + x[0] + '"' + (c.motivoReemplazo === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
+  '<label class="f"><span>Fecha estimada de renovación</span><input id="c_fechaRenovacionPlan" type="date" value="' + esc(c.fechaRenovacionPlan) + '"></label></div>' +
   '<div class="sec-t">Elementos de seguridad</div>' + ELEMENTOS_SEGURIDAD.map(x => '<label class="chk"><input type="checkbox" id="es_' + x[0] + '"' + (c.elementosSeguridad && c.elementosSeguridad[x[0]] ? ' checked' : '') + '><span>' + x[1] + '</span></label>').join('') +
   '<label class="f"><span>Batería 12V: fecha de cambio</span><input id="c_bateria12vFecha" type="date" value="' + esc(c.bateria12vFecha) + '"></label>' +
   '<div class="sec-t">Neumáticos</div>' +
@@ -210,10 +211,21 @@ export function carForm(id) {
       '</div>';
     }
     mant += '<div class="sec-t row between">Mantenimiento<span class="small muted">' + money(totalMant) + ' en total' + (diasTaller ? ' · ' + diasTaller + ' días parado' : '') + '</span></div>';
-    if (c.tipo === 'taller') mant += '<div class="row" style="margin-bottom:10px"><button class="btn sec grow" onclick="sacarDeTaller(\'' + c.id + '\')">Sacar de taller</button></div>';
+    if (c.tipo === 'taller') {
+      if (c.reemplazoTemporalActivo) {
+        const temp = S.cars.find(x => x.id === c.reemplazoTemporalCarId);
+        mant += '<div class="card" style="margin-bottom:10px"><div class="small muted">Reemplazo temporal activo</div><div>' + esc(driverName(c.reemplazoTemporalChoferId)) + ' está manejando ' + (temp ? esc(temp.patente) : 'un auto') + '</div>' +
+        '<button class="btn sec block" style="margin-top:8px" onclick="finalizarReemplazoTemporal(\'' + c.id + '\');carForm(\'' + c.id + '\')">Finalizar reemplazo temporal</button></div>';
+      } else if (c.choferId) {
+        mant += '<div class="row" style="margin-bottom:10px"><button class="btn sec grow" onclick="reemplazoTemporalForm(\'' + c.id + '\')">Asignar auto de reemplazo temporal</button></div>';
+      }
+      mant += '<div class="row" style="margin-bottom:10px"><button class="btn sec grow" onclick="sacarDeTaller(\'' + c.id + '\')">Sacar de taller</button></div>';
+    }
     if (plan.length) mant += plan.map(p => { const e = estadoPlanItem(c, p); return '<div class="row between small" style="padding:4px 0"><span>' + esc(p.label || p.item) + '</span><span>' + badge(e.cls, textoRestante(e)) + '</span></div>'; }).join('');
     mant += '<div class="row" style="margin:8px 0"><button class="btn sec grow" onclick="mantenimientoForm(\'' + c.id + '\')">+ Registrar mantenimiento</button>' + (plan.length ? '<button class="btn sec" onclick="editarPlanMantenimiento(\'' + c.id + '\')">Editar plan</button>' : '') + '</div>';
     if (MH.length) mant += '<div class="sec-t">Historial de mantenimiento</div>' + MH.map(m => '<div class="card row"><div class="grow tap" onclick="mantenimientoForm(\'' + c.id + '\',\'' + m.id + '\')"><div>' + money(m.costo) + ' <span class="small muted">' + esc(m.label || m.item) + (m.tipo === 'correctivo' ? ' · correctivo' : '') + (m.sinFactura ? ' · sin factura' : '') + '</span></div><div class="small muted">' + fdate(m.fecha) + (m.km ? ' · ' + (+m.km).toLocaleString('es-AR') + ' km' : '') + ([m.marca, m.especificacion].filter(Boolean).length ? ' · ' + esc([m.marca, m.especificacion].filter(Boolean).join(' · ')) : '') + '</div></div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delMantenimiento(\'' + m.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    const MR = MH.filter(m => m.marca || m.especificacion);
+    if (MR.length) mant += '<div class="sec-t">Historial de repuestos</div>' + MR.map(m => '<div class="row between small" style="padding:4px 0"><span>' + esc(m.label || m.item) + ': ' + esc([m.marca, m.especificacion].filter(Boolean).join(' · ')) + '</span><span class="muted">' + fdate(m.fecha) + '</span></div>').join('');
 
     /* ---- Gastos (incluye multas y siniestros) ---- */
     const G = S.gastos.filter(g => g.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
@@ -251,7 +263,8 @@ export function carForm(id) {
     hist += '<div class="sec-t">Inspecciones de entrega/recepción</div>';
     if (I.length) hist += I.map(x => '<div class="card row"><div class="grow"><div>' + (x.tipo === 'entrega' ? 'Entrega' : 'Recepción') + ' <span class="small muted">' + fdate(x.fecha) + (x.km ? ' · ' + x.km + ' km' : '') + '</span></div>' + (x.notas ? '<div class="small muted">' + esc(x.notas) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delInspeccion(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     else hist += '<div class="small muted" style="margin-bottom:8px">Sin inspecciones registradas.</div>';
-    hist += '<button class="btn sec block" style="margin:8px 0 20px" onclick="inspeccionForm(\'' + c.id + '\')">+ Registrar inspección</button>';
+    hist += '<button class="btn sec block" style="margin:8px 0 6px" onclick="inspeccionForm(\'' + c.id + '\')">+ Registrar inspección</button>';
+    hist += '<button class="btn sec block" style="margin-bottom:20px" onclick="traspasoForm(\'' + c.id + '\')">Traspaso (cambiar chofer con checklist)</button>';
     const H = (c.historialChoferes || []).slice().sort((a, b) => b.desde.localeCompare(a.desde));
     if (H.length) {
       hist += '<div class="sec-t">Historial de choferes</div>' + H.map(x => '<div class="row between small" style="padding:4px 0"><span>' + esc(driverName(x.choferId) || 'Chofer eliminado') + '</span><span class="muted">' + fdate(x.desde) + ' – ' + (x.hasta ? fdate(x.hasta) : 'actual') + '</span></div>').join('');
@@ -349,7 +362,7 @@ export async function saveCar(id) {
     soloAlquiler: document.getElementById('c_soloAlquiler').checked,
     enPreparacion: document.getElementById('c_enPreparacion').checked,
     reservado: document.getElementById('c_reservado').checked, reservadoPara: val('c_reservadoPara'),
-    aReemplazar: document.getElementById('c_aReemplazar').checked, motivoReemplazo: val('c_motivoReemplazo'),
+    aReemplazar: document.getElementById('c_aReemplazar').checked, motivoReemplazo: val('c_motivoReemplazo'), fechaRenovacionPlan: val('c_fechaRenovacionPlan'),
     neumaticos: {
       di: { fecha: val('nm_di_fecha'), profundidad: +val('nm_di_prof') || 0 },
       dd: { fecha: val('nm_dd_fecha'), profundidad: +val('nm_dd_prof') || 0 },
@@ -479,7 +492,11 @@ export async function sacarDeTaller(id) {
   if (!c || c.tipo !== 'taller') return;
   const nuevoTipo = c.tipoPrevioTaller || 'disponible';
   const historialTaller = actualizarHistorialTaller(c, nuevoTipo);
-  if (await save('cars', Object.assign({}, c, { tipo: nuevoTipo, tipoPrevioTaller: '', historialTaller }))) { closeModal(); toast('Auto sacado de taller'); }
+  if (c.reemplazoTemporalActivo) {
+    const temp = S.cars.find(x => x.id === c.reemplazoTemporalCarId);
+    if (temp) await save('cars', Object.assign({}, temp, { tipo: 'disponible', choferId: '', esReemplazoTemporalDe: '' }));
+  }
+  if (await save('cars', Object.assign({}, c, { tipo: nuevoTipo, tipoPrevioTaller: '', historialTaller, reemplazoTemporalActivo: false, reemplazoTemporalCarId: '', reemplazoTemporalChoferId: '', reemplazoTemporalDesde: '' }))) { closeModal(); toast('Auto sacado de taller'); }
 }
 export function simularAumentoForm(id) {
   const c = S.cars.find(x => x.id === id); if (!c) return;

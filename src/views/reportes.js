@@ -1,8 +1,8 @@
 import { S, ui } from '../state.js';
 import { esc, money, moneyUSD, today } from '../utils.js';
-import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, badge } from '../calc.js';
+import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, planRenovacionFlota, badge } from '../calc.js';
 import { canVerFinanzas } from '../roles.js';
-import { GASTO_CATS, CANALES_PROSPECTO } from '../constants.js';
+import { GASTO_CATS, CANALES_PROSPECTO, MOTIVOS_REEMPLAZO } from '../constants.js';
 
 function cobrosPorMes(n) {
   const t = today();
@@ -142,6 +142,14 @@ function seccionMapaCalorGastos() {
   const meselabels = '<div class="row" style="gap:4px;margin-left:74px;margin-bottom:4px">' + meses.map(m => '<div class="small muted" style="flex:1;text-align:center">' + esc(m.label) + '</div>').join('') + '</div>';
   return '<h2>Mapa de calor de gastos por auto</h2><div class="card">' + meselabels + gridRows + '</div>';
 }
+function seccionPlanRenovacion() {
+  const rows = planRenovacionFlota();
+  if (!rows.length) return '';
+  const motivoLabel = m => (MOTIVOS_REEMPLAZO.find(x => x[0] === m) || [0, 'Sin motivo'])[1];
+  return '<h2>Plan de renovación de flota</h2>' + rows.map(x => '<div class="card"><div class="row between"><span>' + plate(x.c.patente) + '</span>' +
+  (x.diasPlan != null ? badge(x.diasPlan < 0 ? 'bad' : x.diasPlan <= 60 ? 'warn' : 'mute', x.diasPlan < 0 ? 'Vencido hace ' + (-x.diasPlan) + ' d' : 'En ' + x.diasPlan + ' d') : badge('mute', 'Sin fecha')) + '</div>' +
+  (x.motivo ? '<div class="small muted" style="margin-top:4px">' + esc(motivoLabel(x.motivo)) + '</div>' : '') + '</div>').join('');
+}
 function seccionMantenimiento() {
   const rows = activeCars().map(c => ({ c, total: gastoMantenimientoAuto(c) })).filter(x => x.total > 0).sort((a, b) => b.total - a.total);
   if (!rows.length) return '';
@@ -269,6 +277,7 @@ export function viewReportes() {
   h += seccionTablaComparativaChoferes();
   h += seccionGastosPorCategoria();
   h += seccionMapaCalorGastos();
+  h += seccionPlanRenovacion();
   h += seccionMantenimiento();
   h += seccionSiniestros();
   h += seccionMultasChoferes();

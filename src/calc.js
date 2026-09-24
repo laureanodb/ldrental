@@ -482,6 +482,19 @@ export function autosConGastoExcesivo() {
   if (!promedio) return [];
   return conGasto.filter(x => x.gasto > promedio * 2).map(x => ({ c: x.c, gasto: x.gasto, promedio })).sort((a, b) => b.gasto - a.gasto);
 }
+export function planRenovacionFlota() {
+  const t = today();
+  const cars = activeCars().filter(c => c.aReemplazar || c.fechaRenovacionPlan);
+  return cars.map(c => {
+    const diasPlan = c.fechaRenovacionPlan ? days(t, parse(c.fechaRenovacionPlan)) : null;
+    return { c, diasPlan, motivo: c.motivoReemplazo };
+  }).sort((a, b) => {
+    if (a.diasPlan == null && b.diasPlan == null) return 0;
+    if (a.diasPlan == null) return 1;
+    if (b.diasPlan == null) return -1;
+    return a.diasPlan - b.diasPlan;
+  });
+}
 export function gastosPorCategoria() {
   const out = {};
   S.gastos.forEach(g => { const k = g.categoria || 'otro'; out[k] = (out[k] || 0) + (+g.costo || 0); });
