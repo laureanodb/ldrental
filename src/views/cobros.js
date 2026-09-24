@@ -1,6 +1,6 @@
 import { S, ui } from '../state.js';
 import { esc, money, moneyUSD, fdate, num1, parse, today, days } from '../utils.js';
-import { isContract, calc, carById, badge, plate, driverName } from '../calc.js';
+import { isContract, calc, carById, badge, plate, driverName, proyeccionFlujoCaja } from '../calc.js';
 import { METODOS_PAGO } from '../constants.js';
 import { canDelete, canVerFinanzas } from '../roles.js';
 
@@ -37,6 +37,23 @@ function recordatorioWa(c, i, d) {
   }
   return null;
 }
+function seccionProyeccion() {
+  const P = proyeccionFlujoCaja(6);
+  if (!P.some(x => x.ars || x.usd)) return '';
+  return '<h2>Proyección de cobros (próximas 6 semanas)</h2><div class="scroll-x"><div class="row" style="gap:6px;padding-bottom:4px">' +
+    P.map(x => '<div class="card" style="min-width:100px;flex:none">' +
+    '<div class="small muted" style="text-align:center">' + fdate(x.fecha) + '</div>' +
+    (x.ars ? '<div class="small" style="text-align:center;font-weight:600">' + money(x.ars) + '</div>' : '') +
+    (x.usd ? '<div class="small" style="text-align:center;color:var(--muted)">' + moneyUSD(x.usd) + '</div>' : '') +
+    '</div>').join('') + '</div></div>';
+}
+function seccionSinDepositar() {
+  const P = S.payments.filter(p => !p.depositado);
+  if (!P.length) return '';
+  const ars = P.filter(p => p.tipo !== 'cuota').reduce((a, p) => a + (+p.monto || 0), 0);
+  const usd = P.filter(p => p.tipo === 'cuota').reduce((a, p) => a + (+p.monto || 0), 0);
+  return '<div class="card row between" style="margin-bottom:12px"><div><div class="muted small">Sin depositar</div><div>' + (ars ? money(ars) : '') + (ars && usd ? ' · ' : '') + (usd ? moneyUSD(usd) : '') + '</div></div><div class="small muted">' + P.length + ' cobro' + (P.length === 1 ? '' : 's') + '</div></div>';
+}
 function seccionRecordatorios(act) {
   const items = act.map(x => ({ x, d: S.drivers.find(y => y.id === x.c.choferId) })).map(({ x, d }) => ({ c: x.c, i: x.i, d, r: recordatorioWa(x.c, x.i, d) })).filter(x => x.r);
   if (!items.length) return '';
@@ -48,8 +65,10 @@ function seccionRecordatorios(act) {
 export function viewCobros() {
   const act = S.cars.filter(c => isContract(c) && c.choferId).map(c => ({ c, i: calc(c) })).sort((a, b) => b.i.debt - a.i.debt);
   let h = '<h1>Cobros</h1><p class="sub">Cobro semanal por auto</p><div class="bar"><button class="btn grow" onclick="payForm()">Registrar cobro</button>' + '<button class="btn sec" onclick="exportCSV()">Exportar</button>' + '</div>';
+  h += seccionSinDepositar();
   h += seccionRecordatorios(act);
   if (act.length) h += calendarioCobros(act);
+  h += seccionProyeccion();
   h += '<h2>Estado de cada auto</h2>';
   if (!act.length) h += '<div class="card empty">Cuando tengas autos alquilados o financiados con chofer, van a aparecer acá.</div>';
   act.forEach(x => {
@@ -67,7 +86,7 @@ export function viewCobros() {
   if (!P.length) h += '<div class="card muted">Todavía no hay cobros registrados.</div>';
   P.slice(0, 40).forEach(p => {
     const c = carById(p.carId);
-    h += '<div class="card row"><div class="grow"><div>' + (p.tipo === 'cuota' ? moneyUSD(p.monto) : money(p.monto)) + ' <span class="small muted">' + esc(p.tipo === 'alquiler' ? 'alquiler' : p.tipo === 'cuota' ? 'cuota' : 'otro') + '</span>' + (p.parcial ? ' ' + badge('warn', 'Parcial') : '') + '</div><div class="small muted">' + fdate(p.fecha) + ' · ' + esc(c ? c.patente : 'auto eliminado') + (p.choferId && driverName(p.choferId) ? ' · ' + esc(driverName(p.choferId)) : '') + (metodoLabel(p.metodo) ? ' · ' + esc(metodoLabel(p.metodo)) : '') + (p.nota ? ' · ' + esc(p.nota) : '') + '</div></div>' + (canVerFinanzas() ? '<button class="btn sec sm" onclick="reciboPDF(\'' + p.id + '\')">Recibo</button><button class="btn sec sm" onclick="reciboCompartir(\'' + p.id + '\')">Compartir</button>' : '') + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delPay(\'' + p.id + '\'))">Borrar</button>' : '') + '</div>';
+    h += '<div class="card row"><div class="grow"><div>' + (p.tipo === 'cuota' ? moneyUSD(p.monto) : money(p.monto)) + ' <span class="small muted">' + esc(p.tipo === 'alquiler' ? 'alquiler' : p.tipo === 'cuota' ? 'cuota' : 'otro') + '</span>' + (p.parcial ? ' ' + badge('warn', 'Parcial') : '') + (p.depositado ? ' ' + badge('ok', 'Depositado') : '') + '</div><div class="small muted">' + fdate(p.fecha) + ' · ' + esc(c ? c.patente : 'auto eliminado') + (p.choferId && driverName(p.choferId) ? ' · ' + esc(driverName(p.choferId)) : '') + (metodoLabel(p.metodo) ? ' · ' + esc(metodoLabel(p.metodo)) : '') + (p.nota ? ' · ' + esc(p.nota) : '') + '</div></div>' + (canVerFinanzas() ? '<button class="btn sec sm" onclick="toggleDepositado(\'' + p.id + '\')">' + (p.depositado ? 'Sin depositar' : 'Depositado') + '</button><button class="btn sec sm" onclick="reciboPDF(\'' + p.id + '\')">Recibo</button><button class="btn sec sm" onclick="reciboCompartir(\'' + p.id + '\')">Compartir</button>' : '') + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delPay(\'' + p.id + '\'))">Borrar</button>' : '') + '</div>';
   });
   if (P.length > 40) h += '<div class="small muted" style="text-align:center">Se muestran los últimos 40. Exportá para ver todos.</div>';
   return h;

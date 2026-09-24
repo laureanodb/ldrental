@@ -1,6 +1,6 @@
 import { S } from '../state.js';
 import { $, val, uid, iso, today, esc, money, moneyUSD, num1 } from '../utils.js';
-import { isContract, calc, carById, driverName } from '../calc.js';
+import { isContract, calc, carById, driverName, metodoPreferidoChofer } from '../calc.js';
 import { METODOS_PAGO } from '../constants.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
@@ -31,14 +31,20 @@ export function onPayCar() {
   $('#p_tipo').value = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';
   $('#p_lblmonto').textContent = c.tipo === 'financiado' ? 'Monto (en dólares)' : 'Monto';
   $('#p_info').textContent = (i.debt > 0 ? 'Debe ' + mon(i.debt) + ' (' + num1(i.late) + ' semanas). ' : 'Está al día. ') + (c.tipo === 'alquiler' ? 'Alquiler' : 'Cuota') + ' semanal: ' + mon(c.monto) + '.';
+  const metodoHabitual = metodoPreferidoChofer(c.choferId);
+  if (metodoHabitual) $('#p_metodo').value = metodoHabitual;
 }
 export async function savePay() {
   const c = carById(val('p_car')); const monto = +val('p_monto');
   if (!c) { toast('Elegí un auto'); return; }
   if (!monto || monto <= 0) { toast('Poné el monto cobrado'); return; }
   if (!val('p_fecha')) { toast('Poné la fecha'); return; }
-  const o = { id: uid(), carId: c.id, choferId: c.choferId, fecha: val('p_fecha'), monto, tipo: val('p_tipo'), metodo: val('p_metodo'), parcial: document.getElementById('p_parcial').checked, nota: val('p_nota') };
+  const o = { id: uid(), carId: c.id, choferId: c.choferId, fecha: val('p_fecha'), monto, tipo: val('p_tipo'), metodo: val('p_metodo'), parcial: document.getElementById('p_parcial').checked, nota: val('p_nota'), depositado: false };
   const km = val('p_km');
   if (await save('payments', o)) { if (km) await actualizarKm(c.id, km); closeModal(); toast('Cobro registrado'); }
 }
 export async function delPay(id) { if (await remove('payments', id)) toast('Cobro borrado'); }
+export async function toggleDepositado(id) {
+  const p = S.payments.find(x => x.id === id); if (!p) return;
+  await save('payments', Object.assign({}, p, { depositado: !p.depositado }));
+}

@@ -1,7 +1,7 @@
 import { $, esc, val, uid, money, moneyUSD, fdate, iso, today } from '../utils.js';
 import { S } from '../state.js';
-import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS, CANALES_PROSPECTO } from '../constants.js';
-import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia } from '../calc.js';
+import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS, CANALES_PROSPECTO, METODOS_PAGO } from '../constants.js';
+import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer } from '../calc.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -87,7 +87,8 @@ export function driverForm(id) {
     '<div class="row between"><span class="muted">Deuda</span><b style="color:' + (debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + mon(debt) + '</b></div>' +
     (score != null ? '<div class="row between"><span class="muted">Puntualidad</span><b>' + score + '%</b></div>' : '') +
     (!d.prospecto && driverEnRiesgo(d.id) ? '<div class="row between"><span class="muted">Riesgo</span>' + badge('bad', 'En riesgo por atrasos') + '</div>' : '') +
-    (!d.prospecto && driverCalificaBono(d.id) ? '<div class="row between"><span class="muted">Bono</span>' + badge('ok', 'Califica por puntualidad') + '</div>' : '') + '</div>';
+    (!d.prospecto && driverCalificaBono(d.id) ? '<div class="row between"><span class="muted">Bono</span>' + badge('ok', 'Califica por puntualidad') + '</div>' : '') +
+    (() => { const m = metodoPreferidoChofer(d.id); return m ? '<div class="row between small"><span class="muted">Método de pago habitual</span><span>' + esc((METODOS_PAGO.find(x => x[0] === m) || [0, m])[1]) + '</span></div>' : ''; })() + '</div>';
   }
   financiacion += (ex ? (() => { const s = sugerirAptoFinanciar(d.id); return '<div class="small muted" style="margin-bottom:8px">Sugerido según puntualidad, antigüedad y sanciones: <b style="color:' + (s.cumple ? 'var(--ok)' : 'var(--muted)') + '">' + (s.cumple ? 'Calificaría' : 'Todavía no calificaría') + '</b></div>'; })() : '') +
   '<label class="chk"><input type="checkbox" id="d_apto"' + (d.aptoFinanciar ? ' checked' : '') + '><span>Apto para financiar un auto (decisión final)</span></label>' +

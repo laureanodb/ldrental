@@ -501,6 +501,34 @@ export function cobradoDelMesPorMetodo(offsetMeses) {
   });
   return out;
 }
+export function metodoPreferidoChofer(driverId) {
+  const conteo = {};
+  S.payments.filter(p => p.choferId === driverId && p.metodo).forEach(p => { conteo[p.metodo] = (conteo[p.metodo] || 0) + 1; });
+  let mejor = '', max = 0;
+  Object.entries(conteo).forEach(([m, n]) => { if (n > max) { max = n; mejor = m; } });
+  return mejor;
+}
+export function proyeccionFlujoCaja(semanas) {
+  const out = [];
+  const hoy = today();
+  for (let i = 0; i < semanas; i++) {
+    const d = new Date(hoy); d.setDate(d.getDate() + i * 7);
+    out.push({ semana: i + 1, fecha: iso(d), ars: 0, usd: 0 });
+  }
+  activeCars().filter(c => isContract(c) && c.choferId && c.monto).forEach(c => {
+    const info = calc(c);
+    for (let i = 0; i < semanas; i++) {
+      if (c.tipo === 'financiado') {
+        const semanaContrato = info.weeks + i;
+        if (c.cuotas && semanaContrato > +c.cuotas) continue;
+        out[i].usd += +c.monto;
+      } else {
+        out[i].ars += +c.monto;
+      }
+    }
+  });
+  return out;
+}
 export const plate = p => '<span class="plate">' + esc(p || 'Sin patente') + '</span>';
 export const badge = (cls, t) => '<span class="badge b-' + cls + '">' + esc(t) + '</span>';
 export const tipoBadge = t => badge(t === 'alquiler' ? 'info' : t === 'financiado' ? 'ok' : 'mute', TIPOS[t] || t);

@@ -18,7 +18,7 @@ import { goMas } from './views/mas.js';
 import { initPortal } from './portal.js';
 import { initPostulacion } from './postulacion.js';
 import { depositoForm, saveDeposito, delDeposito } from './forms/deposito.js';
-import { payForm, onPayCar, savePay, delPay } from './forms/payment.js';
+import { payForm, onPayCar, savePay, delPay, toggleDepositado } from './forms/payment.js';
 import { closeModal, confirmDel } from './modal.js';
 import { attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile } from './files.js';
 import { backup, pickRestore, doRestore, exportCSV, cancelRestore } from './backup.js';
@@ -55,7 +55,7 @@ Object.assign(window, {
   contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato,
   driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion,
   depositoForm, saveDeposito, delDeposito,
-  payForm, onPayCar, savePay, delPay,
+  payForm, onPayCar, savePay, delPay, toggleDepositado,
   closeModal, confirmDel,
   attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile,
   backup, pickRestore, doRestore, exportCSV, cancelRestore,
