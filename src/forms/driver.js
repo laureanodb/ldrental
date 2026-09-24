@@ -47,6 +47,16 @@ export function driverForm(id) {
       : '<div class="row between"><span class="muted">Sin auto asignado</span><button class="btn sm" onclick="asignarAutoForm(\'' + d.id + '\')">Asignar auto</button></div>') +
     '</div>';
   }
+  if (ex) {
+    const portalUrl = d.portalToken ? location.origin + location.pathname + '#/portal/' + d.id + '/' + d.portalToken : '';
+    h += '<div class="card" style="margin-bottom:10px"><div class="small muted" style="margin-bottom:6px">Portal del chofer <small>link de solo lectura, sin login</small></div>' +
+    (portalUrl ? '<input readonly value="' + esc(portalUrl) + '" onclick="this.select()" style="margin-bottom:8px">' +
+      '<div class="row"><button class="btn sec sm" onclick="copiarLinkPortal(\'' + esc(portalUrl) + '\')">Copiar</button>' +
+      '<a class="btn sec sm" target="_blank" href="https://wa.me/?text=' + encodeURIComponent('Hola ' + (d.nombre || '').split(' ')[0] + ', acá podés ver tu estado de cuenta: ' + portalUrl) + '">WhatsApp</a>' +
+      '<button class="btn sec sm" onclick="regenerarLinkPortal(\'' + d.id + '\')">Regenerar</button></div>'
+      : '<button class="btn sec block" onclick="regenerarLinkPortal(\'' + d.id + '\')">Generar link del portal</button>') +
+    '</div>';
+  }
 
   /* ---- Datos ---- */
   let datos = '';
@@ -138,15 +148,7 @@ export function driverForm(id) {
     const H = carHistoryForDriver(d.id);
     hist += '<div class="sec-t">Historial de autos</div>';
     if (H.length) hist += H.map(x => '<div class="row between small" style="padding:4px 0"><span>' + esc(x.patente || 'Auto eliminado') + '</span><span class="muted">' + fdate(x.desde) + ' – ' + (x.hasta ? fdate(x.hasta) : 'actual') + '</span></div>').join('');
-    else hist += '<div class="small muted" style="margin-bottom:8px">Sin autos asignados todavía.</div>';
-    const portalUrl = d.portalToken ? location.origin + location.pathname + '#/portal/' + d.id + '/' + d.portalToken : '';
-    hist += '<div class="sec-t">Portal del chofer</div>' +
-    (portalUrl ? '<div class="card"><div class="small muted" style="margin-bottom:6px">Link de solo lectura para que el chofer vea su deuda, próximo pago y recibos sin loguearse.</div>' +
-      '<input readonly value="' + esc(portalUrl) + '" onclick="this.select()" style="margin-bottom:8px">' +
-      '<div class="row"><button class="btn sec sm" onclick="copiarLinkPortal(\'' + esc(portalUrl) + '\')">Copiar</button>' +
-      '<a class="btn sec sm" target="_blank" href="https://wa.me/?text=' + encodeURIComponent('Hola ' + (d.nombre || '').split(' ')[0] + ', acá podés ver tu estado de cuenta: ' + portalUrl) + '">WhatsApp</a></div></div>'
-      : '<div class="small muted" style="margin-bottom:8px">Todavía no generaste el link para este chofer.</div>') +
-    '<button class="btn sec block" style="margin:8px 0 20px" onclick="regenerarLinkPortal(\'' + d.id + '\')">' + (portalUrl ? 'Regenerar link' : 'Generar link') + '</button>';
+    else hist += '<div class="small muted" style="margin-bottom:20px">Sin autos asignados todavía.</div>';
     const COM = (d.comunicaciones || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
     hist += '<div class="sec-t">Historial de comunicaciones</div>' +
     '<div class="two"><label class="f"><span>Tipo</span><select id="cm_tipo">' + COMUNICACION_TIPOS.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label>' +
