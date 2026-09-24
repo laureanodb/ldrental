@@ -186,6 +186,7 @@ export async function saveDriver(id) {
   const dni = val('d_dni');
   if (dni && S.drivers.some(x => x.id !== id && String(x.dni || '').trim() === dni)) { toast('Ya existe un chofer con ese DNI'); return; }
   const tel = val('d_tel');
+  if (tel && !/^\+?[\d\s()-]{6,}$/.test(tel)) { toast('El teléfono no parece válido. Usá solo números, espacios, +, - o paréntesis'); return; }
   if (tel && S.drivers.some(x => x.id !== id && String(x.tel || '').trim() === tel)) { toast('Ya existe un chofer con ese teléfono'); return; }
   const docs = {}; DOCS.forEach(x => { docs[x[0]] = document.getElementById('dc_' + x[0]).checked; });
   const onboarding = {}; ONBOARDING_ITEMS.forEach(x => { onboarding[x[0]] = document.getElementById('ob_' + x[0]).checked; });

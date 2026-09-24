@@ -37,6 +37,7 @@ export async function saveGasto(carId, btn) {
   const costo = +val('g_costo');
   if (!costo || costo <= 0) { toast('Poné el costo del gasto'); return; }
   const fecha = val('g_fecha') || iso(today());
+  if (fecha > iso(today())) { toast('La fecha del gasto no puede ser futura'); return; }
   const categoria = val('g_cat');
   const dup = S.gastos.some(g => g.carId === carId && g.fecha === fecha && +g.costo === costo && g.categoria === categoria);
   if (dup && gastoDupArmed !== btn) {

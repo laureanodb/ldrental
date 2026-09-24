@@ -50,6 +50,7 @@ export async function guardarAltaRapidaChofer() {
   const nombre = val('nr_nombre').trim();
   if (!nombre) { toast('Falta el nombre'); return; }
   const tel = val('nr_tel').trim();
+  if (tel && !/^\+?[\d\s()-]{6,}$/.test(tel)) { toast('El teléfono no parece válido. Usá solo números, espacios, +, - o paréntesis'); return; }
   if (tel && S.drivers.some(x => String(x.tel || '').trim() === tel)) { toast('Ya existe un chofer con ese teléfono'); return; }
   const o = { id: uid(), nombre, tel, docs: {} };
   if (await save('drivers', o)) { toast('Chofer creado. Completá el resto cuando quieras'); driverForm(o.id); }

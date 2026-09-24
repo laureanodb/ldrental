@@ -290,9 +290,14 @@ export function carForm(id) {
     if (isAdmin()) hist += '<button class="btn sec block" style="margin-top:12px" onclick="historialAutoView(\'' + c.id + '\',\'' + esc(c.patente) + '\')">Ver historial completo de cambios</button>';
   }
 
-  const saveCancelRow = '<div class="row stickysave"><button class="btn grow" onclick="saveCar(' + (ex ? "'" + c.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
-  const accionesRow = ex ? '<div class="row" style="margin-top:20px"><button class="btn sec grow" onclick="' + (c.vendido ? "toggleVendido('" + c.id + "')" : "venderAutoForm('" + c.id + "')") + '">' + (c.vendido ? 'Restaurar de vendidos' : 'Marcar como vendido') + '</button></div>' +
-    (canDelete() ? '<div style="margin-top:8px"><button class="btn danger block" onclick="confirmDel(this,()=>delCar(\'' + c.id + '\'))">Eliminar auto</button></div>' : '') : '';
+  const saveCancelRow = '<div class="row stickysave"><button class="btn grow" onclick="saveCar(this' + (ex ? ",'" + c.id + "'" : ',null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
+  let accionesRow = ex ? '<div class="row" style="margin-top:20px"><button class="btn sec grow" onclick="' + (c.vendido ? "toggleVendido('" + c.id + "')" : "venderAutoForm('" + c.id + "')") + '">' + (c.vendido ? 'Restaurar de vendidos' : 'Marcar como vendido') + '</button></div>' : '';
+  if (ex && canDelete()) {
+    const nPagos = S.payments.filter(p => p.carId === c.id).length;
+    const nOtros = S.gastos.filter(g => g.carId === c.id).length + S.mantenimientos.filter(m => m.carId === c.id).length + S.multas.filter(m => m.carId === c.id).length;
+    const avisoHist = (nPagos || nOtros) ? '<div class="small muted" style="margin:8px 0 4px">Este auto tiene ' + [nPagos ? nPagos + ' cobro' + (nPagos === 1 ? '' : 's') : '', nOtros ? nOtros + ' registro' + (nOtros === 1 ? '' : 's') + ' de gastos/mantenimiento/multas' : ''].filter(Boolean).join(' y ') + '. Al eliminar el auto se borran los cobros' + (nOtros ? '; el resto queda sin auto asociado' : '') + '.</div>' : '';
+    accionesRow += '<div style="margin-top:8px">' + avisoHist + '<button class="btn danger block" onclick="confirmDel(this,()=>delCar(\'' + c.id + '\'))">Eliminar auto</button></div>';
+  }
 
   if (ex) {
     h += '<div class="tabs" data-scope="auto">' +
@@ -328,7 +333,8 @@ export function autoCuota() {
   const t = +val('c_total'), n = +val('c_cuotas');
   if (t && n) m.value = Math.round(t / n);
 }
-export async function saveCar(id) {
+let saveCarAvisoArmed = null;
+export async function saveCar(btn, id) {
   const patente = val('c_patente').toUpperCase();
   if (!patente) { toast('Falta la patente'); return; }
   if (S.cars.some(x => x.id !== id && String(x.patente || '').toUpperCase() === patente)) { toast('Ya existe un auto con esa patente'); return; }
@@ -336,8 +342,24 @@ export async function saveCar(id) {
   if (numFlota && S.cars.some(x => x.id !== id && String(x.numeroFlota || '').trim() === numFlota)) { toast('Ya existe un auto con ese número de flota'); return; }
   const poliza = val('c_poliza');
   if (poliza && S.cars.some(x => x.id !== id && String(x.polizaNumero || '').trim() === poliza)) { toast('Ya existe un auto con ese número de póliza'); return; }
+  const vin = val('c_vin').trim();
+  if (vin && S.cars.some(x => x.id !== id && String(x.vin || '').trim().toUpperCase() === vin.toUpperCase())) { toast('Ya existe un auto con ese VIN/chasis'); return; }
   const tipo = val('c_tipo'), con = tipo === 'alquiler' || tipo === 'financiado';
   const ex = S.cars.find(x => x.id === id);
+  const hoy = iso(today());
+  const avisos = [];
+  if (con && val('c_inicio') && val('c_inicio') > hoy) avisos.push('el inicio del contrato es una fecha futura');
+  VENC.forEach(v => {
+    const nv = val('v_' + v[0]);
+    const prev = ex ? (ex[v[0]] || '') : '';
+    if (nv && nv !== prev && nv < hoy) avisos.push(v[1] + ' ya está vencido');
+  });
+  if (avisos.length && saveCarAvisoArmed !== btn) {
+    saveCarAvisoArmed = btn;
+    toast('Atención: ' + avisos.join('; ') + '. Tocá "Guardar" de nuevo para confirmar.');
+    return;
+  }
+  saveCarAvisoArmed = null;
   const choferId = con ? val('c_chofer') : '';
   const kmNuevo = +val('c_km') || 0;
   const kmViejo = ex ? (+ex.km || 0) : null;
