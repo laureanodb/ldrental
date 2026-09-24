@@ -1,6 +1,6 @@
 import { S, ui } from '../state.js';
-import { esc, money, moneyUSD, today, fdate } from '../utils.js';
-import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, planRenovacionFlota, badge } from '../calc.js';
+import { esc, money, moneyUSD, today, fdate, iso } from '../utils.js';
+import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, costoTotalAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, planRenovacionFlota, badge } from '../calc.js';
 import { canVerFinanzas } from '../roles.js';
 import { GASTO_CATS, CANALES_PROSPECTO, MOTIVOS_REEMPLAZO } from '../constants.js';
 
@@ -12,6 +12,36 @@ function cobrosPorMes(n) {
     meses.push({ label: d.toLocaleDateString('es-AR', { month: 'short' }), total: cobradoDelMes(i) });
   }
   return meses;
+}
+
+function flotaActivaPorMes(n) {
+  const t = today();
+  const meses = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(t.getFullYear(), t.getMonth() - i, 1);
+    const finMesIso = iso(new Date(t.getFullYear(), t.getMonth() - i + 1, 0));
+    const n2 = S.cars.filter(c => {
+      if (c.fechaCompra && c.fechaCompra > finMesIso) return false;
+      if (c.vendido && c.fechaVenta && c.fechaVenta <= finMesIso) return false;
+      return true;
+    }).length;
+    meses.push({ label: d.toLocaleDateString('es-AR', { month: 'short' }), n: n2 });
+  }
+  return meses;
+}
+function seccionFlotaHistorica() {
+  const meses = flotaActivaPorMes(6);
+  if (!meses.some(m => m.n)) return '';
+  const max = Math.max(1, ...meses.map(m => m.n));
+  const w = 300, bw = w / meses.length;
+  const bars = meses.map((m, i) => {
+    const bh = Math.round((m.n / max) * 85);
+    const x = i * bw + bw * 0.15, y = 95 - bh, bw2 = bw * 0.7;
+    return '<rect x="' + x + '" y="' + y + '" width="' + bw2 + '" height="' + bh + '" rx="3" fill="var(--ok)"/>' +
+      '<text x="' + (x + bw2 / 2) + '" y="' + (y - 3) + '" font-size="9" text-anchor="middle" fill="var(--muted)">' + m.n + '</text>' +
+      '<text x="' + (x + bw2 / 2) + '" y="108" font-size="9" text-anchor="middle" fill="var(--muted)">' + esc(m.label) + '</text>';
+  }).join('');
+  return '<h2>Flota activa histórica</h2><div class="card"><svg viewBox="0 0 ' + w + ' 116" style="width:100%;height:auto" role="img" aria-label="Autos activos por mes">' + bars + '</svg></div>';
 }
 
 function seccionGrafico() {
@@ -160,6 +190,13 @@ function seccionPlanRenovacion() {
   (x.diasPlan != null ? badge(x.diasPlan < 0 ? 'bad' : x.diasPlan <= 60 ? 'warn' : 'mute', x.diasPlan < 0 ? 'Vencido hace ' + (-x.diasPlan) + ' d' : 'En ' + x.diasPlan + ' d') : badge('mute', 'Sin fecha')) + '</div>' +
   (x.motivo ? '<div class="small muted" style="margin-top:4px">' + esc(motivoLabel(x.motivo)) + '</div>' : '') + '</div>').join('');
 }
+function seccionCostoTotalAuto() {
+  if (!canVerFinanzas()) return '';
+  const rows = activeCars().map(c => Object.assign({ c }, costoTotalAuto(c))).filter(x => x.total > 0).sort((a, b) => b.total - a.total);
+  if (!rows.length) return '';
+  return '<h2>Costo total por auto</h2>' + rows.map(x => '<div class="card"><div class="row between"><span>' + plate(x.c.patente) + '</span><b>' + money(x.total) + '</b></div>' +
+  '<div class="small muted" style="margin-top:4px">' + [x.costoCompra ? 'Compra ' + money(x.costoCompra) : '', x.gastos ? 'Gastos ' + money(x.gastos) : '', x.mant ? 'Mantenimiento ' + money(x.mant) : '', x.siniestros ? 'Siniestros ' + money(x.siniestros) : ''].filter(Boolean).join(' · ') + '</div></div>').join('');
+}
 function seccionMantenimiento() {
   const rows = activeCars().map(c => ({ c, total: gastoMantenimientoAuto(c) })).filter(x => x.total > 0).sort((a, b) => b.total - a.total);
   if (!rows.length) return '';
@@ -266,13 +303,35 @@ function seccionSaludChoferes() {
   '<div class="row between small muted" style="margin-top:4px"><span>' + (x.score != null ? x.score + '% puntual' : 'sin datos') + '</span><span>' + x.multas + (x.multas === 1 ? ' multa' : ' multas') + '</span><span>' + x.siniestros + (x.siniestros === 1 ? ' siniestro' : ' siniestros') + '</span></div></div>').join('');
 }
 
+function seccionRangoPersonalizado() {
+  if (!canVerFinanzas()) return '';
+  const desde = ui.repDesde, hasta = ui.repHasta;
+  let resultado = '';
+  if (desde && hasta) {
+    const pagos = S.payments.filter(p => p.fecha >= desde && p.fecha <= hasta);
+    const cobradoARS = pagos.filter(p => p.tipo !== 'cuota').reduce((a, p) => a + (+p.monto || 0), 0);
+    const cobradoUSD = pagos.filter(p => p.tipo === 'cuota').reduce((a, p) => a + (+p.monto || 0), 0);
+    const gastos = S.gastos.filter(g => g.fecha >= desde && g.fecha <= hasta).reduce((a, g) => a + (+g.costo || 0), 0) +
+      S.mantenimientos.filter(m => m.fecha >= desde && m.fecha <= hasta).reduce((a, m) => a + (+m.costo || 0), 0);
+    resultado = '<div class="card"><div class="row between"><span class="muted">Cobrado</span><b>' + money(cobradoARS) + (cobradoUSD ? ' + ' + moneyUSD(cobradoUSD) : '') + '</b></div>' +
+    '<div class="row between"><span class="muted">Gastos</span><b>' + money(gastos) + '</b></div>' +
+    '<div class="row between"><span class="muted">Neto</span><b style="color:' + (cobradoARS - gastos >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(cobradoARS - gastos) + '</b></div></div>';
+  }
+  return '<h2>Rango de fechas personalizado</h2><div class="two" style="margin-bottom:10px">' +
+  '<label class="f"><span>Desde</span><input type="date" value="' + esc(desde) + '" onchange="ui.repDesde=this.value;render()"></label>' +
+  '<label class="f"><span>Hasta</span><input type="date" value="' + esc(hasta) + '" onchange="ui.repHasta=this.value;render()"></label></div>' +
+  (resultado || '<div class="small muted">Elegí las dos fechas para ver el total cobrado y gastado en ese rango.</div>');
+}
+
 export function viewReportes() {
   if (!S.cars.length) return '<h1>Reportes</h1><p class="sub">Rentabilidad, comparativas y proyecciones</p><div class="card empty">Cargá autos y cobros para ver reportes acá.</div>';
   let h = '<h1>Reportes</h1><p class="sub">Rentabilidad, comparativas y proyecciones</p>';
   if (canVerFinanzas()) h += '<div class="row" style="margin-bottom:14px"><button class="btn sec grow" onclick="descargarReporteEjecutivo()">Descargar reporte ejecutivo (PDF)</button></div>';
   h += seccionAlertasTendencia();
+  h += seccionRangoPersonalizado();
   h += seccionComparacionMensual();
   h += seccionGrafico();
+  h += seccionFlotaHistorica();
   h += seccionProyeccion();
   h += seccionProyeccionRentabilidad();
   h += seccionRentabilidad();
@@ -288,6 +347,7 @@ export function viewReportes() {
   h += seccionGastosPorCategoria();
   h += seccionReclamosSeguro();
   h += seccionMapaCalorGastos();
+  h += seccionCostoTotalAuto();
   h += seccionPlanRenovacion();
   h += seccionMantenimiento();
   h += seccionSiniestros();

@@ -482,6 +482,13 @@ export function puntoEquilibrio(c) {
 export function gastoMantenimientoAuto(c) {
   return S.mantenimientos.filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
 }
+export function costoTotalAuto(c) {
+  const gastos = S.gastos.filter(g => g.carId === c.id).reduce((a, g) => a + (+g.costo || 0), 0);
+  const mant = S.mantenimientos.filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
+  const siniestros = S.siniestros.filter(s => s.carId === c.id).reduce((a, s) => a + (+s.costoTaller || 0), 0);
+  const costoCompra = +c.costoCompra || 0;
+  return { costoCompra, gastos, mant, siniestros, total: costoCompra + gastos + mant + siniestros };
+}
 export function autosConGastoExcesivo() {
   const cars = activeCars().filter(c => !c.aReemplazar);
   const gastos = cars.map(c => ({ c, gasto: gastoMantenimientoAuto(c) }));

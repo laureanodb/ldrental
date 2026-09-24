@@ -11,7 +11,7 @@ import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjus
 import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
 import { calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi } from './forms/calculadora.js';
 import { compararAutosForm, renderComparacionAutos } from './forms/comparar.js';
-import { reportePersonalizadoForm, toggleColumnaReporte, renderReportePersonalizado, exportarReportePersonalizado } from './forms/reporte-personalizado.js';
+import { reportePersonalizadoForm, toggleColumnaReporte, renderReportePersonalizado, exportarReportePersonalizado, exportarReportePersonalizadoPDF, guardarFavoritoReporte, cargarFavoritoReporte, borrarFavoritoReporte } from './forms/reporte-personalizado.js';
 import { traspasoForm, saveTraspaso } from './forms/traspaso.js';
 import { reemplazoTemporalForm, saveReemplazoTemporal, finalizarReemplazoTemporal } from './forms/reemplazo-temporal.js';
 import { mantenimientoLoteForm, marcarTodosLote, saveMantenimientoLote } from './forms/mantenimiento-lote.js';
@@ -62,7 +62,7 @@ Object.assign(window, {
   carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento,
   recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio,
   calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, compararAutosForm, renderComparacionAutos,
-  reportePersonalizadoForm, toggleColumnaReporte, renderReportePersonalizado, exportarReportePersonalizado,
+  reportePersonalizadoForm, toggleColumnaReporte, renderReportePersonalizado, exportarReportePersonalizado, exportarReportePersonalizadoPDF, guardarFavoritoReporte, cargarFavoritoReporte, borrarFavoritoReporte,
   traspasoForm, saveTraspaso,
   reemplazoTemporalForm, saveReemplazoTemporal, finalizarReemplazoTemporal,
   mantenimientoLoteForm, marcarTodosLote, saveMantenimientoLote,
