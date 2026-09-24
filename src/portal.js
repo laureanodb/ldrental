@@ -1,15 +1,38 @@
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
-import { esc, money, moneyUSD, fdate } from './utils.js';
+import { esc, money, moneyUSD, fdate, today, parse, days } from './utils.js';
 import { brandH1, settings } from './settings.js';
 
-function pantalla(app, inner) {
-  app.innerHTML = '<div class="login" style="max-width:480px">' + brandH1() + inner + '</div>';
+const TEMA_KEY = 'portal-tema';
+function temaGuardado() { try { return localStorage.getItem(TEMA_KEY) || ''; } catch (e) { return ''; } }
+export function toggleTemaPortal() {
+  const actual = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+  const nuevo = actual === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = nuevo;
+  try { localStorage.setItem(TEMA_KEY, nuevo); } catch (e) {}
+  const btn = document.getElementById('portal-tema-btn');
+  if (btn) btn.textContent = nuevo === 'dark' ? '☀ Modo claro' : '🌙 Modo oscuro';
+}
+function aplicarTemaGuardado() {
+  const t = temaGuardado();
+  if (t) document.documentElement.dataset.theme = t;
+}
+
+function brandH1Portal(j) {
+  const logo = (j && j.companyLogo) || settings.companyLogo;
+  const nombre = (j && j.companyName) || settings.companyName || 'LD Rental';
+  return (logo ? '<img src="' + logo + '" alt="" style="height:32px;display:block;margin-bottom:6px">' : '') + '<h1>' + esc(nombre) + '</h1>';
+}
+function pantalla(app, inner, j) {
+  app.innerHTML = '<div class="login" style="max-width:480px">' + (j ? brandH1Portal(j) : brandH1()) +
+  '<div class="row" style="justify-content:flex-end;margin:-4px 0 8px"><button type="button" class="btn sec sm" id="portal-tema-btn" onclick="toggleTemaPortal()">' + (document.documentElement.dataset.theme === 'dark' ? '☀ Modo claro' : '🌙 Modo oscuro') + '</button></div>' +
+  inner + '</div>';
 }
 
 let PORTAL_ID = '', PORTAL_TOKEN = '';
 
 export async function initPortal(driverId, token) {
   PORTAL_ID = driverId; PORTAL_TOKEN = token;
+  aplicarTemaGuardado();
   const nav = document.getElementById('nav'); if (nav) nav.style.display = 'none';
   const app = document.getElementById('app');
   pantalla(app, '<p class="sub">Cargando tu estado de cuenta…</p>');
@@ -23,7 +46,7 @@ export async function initPortal(driverId, token) {
     pantalla(app, '<div class="card"><b>No se pudo cargar</b><p class="small muted">Revisá tu conexión e intentá de nuevo.</p></div>');
     return;
   }
-  pantalla(app, '');
+  pantalla(app, '', j);
   renderPortal(app, j);
 }
 async function enviarAccionPortal(body, statusEl, btn) {
@@ -42,15 +65,27 @@ async function enviarAccionPortal(body, statusEl, btn) {
 
 function renderPortal(app, j) {
   let h = '<p class="sub">Hola ' + esc(j.nombre || '') + '</p>';
-  const anuncios = (settings.anuncios || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5);
+  const companyPhone = j.companyPhone || settings.companyPhone;
+  if (companyPhone) {
+    h += '<a class="btn block" style="margin-bottom:14px" target="_blank" href="https://wa.me/' + esc(companyPhone.replace(/\D/g, '')) + '?text=' + encodeURIComponent('Hola, soy ' + (j.nombre || '') + '.') + '">Contactar por WhatsApp</a>';
+  }
+  const anuncios = (j.anuncios && j.anuncios.length ? j.anuncios : (settings.anuncios || [])).slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5);
   if (anuncios.length) {
     h += '<div class="sec-t">Anuncios</div>' + anuncios.map(a => '<div class="card"><div>' + esc(a.texto) + '</div><div class="small muted" style="margin-top:4px">' + fdate(a.fecha) + '</div></div>').join('');
   }
-  if (settings.telefonoEmergencia || settings.protocoloEmergencia) {
-    h += '<details class="card" style="margin-bottom:14px"><summary style="cursor:pointer">Protocolo de emergencia</summary>' +
-    (settings.telefonoEmergencia ? '<a class="btn block" style="margin-top:10px" href="tel:' + esc(settings.telefonoEmergencia) + '">Llamar a ' + esc(settings.telefonoEmergencia) + '</a>' : '') +
-    (settings.protocoloEmergencia ? '<div class="small" style="white-space:pre-wrap;margin-top:10px">' + esc(settings.protocoloEmergencia) + '</div>' : '') +
-    '</details>';
+  const telEmergencia = j.telefonoEmergencia || settings.telefonoEmergencia;
+  const protocolo = j.protocoloEmergencia || settings.protocoloEmergencia;
+  if (telEmergencia || protocolo) {
+    h += '<div class="sec-t">Protocolo de emergencia</div><div class="card" style="margin-bottom:14px">' +
+    (telEmergencia ? '<a class="btn block" href="tel:' + esc(telEmergencia) + '">Llamar a ' + esc(telEmergencia) + '</a>' : '') +
+    (protocolo ? '<div class="small" style="white-space:pre-wrap;margin-top:10px">' + esc(protocolo) + '</div>' : '') +
+    '</div>';
+  }
+  const multas = j.multas || [];
+  if (multas.length) {
+    const totalMultas = multas.reduce((a, m) => a + (+m.monto || 0), 0);
+    h += '<div class="sec-t row between">Multas pendientes<span class="small muted">' + money(totalMultas) + '</span></div>' +
+    multas.map(m => '<div class="card row between small"><span>' + (m.numeroActa ? 'Acta ' + esc(m.numeroActa) : 'Multa') + ' · ' + fdate(m.fecha) + '</span><b style="color:var(--bad)">' + money(m.monto) + '</b></div>').join('');
   }
   const autos = j.autos || [];
   if (!autos.length) {
@@ -58,11 +93,15 @@ function renderPortal(app, j) {
   } else {
     autos.forEach(a => {
       const mon = a.moneda === 'USD' ? moneyUSD : money;
+      const diasProx = a.proximo ? days(today(), parse(a.proximo)) : null;
+      const proxTexto = diasProx == null ? '' : diasProx < 0 ? 'Vencido hace ' + (-diasProx) + ' d' : diasProx === 0 ? 'Hoy' : 'En ' + diasProx + ' d';
+      const proxColor = diasProx == null ? '' : diasProx <= 0 ? 'var(--bad)' : diasProx <= 3 ? 'var(--warn)' : 'var(--ok)';
       h += '<div class="sec-t">' + esc(a.patente || 'Auto') + (a.marca || a.modelo ? ' <span class="small muted">' + esc([a.marca, a.modelo].filter(Boolean).join(' ')) + '</span>' : '') + '</div>' +
       '<div class="card">' +
       '<div class="row between"><span class="muted">Deuda actual</span><b style="color:' + (a.debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + mon(a.debt) + '</b></div>' +
-      (a.proximo ? '<div class="row between"><span class="muted">Próximo pago</span><b>' + fdate(a.proximo) + '</b></div>' : '') +
+      (a.proximo ? '<div class="row between"><span class="muted">Próximo pago</span><span><b>' + fdate(a.proximo) + '</b><span class="small" style="color:' + proxColor + ';margin-left:6px">' + proxTexto + '</span></span></div>' : '') +
       (a.tipo === 'financiado' && a.cuotas ? '<div class="row between small"><span class="muted">Cuota actual</span><span>' + a.cuotaActual + ' de ' + a.cuotas + '</span></div>' : '') +
+      (a.tipo === 'financiado' && a.cuotas ? '<div style="background:var(--soft);border-radius:6px;height:8px;overflow:hidden;margin:6px 0"><div style="width:' + Math.min(100, Math.round(a.cuotaActual / a.cuotas * 100)) + '%;height:100%;background:var(--ok)"></div></div>' : '') +
       (a.tipo === 'financiado' && a.saldo != null ? '<div class="row between small"><span class="muted">Saldo total</span><span>' + moneyUSD(a.saldo) + '</span></div>' : '') +
       (a.vtv ? '<div class="row between small"><span class="muted">VTV</span><span>' + fdate(a.vtv) + '</span></div>' : '') +
       (a.seguro ? '<div class="row between small"><span class="muted">Seguro</span><span>' + fdate(a.seguro) + '</span></div>' : '') +
@@ -77,15 +116,26 @@ function renderPortal(app, j) {
   if (autos.length) {
     h += '<div class="sec-t">Pedir turno de service</div><div class="card">' +
     '<label class="f"><span>Auto</span><select id="pt_patente">' + autos.map(a => '<option value="' + esc(a.patente) + '">' + esc(a.patente) + '</option>').join('') + '</select></label>' +
-    '<label class="f"><span>Motivo</span><textarea id="pt_motivo" placeholder="ej: cambio de aceite, ruido en el freno..."></textarea></label>' +
+    '<label class="f"><span>Motivo</span><textarea id="pt_motivo" placeholder="ej: cambio de aceite, revisión programada..."></textarea></label>' +
     '<button class="btn sec block" id="pt_btn">Pedir turno</button>' +
     '<div class="small muted" id="pt_status" style="margin-top:6px"></div></div>';
+    h += '<div class="sec-t">Reportar un problema</div><div class="card">' +
+    '<label class="f"><span>Auto</span><select id="pr_patente">' + autos.map(a => '<option value="' + esc(a.patente) + '">' + esc(a.patente) + '</option>').join('') + '</select></label>' +
+    '<label class="f"><span>¿Qué pasó?</span><textarea id="pr_descripcion" placeholder="ej: ruido en el freno, luz de motor encendida..."></textarea></label>' +
+    '<label class="chk"><input type="checkbox" id="pr_urgente"><span>Es urgente, no puedo seguir manejando</span></label>' +
+    '<button class="btn danger block" id="pr_btn" style="margin-top:8px">Reportar problema</button>' +
+    '<div class="small muted" id="pr_status" style="margin-top:6px"></div></div>';
     h += '<div class="sec-t">Subir una foto del auto</div><div class="card">' +
     '<label class="f"><span>Auto</span><select id="ph_car">' + autos.map(a => '<option value="' + esc(a.id) + '">' + esc(a.patente) + '</option>').join('') + '</select></label>' +
     '<label class="btn sec block filebtn">Elegir foto<input id="ph_file" type="file" accept="image/*" capture="environment"></label>' +
     '<button class="btn sec block" id="ph_btn" style="margin-top:8px">Subir</button>' +
     '<div class="small muted" id="ph_status" style="margin-top:6px"></div></div>';
   }
+  h += '<div class="sec-t">Actualizar mis datos</div><div class="card">' +
+  '<label class="f"><span>Teléfono nuevo</span><input id="ad_tel" type="tel"></label>' +
+  '<label class="f"><span>Domicilio nuevo</span><input id="ad_domicilio"></label>' +
+  '<button class="btn sec block" id="ad_btn">Enviar</button>' +
+  '<div class="small muted" id="ad_status" style="margin-top:6px"></div></div>';
   h += '<div class="sec-t">¿Cómo te está yendo con nosotros?</div><div class="card">' +
   '<div class="row" style="gap:6px;margin-bottom:8px">' + [1, 2, 3, 4, 5].map(n => '<button type="button" class="btn sec sm" data-rating="' + n + '">' + n + ' ★</button>').join('') + '</div>' +
   '<label class="f"><span>Comentario <small>opcional</small></span><textarea id="en_comentario"></textarea></label>' +
@@ -101,6 +151,17 @@ function renderPortal(app, j) {
     { accion: 'service', patente: wrap.querySelector('#pt_patente').value, motivo: wrap.querySelector('#pt_motivo').value },
     wrap.querySelector('#pt_status'), ptBtn
   ));
+  const prBtn = wrap.querySelector('#pr_btn');
+  if (prBtn) prBtn.addEventListener('click', () => enviarAccionPortal(
+    { accion: 'problema', patente: wrap.querySelector('#pr_patente').value, descripcion: wrap.querySelector('#pr_descripcion').value, urgente: wrap.querySelector('#pr_urgente').checked },
+    wrap.querySelector('#pr_status'), prBtn
+  ));
+  const adBtn = wrap.querySelector('#ad_btn');
+  if (adBtn) adBtn.addEventListener('click', () => {
+    const tel = wrap.querySelector('#ad_tel').value.trim(), domicilio = wrap.querySelector('#ad_domicilio').value.trim();
+    if (!tel && !domicilio) { wrap.querySelector('#ad_status').textContent = 'Completá al menos un dato'; return; }
+    enviarAccionPortal({ accion: 'actualizar_datos', tel, domicilio }, wrap.querySelector('#ad_status'), adBtn);
+  });
   let ratingSel = 0;
   wrap.querySelectorAll('[data-rating]').forEach(b => b.addEventListener('click', () => {
     ratingSel = +b.dataset.rating;

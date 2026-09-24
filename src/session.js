@@ -8,7 +8,7 @@ import { render } from './nav.js';
 import { makeStorage } from './storage.js';
 import { loadOwnProfile } from './roles.js';
 import { iniciarAlertasSupervisor, detenerAlertasSupervisor } from './admin-alertas.js';
-import { brandH1 } from './settings.js';
+import { brandH1, cargarSettingsServidor } from './settings.js';
 import { generarGastosRecurrentes } from './recurrentes.js';
 import { checkChangelog } from './changelog.js';
 import { biometricRegistrado } from './biometric.js';
@@ -43,6 +43,7 @@ export async function start() {
   generarGastosRecurrentes();
   checkChangelog();
   iniciarAlertasSupervisor();
+  cargarSettingsServidor().then(changed => { if (changed) render(); });
   if (!S.chan) {
     S.chan = sb.channel('flota');
     const timers = {};

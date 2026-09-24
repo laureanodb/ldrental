@@ -1,13 +1,15 @@
 // LD Rental — portal para choferes, sin login.
 // GET ?id=<driverId>&t=<portalToken>: si el token coincide con el guardado
 // en el chofer, devuelve su deuda, próximo pago, cronograma de cuotas si
-// es financiado, datos del auto asignado y los últimos pagos. No expone
-// nada de otros choferes ni de la operación en general.
-// POST { id, t, accion: 'service'|'encuesta'|'foto', ... }: valida el mismo
-// token. 'service' y 'encuesta' solo mandan una notificación push a la
-// empresa (no guardan nada, es un aviso best-effort). 'foto' sube una
-// imagen (base64) al bucket de documentos y la agrega a los archivos del
-// auto asignado al chofer (valida que el auto sea suyo). El token se
+// es financiado, datos del auto asignado, los últimos pagos, sus multas
+// pendientes y la config compartida (branding, protocolo de emergencia,
+// anuncios) desde app_settings. No expone nada de otros choferes ni de la
+// operación en general.
+// POST { id, t, accion: 'service'|'problema'|'actualizar_datos'|'encuesta'|'foto', ... }:
+// valida el mismo token. Todas menos 'foto' solo mandan una notificación
+// push a la empresa (no guardan nada, es un aviso best-effort). 'foto' sube
+// una imagen (base64) al bucket de documentos y la agrega a los archivos
+// del auto asignado al chofer (valida que el auto sea suyo). El token se
 // genera y se puede regenerar desde la ficha del chofer en la app.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
@@ -65,6 +67,15 @@ Deno.serve(async (req) => {
         const patente = String(body.patente || '').trim().slice(0, 20);
         const motivo = String(body.motivo || '').trim().slice(0, 300);
         await avisarPush(sb, 'Turno de service solicitado', (d.nombre || 'Chofer') + (patente ? ' · ' + patente : '') + (motivo ? ': ' + motivo : ''));
+      } else if (accion === 'problema') {
+        const patente = String(body.patente || '').trim().slice(0, 20);
+        const descripcion = String(body.descripcion || '').trim().slice(0, 300);
+        const urgente = Boolean(body.urgente);
+        await avisarPush(sb, (urgente ? '⚠ Problema urgente reportado' : 'Problema reportado'), (d.nombre || 'Chofer') + (patente ? ' · ' + patente : '') + (descripcion ? ': ' + descripcion : ''));
+      } else if (accion === 'actualizar_datos') {
+        const tel = String(body.tel || '').trim().slice(0, 40);
+        const domicilio = String(body.domicilio || '').trim().slice(0, 200);
+        await avisarPush(sb, 'Chofer pidió actualizar sus datos', (d.nombre || 'Chofer') + (tel ? ' · Tel: ' + tel : '') + (domicilio ? ' · Domicilio: ' + domicilio : ''));
       } else if (accion === 'encuesta') {
         const rating = Math.max(1, Math.min(5, +body.rating || 0));
         const comentario = String(body.comentario || '').trim().slice(0, 300);
@@ -109,13 +120,20 @@ Deno.serve(async (req) => {
     }
     const d = Object.assign({ id: driverRow.id }, driverRow.data);
 
-    const [{ data: carsRaw }, { data: paymentsRaw }] = await Promise.all([
+    const [{ data: carsRaw }, { data: paymentsRaw }, { data: multasRaw }, { data: settingsRow }] = await Promise.all([
       sb.from('cars').select('id,data'),
       sb.from('payments').select('id,data'),
+      sb.from('multas').select('id,data'),
+      sb.from('app_settings').select('data').eq('id', 'main').maybeSingle(),
     ]);
     const cars = (carsRaw || []).map((r: any) => Object.assign({ id: r.id }, r.data))
       .filter((c: any) => c.choferId === driverId && !c.vendido && (c.tipo === 'alquiler' || c.tipo === 'financiado'));
     const payments = (paymentsRaw || []).map((r: any) => Object.assign({ id: r.id }, r.data)).filter((p: any) => p.choferId === driverId);
+    const multas = (multasRaw || []).map((r: any) => Object.assign({ id: r.id }, r.data))
+      .filter((m: any) => m.choferId === driverId && (m.estado === 'pendiente' || m.estado === 'vencida'))
+      .sort((a: any, b: any) => String(a.fecha).localeCompare(String(b.fecha)))
+      .map((m: any) => ({ fecha: m.fecha, monto: +m.monto || 0, estado: m.estado, numeroActa: m.numeroActa || '', fechaLimitePago: m.fechaLimitePago || '' }));
+    const cfg = (settingsRow && settingsRow.data) || {};
 
     const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
 
@@ -151,7 +169,11 @@ Deno.serve(async (req) => {
         return { fecha: p.fecha, monto: +p.monto || 0, tipo: p.tipo, metodoLabel: METODOS[p.metodo] || '', patente: c ? c.patente : '' };
       });
 
-    return json({ ok: true, nombre: d.nombre || '', autos, pagos });
+    return json({
+      ok: true, nombre: d.nombre || '', autos, pagos, multas,
+      companyName: cfg.companyName || '', companyLogo: cfg.companyLogo || '', companyPhone: cfg.companyPhone || '',
+      telefonoEmergencia: cfg.telefonoEmergencia || '', protocoloEmergencia: cfg.protocoloEmergencia || '', anuncios: cfg.anuncios || [],
+    });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
   }

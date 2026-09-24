@@ -26,7 +26,7 @@ import { exportarExcel } from './export-excel.js';
 import { activarPush, desactivarPush, guardarHorarioPush, guardarPreferenciasPush } from './push.js';
 import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion } from './forms/driver.js';
 import { goMas } from './views/mas.js';
-import { initPortal } from './portal.js';
+import { initPortal, toggleTemaPortal } from './portal.js';
 import { initPostulacion } from './postulacion.js';
 import { depositoForm, saveDeposito, delDeposito } from './forms/deposito.js';
 import { payForm, onPayCar, savePay, delPay, toggleDepositado } from './forms/payment.js';
@@ -89,6 +89,7 @@ Object.assign(window, {
   searchView, doSearch,
   usuariosView, cambiarRol, toggleActivo, auditoriaView, auditCargarMas, auditFiltrar, historialAutoView, mapaFlotaView,
   conectarGoogleUI, syncCalendarUI, syncSheetsUI, syncMultasSheetsUI, syncMantenimientoSheetsUI, syncDriveUI,
+  toggleTemaPortal,
 });
 
 const portalMatch = location.hash.match(/^#\/portal\/([^/]+)\/([^/]+)/);
