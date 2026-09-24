@@ -5,6 +5,7 @@ import { init } from './session.js';
 import { go, render, renderList } from './nav.js';
 import { doLogin, logout } from './session.js';
 import { activarBiometria, desactivarBiometria, loginConBiometria } from './biometric.js';
+import { asignarChoferForm, guardarAsignacionChofer, quitarChofer, asignarAutoForm, guardarAsignacionAuto, quitarAutoDeChofer, onAsignacionTipo } from './forms/asignacion.js';
 import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento } from './forms/car.js';
 import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
 import { calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi } from './forms/calculadora.js';
@@ -55,6 +56,7 @@ import { syncDriveUI } from './google-drive.js';
 Object.assign(window, {
   ui, go, render, renderList, sincronizarAhora: flushQueue,
   doLogin, logout, activarBiometria, desactivarBiometria, loginConBiometria,
+  asignarChoferForm, guardarAsignacionChofer, quitarChofer, asignarAutoForm, guardarAsignacionAuto, quitarAutoDeChofer, onAsignacionTipo,
   carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento,
   recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio,
   calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, compararAutosForm, renderComparacionAutos,

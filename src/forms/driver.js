@@ -38,6 +38,15 @@ export function driverForm(id) {
   let h = '<h3>' + (ex ? esc(d.nombre) : 'Nuevo chofer') + '</h3>';
   if (ex && d.inactivo) h += '<div class="card" style="margin-bottom:10px"><span class="badge b-mute">Inactivo</span></div>';
   if (ex && d.prospecto) h += '<div class="card row between" style="margin-bottom:10px"><span class="badge b-info">Prospecto · ' + esc((ETAPAS_PROSPECTO.find(x => x[0] === d.etapaProspecto) || [0, 'Contacto inicial'])[1]) + '</span><button class="btn sm" onclick="aprobarProspecto(\'' + d.id + '\')">Aprobar y dar de alta</button></div>';
+  if (ex && !d.prospecto) {
+    const autoAsignado = S.cars.find(c => c.choferId === d.id && !c.vendido);
+    h += '<div class="card" style="margin-bottom:10px">' + (autoAsignado ?
+      '<div class="row between"><div><div class="small muted">Auto asignado</div><b>' + esc(autoAsignado.patente) + '</b></div>' +
+      '<div class="row"><button class="btn sec sm" onclick="carForm(\'' + autoAsignado.id + '\')">Ver</button><button class="btn sec sm" onclick="asignarAutoForm(\'' + d.id + '\')">Cambiar</button>' +
+      (autoAsignado.tipo === 'alquiler' ? '<button class="btn danger sm" onclick="confirmDel(this,()=>quitarAutoDeChofer(\'' + d.id + '\',\'' + autoAsignado.id + '\'))">Quitar</button>' : '') + '</div></div>'
+      : '<div class="row between"><span class="muted">Sin auto asignado</span><button class="btn sm" onclick="asignarAutoForm(\'' + d.id + '\')">Asignar auto</button></div>') +
+    '</div>';
+  }
 
   /* ---- Datos ---- */
   let datos = '';

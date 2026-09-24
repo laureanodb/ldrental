@@ -20,7 +20,7 @@ export function actualizarHistorialChoferes(ex, newChoferId) {
   if (newChoferId) historial = historial.concat([{ choferId: newChoferId, desde: hoy, hasta: null }]);
   return historial;
 }
-function actualizarHistorialMonto(ex, monto) {
+export function actualizarHistorialMonto(ex, monto) {
   const historial = (ex && ex.montoHistorial) || [];
   const prevMonto = ex ? (+ex.monto || 0) : null;
   if (!monto || monto === prevMonto) return historial;
@@ -63,6 +63,14 @@ export function carForm(id) {
     const estGen = estadoGeneralAuto(c);
     const estLabel = { ok: 'Todo al día', soft: 'Todo al día', warn: 'Algo pendiente', bad: 'Vencido / atención' }[estGen];
     h += '<div class="card" style="margin-bottom:10px">' + badge(estGen, estLabel) + '</div>';
+  }
+  if (ex && !c.vendido) {
+    h += '<div class="card" style="margin-bottom:10px">' + (c.choferId ?
+      '<div class="row between"><div><div class="small muted">Chofer asignado</div><b>' + esc(driverName(c.choferId)) + '</b></div>' +
+      '<div class="row"><button class="btn sec sm" onclick="asignarChoferForm(\'' + c.id + '\')">Cambiar</button>' +
+      (c.tipo === 'alquiler' ? '<button class="btn danger sm" onclick="confirmDel(this,()=>quitarChofer(\'' + c.id + '\'))">Quitar</button>' : '') + '</div></div>'
+      : '<div class="row between"><span class="muted">Sin chofer asignado</span><button class="btn sm" onclick="asignarChoferForm(\'' + c.id + '\')">Asignar chofer</button></div>') +
+    '</div>';
   }
 
   /* ---- Datos ---- */
