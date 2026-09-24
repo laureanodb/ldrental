@@ -73,6 +73,19 @@ export function estadoPlanItem(c, p) {
   }
   return { cls: clasificarVencimiento(restanteKm, restanteDias), restanteKm, restanteDias };
 }
+export function estadoGeneralAuto(c) {
+  const orden = { ok: 0, soft: 1, warn: 2, bad: 3 };
+  let peor = 'ok';
+  const marcar = cls => { if (orden[cls] > orden[peor]) peor = cls; };
+  VENC.forEach(v => { const s = vs(c[v[0]]); if (s) marcar(s.cls); });
+  (c.mantenimientoPlan || []).forEach(p => {
+    if (!p.intervaloKm && !p.intervaloMeses) return;
+    marcar(estadoPlanItem(c, p).cls);
+  });
+  if (S.siniestros.some(s => s.carId === c.id && s.estado !== 'cerrado')) marcar('bad');
+  if (S.multas.some(m => m.carId === c.id && (m.estado === 'pendiente' || m.estado === 'vencida'))) marcar('warn');
+  return peor;
+}
 export function textoRestante(e) {
   if (e.cls === 'ok') return 'Al día';
   if (e.cls === 'bad') return 'Vencido';

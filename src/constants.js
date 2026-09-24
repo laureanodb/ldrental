@@ -65,6 +65,10 @@ export const MCATS = [['factura', 'Factura del taller'], ['foto', 'Foto del trab
 export const TCATS = [['acta', 'Foto del acta/infracción'], ['comprobante', 'Comprobante de pago'], ['otro', 'Otro']];
 export const ACCEPT = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 
+export const TRANSMISIONES = [['manual', 'Manual'], ['automatica', 'Automática']];
+export const COBERTURAS_SEGURO = [['todo_riesgo', 'Todo riesgo'], ['terceros_completo', 'Terceros completo'], ['terceros_basico', 'Terceros básico']];
+export const ELEMENTOS_SEGURIDAD = [['matafuegos', 'Matafuegos'], ['baliza', 'Baliza'], ['botiquin', 'Botiquín'], ['cinturones', 'Cinturones de seguridad']];
+
 export const PANEL_KPIS = [
   ['cobrado', 'Cobrado este mes'], ['esperado', 'Esperado por semana'], ['deuda', 'Deuda de choferes'],
   ['saldoFin', 'Falta cobrar de financiados'], ['autosCalle', 'Autos en la calle'],
