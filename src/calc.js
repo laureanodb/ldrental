@@ -459,6 +459,54 @@ export function resumenGeneral() {
     choferesActivos: S.drivers.filter(d => !d.inactivo && !d.prospecto).length,
   };
 }
+export function rankingRoiAutos() {
+  return activeCars().filter(c => c.tipo !== 'financiado' && c.costoCompra).map(c => {
+    const r = rentabilidadAuto(c);
+    return { c, roi: r.neta != null ? Math.round(r.neta / c.costoCompra * 1000) / 10 : null, neta: r.neta };
+  }).filter(x => x.roi != null).sort((a, b) => b.roi - a.roi);
+}
+export function porcentajePerdidaGanancia() {
+  const rows = activeCars().filter(c => c.tipo !== 'financiado').map(c => rentabilidadAuto(c)).filter(r => r.neta != null);
+  if (!rows.length) return null;
+  const ganancia = rows.filter(r => r.neta >= 0).length;
+  return { total: rows.length, ganancia, perdida: rows.length - ganancia, pctGanancia: Math.round(ganancia / rows.length * 100) };
+}
+export function saludChoferes() {
+  return S.drivers.filter(d => !d.inactivo && !d.prospecto).map(d => {
+    const multas = multasDeChofer(d.id).filter(m => m.estado === 'pendiente' || m.estado === 'vencida').length;
+    const siniestros = S.siniestros.filter(s => s.choferId === d.id).length;
+    return { driverId: d.id, nombre: d.nombre, score: driverScore(d.id), deuda: driverDebt(d.id), multas, siniestros };
+  });
+}
+export function alertasTendencia() {
+  const hoy = today();
+  const d90 = new Date(hoy); d90.setDate(d90.getDate() - 90);
+  const d180 = new Date(hoy); d180.setDate(d180.getDate() - 180);
+  const hoyIso = iso(hoy), ini1 = iso(d90), ini2 = iso(d180);
+  const sumaGastos = (desde, hasta) => S.gastos.filter(g => g.fecha >= desde && g.fecha < hasta).reduce((a, g) => a + (+g.costo || 0), 0) +
+    S.mantenimientos.filter(m => m.fecha >= desde && m.fecha < hasta).reduce((a, m) => a + (+m.costo || 0), 0);
+  const actual = sumaGastos(ini1, hoyIso);
+  const anterior = sumaGastos(ini2, ini1);
+  const out = [];
+  if (anterior > 0) {
+    const delta = Math.round((actual - anterior) / anterior * 100);
+    if (Math.abs(delta) >= 20) out.push({ t: 'Gastos de mantenimiento y gastos generales ' + (delta > 0 ? 'subieron' : 'bajaron') + ' ' + Math.abs(delta) + '% este trimestre respecto al anterior', cls: delta > 0 ? 'bad' : 'ok' });
+  }
+  return out;
+}
+export function proyeccionRentabilidadTendencia() {
+  const t = today();
+  const meses = [0, 1, 2].map(i => {
+    const cobrado = cobradoDelMes(i);
+    const d = new Date(t.getFullYear(), t.getMonth() - i, 1);
+    const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    const gastos = S.gastos.filter(g => (g.fecha || '').slice(0, 7) === key).reduce((a, g) => a + (+g.costo || 0), 0) +
+      S.mantenimientos.filter(m => (m.fecha || '').slice(0, 7) === key).reduce((a, m) => a + (+m.costo || 0), 0);
+    return cobrado - gastos;
+  });
+  const promedioMensual = meses.reduce((a, b) => a + b, 0) / meses.length;
+  return { promedioMensual, proyeccion6: promedioMensual * 6, proyeccion12: promedioMensual * 12 };
+}
 export function driverTotalPagado(driverId) {
   return S.payments.filter(p => p.choferId === driverId && p.tipo !== 'cuota').reduce((a, p) => a + (+p.monto || 0), 0);
 }

@@ -1,6 +1,6 @@
 import { S, ui } from '../state.js';
 import { esc, money, moneyUSD, today } from '../utils.js';
-import { plate, rentabilidadAuto, driverTotalPagado, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes } from '../calc.js';
+import { plate, rentabilidadAuto, driverTotalPagado, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, badge } from '../calc.js';
 import { canVerFinanzas } from '../roles.js';
 import { GASTO_CATS, CANALES_PROSPECTO } from '../constants.js';
 
@@ -182,15 +182,68 @@ function seccionProyeccion() {
   (p.totalUSD ? '<div class="small muted" style="margin-top:4px">+ ' + moneyUSD(p.totalUSD) + ' de financiados</div>' : '') + '</div>';
 }
 
+function seccionAlertasTendencia() {
+  const A = alertasTendencia();
+  if (!A.length) return '';
+  return '<h2>Alertas de tendencia</h2>' + A.map(a => '<div class="card row between"><span>' + esc(a.t) + '</span>' + badge(a.cls, a.cls === 'bad' ? '▲' : '▼') + '</div>').join('');
+}
+function seccionComparacionAnual() {
+  if (!canVerFinanzas()) return '';
+  const anio = today().getFullYear();
+  const act = resumenAnual(anio), ant = resumenAnual(anio - 1);
+  if (!act.cobrado && !ant.cobrado) return '';
+  const delta = ant.neta !== 0 ? Math.round((act.neta - ant.neta) / Math.abs(ant.neta) * 100) : (act.neta > 0 ? 100 : 0);
+  const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '—';
+  const color = delta > 0 ? 'var(--ok)' : delta < 0 ? 'var(--bad)' : 'var(--muted)';
+  return '<h2>Este año vs. el anterior</h2><div class="card row between">' +
+    '<div><div class="small muted">' + (anio - 1) + '</div><b>' + money(ant.neta) + '</b></div>' +
+    '<div style="color:' + color + ';font-weight:700;text-align:center">' + arrow + ' ' + Math.abs(delta) + '%</div>' +
+    '<div style="text-align:right"><div class="small muted">' + anio + '</div><b>' + money(act.neta) + '</b></div></div>';
+}
+function seccionProyeccionRentabilidad() {
+  if (!canVerFinanzas()) return '';
+  const p = proyeccionRentabilidadTendencia();
+  if (!p.promedioMensual) return '';
+  return '<h2>Proyección de rentabilidad según tendencia</h2><div class="card"><div class="small muted" style="margin-bottom:4px">Según el promedio neto (cobrado − gastos) de los últimos 3 meses.</div>' +
+  '<div class="row between"><span class="muted">A 6 meses</span><b style="color:' + (p.proyeccion6 >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(p.proyeccion6) + '</b></div>' +
+  '<div class="row between"><span class="muted">A 12 meses</span><b style="color:' + (p.proyeccion12 >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(p.proyeccion12) + '</b></div></div>';
+}
+function seccionRoiAutos() {
+  if (!canVerFinanzas()) return '';
+  const rows = rankingRoiAutos();
+  if (!rows.length) return '';
+  return '<h2>Autos por retorno de inversión</h2>' + rows.map(x => '<div class="card row between"><span>' + plate(x.c.patente) + '</span><b style="color:' + (x.roi >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + x.roi + '%</b></div>').join('');
+}
+function seccionPerdidaGanancia() {
+  if (!canVerFinanzas()) return '';
+  const p = porcentajePerdidaGanancia();
+  if (!p) return '';
+  return '<h2>Flota en ganancia vs. pérdida</h2><div class="card"><div class="row between"><span class="muted">Generando ganancia</span><b style="color:var(--ok)">' + p.ganancia + ' de ' + p.total + ' (' + p.pctGanancia + '%)</b></div>' +
+  (p.perdida ? '<div class="row between"><span class="muted">Generando pérdida</span><b style="color:var(--bad)">' + p.perdida + ' de ' + p.total + '</b></div>' : '') + '</div>';
+}
+function seccionSaludChoferes() {
+  const rows = saludChoferes().filter(x => x.deuda > 0 || x.multas || x.siniestros || x.score != null);
+  if (!rows.length) return '';
+  return '<h2>Salud de choferes</h2>' + rows.map(x => '<div class="card"><div class="row between"><b>' + esc(x.nombre) + '</b>' + (x.deuda > 0 ? badge('bad', 'Debe ' + money(x.deuda)) : badge('ok', 'Al día')) + '</div>' +
+  '<div class="row between small muted" style="margin-top:4px"><span>' + (x.score != null ? x.score + '% puntual' : 'sin datos') + '</span><span>' + x.multas + (x.multas === 1 ? ' multa' : ' multas') + '</span><span>' + x.siniestros + (x.siniestros === 1 ? ' siniestro' : ' siniestros') + '</span></div></div>').join('');
+}
+
 export function viewReportes() {
   if (!S.cars.length) return '<h1>Reportes</h1><p class="sub">Rentabilidad, comparativas y proyecciones</p><div class="card empty">Cargá autos y cobros para ver reportes acá.</div>';
   let h = '<h1>Reportes</h1><p class="sub">Rentabilidad, comparativas y proyecciones</p>';
+  if (canVerFinanzas()) h += '<div class="row" style="margin-bottom:14px"><button class="btn sec grow" onclick="descargarReporteEjecutivo()">Descargar reporte ejecutivo (PDF)</button></div>';
+  h += seccionAlertasTendencia();
   h += seccionComparacionMensual();
   h += seccionGrafico();
   h += seccionProyeccion();
+  h += seccionProyeccionRentabilidad();
   h += seccionRentabilidad();
+  h += seccionPerdidaGanancia();
+  h += seccionRoiAutos();
   h += seccionTablaComparativaAutos();
   h += seccionResumenAnual();
+  h += seccionComparacionAnual();
+  h += seccionSaludChoferes();
   h += seccionComparativaChoferes();
   h += seccionTablaComparativaChoferes();
   h += seccionGastosPorCategoria();
