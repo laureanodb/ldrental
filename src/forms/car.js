@@ -171,6 +171,7 @@ export function carForm(id) {
     (fin ? '<div class="row between"><span class="muted">Fin estimado de cuotas</span><b>' + fdate(iso(fin)) + '</b></div>' : '') +
     '<div class="row" style="margin-top:10px"><button class="btn grow" onclick="payForm(\'' + c.id + '\')">Registrar cobro</button><button class="btn sec" onclick="ajusteForm(\'' + c.id + '\')">Ajustar deuda</button></div>' +
     (c.tipo === 'financiado' && c.cuotas ? '<div class="row" style="margin-top:8px"><button class="btn sec grow" onclick="cronogramaCuotasForm(\'' + c.id + '\')">Ver cronograma de cuotas</button></div>' : '') +
+    (c.tipo !== 'financiado' ? '<div class="row" style="margin-top:8px"><button class="btn sec grow" onclick="simularAumentoForm(\'' + c.id + '\')">Simular aumento</button></div>' : '') +
     '</div>';
     const AJ = (c.ajustesDeuda || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
     if (AJ.length) contrato += '<div class="sec-t">Ajustes de deuda</div>' + AJ.map(x => '<div class="card row"><div class="grow"><div>' + (x.monto >= 0 ? '-' + mon(x.monto) : '+' + mon(-x.monto)) + ' <span class="small muted">' + fdate(x.fecha) + '</span></div>' + (x.motivo ? '<div class="small muted">' + esc(x.motivo) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delAjuste(\'' + c.id + '\',\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
@@ -476,6 +477,30 @@ export async function sacarDeTaller(id) {
   const nuevoTipo = c.tipoPrevioTaller || 'disponible';
   const historialTaller = actualizarHistorialTaller(c, nuevoTipo);
   if (await save('cars', Object.assign({}, c, { tipo: nuevoTipo, tipoPrevioTaller: '', historialTaller }))) { closeModal(); toast('Auto sacado de taller'); }
+}
+export function simularAumentoForm(id) {
+  const c = S.cars.find(x => x.id === id); if (!c) return;
+  const h = '<h3>Simular aumento — ' + esc(c.patente) + '</h3>' +
+  '<div class="small muted" style="margin-bottom:10px">Monto actual: ' + money(c.monto || 0) + ' por semana.</div>' +
+  '<div class="two"><label class="f"><span>Monto nuevo</span><input id="sa_nuevo" inputmode="decimal" value="' + (c.monto || 0) + '" oninput="calcularSimulacionAumento(\'' + c.id + '\')"></label>' +
+  '<label class="f"><span>Semanas a proyectar</span><input id="sa_semanas" inputmode="numeric" value="12" oninput="calcularSimulacionAumento(\'' + c.id + '\')"></label></div>' +
+  '<div id="sa_resultado" class="card"></div>' +
+  '<div class="row" style="margin-top:14px"><button class="btn sec grow" onclick="carForm(\'' + c.id + '\')">Volver</button></div>';
+  openModal(h);
+  calcularSimulacionAumento(id);
+}
+export function calcularSimulacionAumento(id) {
+  const c = S.cars.find(x => x.id === id); if (!c) return;
+  const el = document.getElementById('sa_resultado'); if (!el) return;
+  const actual = +c.monto || 0;
+  const nuevo = +val('sa_nuevo') || 0;
+  const semanas = +val('sa_semanas') || 0;
+  const fmt = n => Math.round(n).toLocaleString('es-AR');
+  const dif = nuevo - actual;
+  const extra = dif * semanas;
+  el.innerHTML = '<div class="row between small"><span class="muted">Diferencia semanal</span><b style="color:' + (dif >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + (dif >= 0 ? '+' : '') + fmt(dif) + '</b></div>' +
+  '<div class="row between"><span class="muted">Extra proyectado en ' + semanas + ' semanas</span><b>' + fmt(extra) + '</b></div>' +
+  (actual ? '<div class="small muted" style="margin-top:6px">Eso es un ' + (dif >= 0 ? '+' : '') + Math.round(dif / actual * 100) + '% respecto del monto actual.</div>' : '');
 }
 export async function sugerirAjusteInflacion(id) {
   const c = S.cars.find(x => x.id === id);

@@ -431,6 +431,21 @@ export function financiacionesCompletadasSinTransferir() {
     return i.saldo != null && i.saldo <= 0;
   });
 }
+export function promedioAnticipacionVenc(tipo) {
+  const registros = [];
+  S.cars.forEach(c => (c.vencHistorial || []).forEach(h => {
+    if (h.tipo !== tipo || !h.fechaAnterior || !h.cambiado) return;
+    registros.push(days(parse(h.cambiado), parse(h.fechaAnterior)));
+  }));
+  if (registros.length < 2) return null;
+  return Math.round(registros.reduce((a, b) => a + b, 0) / registros.length);
+}
+export function sugerenciasAnticipacionVenc() {
+  return VENC.map(v => ({ tipo: v[0], label: v[1], dias: promedioAnticipacionVenc(v[0]) })).filter(x => x.dias != null);
+}
+export function rentabilidadPorChofer() {
+  return activeCars().filter(c => c.choferId && c.tipo !== 'financiado').map(c => Object.assign({ c, driverId: c.choferId }, rentabilidadAuto(c))).sort((a, b) => b.neta - a.neta);
+}
 export function rentabilidadAuto(c) {
   const cobrado = S.payments.filter(p => p.carId === c.id).reduce((a, p) => a + (+p.monto || 0), 0);
   const gastos = S.gastos.filter(g => g.carId === c.id).reduce((a, g) => a + (+g.costo || 0), 0) +

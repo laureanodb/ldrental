@@ -49,6 +49,7 @@ export function viewMas() {
   h += grupo('Herramientas', [
     ['Recordatorios', 'recordatoriosView()'],
     ['Calculadora: financiar vs. alquilar', 'calculadoraForm()'],
+    ['Calculadora: ROI antes de comprar', 'roiAutoForm()'],
   ]);
   const admin = [['Ajustes', "goMas('ajustes')"], ['Copia de seguridad', "goMas('backup')"], ['Google', "goMas('google')"]];
   if (isAdmin()) admin.push(['Usuarios y permisos', 'usuariosView()'], ['Auditoría', 'auditoriaView()']);

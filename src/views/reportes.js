@@ -1,6 +1,6 @@
 import { S, ui } from '../state.js';
 import { esc, money, moneyUSD, today } from '../utils.js';
-import { plate, rentabilidadAuto, driverTotalPagado, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, badge } from '../calc.js';
+import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, badge } from '../calc.js';
 import { canVerFinanzas } from '../roles.js';
 import { GASTO_CATS, CANALES_PROSPECTO } from '../constants.js';
 
@@ -56,6 +56,12 @@ function seccionRentabilidad() {
   return h;
 }
 
+function seccionRentabilidadChofer() {
+  if (!canVerFinanzas()) return '';
+  const rows = rentabilidadPorChofer();
+  if (rows.length < 2) return '';
+  return '<h2>Rentabilidad por chofer</h2>' + rows.map(r => '<div class="card row between"><div><div>' + esc(driverName(r.driverId)) + '</div><div class="small muted">' + plate(r.c.patente) + '</div></div><b style="color:' + (r.neta >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(r.neta) + '</b></div>').join('');
+}
 function seccionResumenAnual() {
   if (!canVerFinanzas()) return '';
   const anio = today().getFullYear();
@@ -238,6 +244,7 @@ export function viewReportes() {
   h += seccionProyeccion();
   h += seccionProyeccionRentabilidad();
   h += seccionRentabilidad();
+  h += seccionRentabilidadChofer();
   h += seccionPerdidaGanancia();
   h += seccionRoiAutos();
   h += seccionTablaComparativaAutos();

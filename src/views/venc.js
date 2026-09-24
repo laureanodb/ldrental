@@ -1,6 +1,6 @@
-import { alerts } from '../calc.js';
+import { alerts, sugerenciasAnticipacionVenc } from '../calc.js';
 import { alertRow } from './shared.js';
-import { today } from '../utils.js';
+import { today, esc } from '../utils.js';
 import { settings } from '../settings.js';
 
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -33,6 +33,11 @@ export function viewVenc() {
   const A = alerts();
   let h = '<h1>Vencimientos</h1><p class="sub">Documentación de autos y licencias de choferes</p>';
   if (!A.length) return h + '<div class="card empty"><b>Sin fechas cargadas</b>Cargá VTV, seguro, patente y licencias en cada auto y chofer.</div>';
+  const sug = sugerenciasAnticipacionVenc();
+  if (sug.length) {
+    h += '<div class="card" style="margin-bottom:10px"><div class="small muted" style="margin-bottom:6px">Según lo que tardaste en renovarlos antes</div>' +
+    sug.map(s => '<div class="row between small" style="padding:2px 0"><span>' + esc(s.label) + '</span><span class="muted">' + (s.dias >= 0 ? 'se renueva ' + s.dias + ' d después del vencimiento anterior' : 'se renueva ' + (-s.dias) + ' d antes') + '</span></div>').join('') + '</div>';
+  }
   h += calendarioVenc(A);
   const sec = (t, L) => L.length ? '<h2>' + t + '</h2>' + L.map(alertRow).join('') : '';
   h += sec('Vencidos', A.filter(a => a.d < 0));

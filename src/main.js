@@ -4,9 +4,9 @@ import { ui } from './state.js';
 import { init } from './session.js';
 import { go, render, renderList } from './nav.js';
 import { doLogin, logout } from './session.js';
-import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto } from './forms/car.js';
+import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento } from './forms/car.js';
 import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
-import { calculadoraForm, calcularComparacion } from './forms/calculadora.js';
+import { calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi } from './forms/calculadora.js';
 import { mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento } from './forms/mantenimiento.js';
 import { mantAtajoFecha } from './views/mantenimiento.js';
 import { multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta } from './forms/multa.js';
@@ -49,9 +49,9 @@ import { syncDriveUI } from './google-drive.js';
 Object.assign(window, {
   ui, go, render, renderList,
   doLogin, logout,
-  carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto,
+  carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento,
   recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio,
-  calculadoraForm, calcularComparacion,
+  calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi,
   goMas,
   mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, mantAtajoFecha,
   multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta,
