@@ -4,7 +4,9 @@ import { ui } from './state.js';
 import { init } from './session.js';
 import { go, render, renderList } from './nav.js';
 import { doLogin, logout } from './session.js';
-import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm } from './forms/car.js';
+import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto } from './forms/car.js';
+import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
+import { calculadoraForm, calcularComparacion } from './forms/calculadora.js';
 import { mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento } from './forms/mantenimiento.js';
 import { mantAtajoFecha } from './views/mantenimiento.js';
 import { multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta } from './forms/multa.js';
@@ -14,7 +16,7 @@ import { descargarReporteEjecutivo } from './reporte-ejecutivo.js';
 import { contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato } from './contrato.js';
 import { exportarExcel } from './export-excel.js';
 import { activarPush, desactivarPush, guardarHorarioPush } from './push.js';
-import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion } from './forms/driver.js';
+import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer } from './forms/driver.js';
 import { goMas } from './views/mas.js';
 import { initPortal } from './portal.js';
 import { initPostulacion } from './postulacion.js';
@@ -47,14 +49,16 @@ import { syncDriveUI } from './google-drive.js';
 Object.assign(window, {
   ui, go, render, renderList,
   doLogin, logout,
-  carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm,
+  carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto,
+  recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio,
+  calculadoraForm, calcularComparacion,
   goMas,
   mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, mantAtajoFecha,
   multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta,
   siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro,
   reciboPDF, reciboCompartir, descargarReporteEjecutivo, exportarExcel, activarPush, desactivarPush, guardarHorarioPush,
   contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato,
-  driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion,
+  driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer,
   depositoForm, saveDeposito, delDeposito,
   payForm, onPayCar, savePay, delPay, toggleDepositado,
   closeModal, confirmDel,

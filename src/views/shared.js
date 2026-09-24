@@ -2,6 +2,7 @@ import { S } from '../state.js';
 import { esc, val } from '../utils.js';
 import { badge, usoDeDatos } from '../calc.js';
 import { settings, saveSettings } from '../settings.js';
+import { PANEL_KPIS } from '../constants.js';
 import { snooze } from '../snooze.js';
 import { toast } from '../modal.js';
 import { render } from '../nav.js';
@@ -26,6 +27,9 @@ export function ajustesCard() {
   '<div class="two"><label class="f"><span>Aviso urgente (días)</span><input id="a_warn" inputmode="numeric" value="' + settings.avisoWarn + '"></label>' +
   '<label class="f"><span>Aviso próximo (días)</span><input id="a_soft" inputmode="numeric" value="' + settings.avisoSoft + '"></label></div>' +
   '<button class="btn sec block" onclick="saveAjustes()">Guardar ajustes</button></div>' +
+  '<div class="card"><div class="small muted" style="margin-bottom:10px">Elegí qué indicadores mostrar arriba en el Panel.</div>' +
+  PANEL_KPIS.map(x => '<label class="chk"><input type="checkbox" class="a_kpi" value="' + x[0] + '"' + (settings.panelKpis.includes(x[0]) ? ' checked' : '') + '><span>' + x[1] + '</span></label>').join('') +
+  '<button class="btn sec block" style="margin-top:10px" onclick="saveAjustes()">Guardar ajustes</button></div>' +
   pushCard() +
   (isAdmin() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Umbrales y políticas de la flota.</div>' +
   '<div class="two"><label class="f"><span>Depósito: avisar si baja de <small>%</small></span><input id="a_depPct" inputmode="numeric" value="' + settings.depositoAvisoPct + '"></label>' +
@@ -49,6 +53,8 @@ export function ajustesCard() {
 export function saveAjustes() {
   const w = +val('a_warn') || 15, s = +val('a_soft') || 30;
   const patch = { avisoWarn: w, avisoSoft: Math.max(w, s) };
+  const kpiEls = document.querySelectorAll('.a_kpi');
+  if (kpiEls.length) patch.panelKpis = [...kpiEls].filter(el => el.checked).map(el => el.value);
   const depPct = document.getElementById('a_depPct');
   if (depPct) Object.assign(patch, {
     depositoAvisoPct: +depPct.value || settings.depositoAvisoPct,
@@ -92,7 +98,7 @@ export function backupCard() {
   '<button class="btn sec block" style="margin-top:8px" onclick="logout()">Cerrar sesión (' + esc(S.user && S.user.email || '') + ')</button>';
 }
 export function alertRow(a) {
-  const open = a.kind === 'car' ? "carForm('" + a.id + "')" : a.kind === 'multa' ? "multaForm('" + a.carId + "','" + a.id + "')" : a.kind === 'proveedor' ? "proveedoresView('" + a.id + "')" : "driverForm('" + a.id + "')";
+  const open = a.kind === 'car' ? "carForm('" + a.id + "')" : a.kind === 'multa' ? "multaForm('" + a.carId + "','" + a.id + "')" : a.kind === 'proveedor' ? "proveedoresView('" + a.id + "')" : a.kind === 'recordatorio' ? "recordatoriosView('" + a.id + "')" : "driverForm('" + a.id + "')";
   return '<div class="card row"><div class="grow tap" onclick="' + open + '"><div>' + esc(a.who) + '</div><div class="small muted">' + esc(a.sub) + '</div></div>' +
   '<div class="right">' + badge(a.cls, a.t) + '<div style="margin-top:4px"><button class="btn sec sm" onclick="snoozeAlert(\'' + esc(a.key) + '\')">Posponer</button></div></div></div>';
 }

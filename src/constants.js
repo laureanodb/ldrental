@@ -1,7 +1,18 @@
 export const TIPOS = { alquiler: 'Alquilado', financiado: 'Financiado', disponible: 'Disponible', taller: 'En taller' };
 export const DOCS = [['dni', 'DNI (frente y dorso)'], ['lic', 'Licencia profesional'], ['dom', 'Comprobante de domicilio'], ['ant', 'Certificado de antecedentes'], ['app', 'Alta en la app (Uber, Cabify, etc.)'], ['contrato', 'Contrato firmado'], ['garante', 'Garante / aval']];
 export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuesto automotor (fecha de vencimiento)'], ['cedula', 'Cédula / tarjeta'], ['gnc', 'Revisión técnica GNC'], ['habilitacion', 'Licencia / habilitación de transporte']];
-export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes'];
+export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios'];
+
+export const CHANGELOG = [
+  { v: '2026-09-24', items: [
+    'Marcá autos y choferes como favoritos para tenerlos siempre arriba de la lista.',
+    'Nuevo: recordatorios de tareas manuales, con aviso en Vencimientos.',
+    'Panel personalizable: elegí qué indicadores ver primero desde Ajustes.',
+    'Nueva calculadora rápida: financiar vs. alquilar.',
+    'Autos: registro de neumáticos, accesorios con garantía y QR para reportar problemas.',
+    'Alerta cuando un auto queda disponible mucho tiempo sin asignar.',
+  ] },
+];
 
 export const ASEGURADORAS = ['Allianz', 'Sancor', 'Mercantil', 'Fed. Pat.', 'Zurich', 'Nación', 'Rivadavia', 'Provincia', 'Mapfre', 'Holando', 'Otro'];
 export const COMBUSTIBLES = [['nafta', 'Nafta'], ['diesel', 'Diésel'], ['gnc', 'GNC'], ['electrico', 'Eléctrico'], ['hibrido', 'Híbrido']];
@@ -53,3 +64,9 @@ export const CCATS = [['cedula', 'Cédula / tarjeta'], ['titulo', 'Título / bol
 export const MCATS = [['factura', 'Factura del taller'], ['foto', 'Foto del trabajo'], ['otro', 'Otro']];
 export const TCATS = [['acta', 'Foto del acta/infracción'], ['comprobante', 'Comprobante de pago'], ['otro', 'Otro']];
 export const ACCEPT = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+
+export const PANEL_KPIS = [
+  ['cobrado', 'Cobrado este mes'], ['esperado', 'Esperado por semana'], ['deuda', 'Deuda de choferes'],
+  ['saldoFin', 'Falta cobrar de financiados'], ['autosCalle', 'Autos en la calle'],
+  ['vencUrgentes', 'Vencimientos urgentes'], ['autosDisponibles', 'Autos disponibles'],
+];

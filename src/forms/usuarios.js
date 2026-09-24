@@ -12,11 +12,19 @@ function renderUsuarios(list) {
 }
 export async function usuariosView() {
   if (!isAdmin()) { toast('Solo un administrador puede ver esto'); return; }
-  openModal('<h3>Usuarios</h3><div class="small muted" style="margin-bottom:12px">Para dar de alta a alguien nuevo, cargalo primero en Supabase → Authentication → Add user. Después va a aparecer acá para asignarle rol.</div><div id="us_list" class="small muted">Cargando…</div>');
+  openModal('<h3>Usuarios</h3><div class="small muted" style="margin-bottom:12px">Para dar de alta a alguien nuevo, cargalo primero en Supabase → Authentication → Add user. Después va a aparecer acá para asignarle rol.</div><div id="us_list" class="small muted">Cargando…</div><div class="sec-t">Actividad reciente <small class="muted">últimos 30 días</small></div><div id="us_actividad" class="small muted">Cargando…</div>');
   const r = await sb.from('profiles').select('*').order('created_at');
   const el = $('#us_list'); if (!el) return;
   if (r.error) { el.textContent = 'No se pudo cargar: ' + r.error.message; return; }
   el.outerHTML = renderUsuarios(r.data || []);
+  const desde = new Date(Date.now() - 30 * 864e5).toISOString();
+  const ra = await sb.from('audit_log').select('user_email').gte('created_at', desde);
+  const elA = $('#us_actividad'); if (!elA) return;
+  if (ra.error) { elA.textContent = 'No se pudo cargar: ' + ra.error.message; return; }
+  const conteo = {};
+  (ra.data || []).forEach(x => { const e = x.user_email || 'Desconocido'; conteo[e] = (conteo[e] || 0) + 1; });
+  const entries = Object.entries(conteo).sort((a, b) => b[1] - a[1]);
+  elA.outerHTML = '<div id="us_actividad">' + (entries.length ? entries.map(([email, n]) => '<div class="row between small" style="padding:2px 0"><span>' + esc(email) + '</span><b>' + n + ' acción' + (n === 1 ? '' : 'es') + '</b></div>').join('') : '<div class="small muted">Sin actividad registrada.</div>') + '</div>';
 }
 export async function cambiarRol(id, rol) {
   const r = await sb.from('profiles').update({ rol }).eq('id', id);

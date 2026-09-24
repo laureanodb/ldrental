@@ -279,6 +279,10 @@ export async function saveCar(id) {
   const patente = val('c_patente').toUpperCase();
   if (!patente) { toast('Falta la patente'); return; }
   if (S.cars.some(x => x.id !== id && String(x.patente || '').toUpperCase() === patente)) { toast('Ya existe un auto con esa patente'); return; }
+  const numFlota = val('c_numflota');
+  if (numFlota && S.cars.some(x => x.id !== id && String(x.numeroFlota || '').trim() === numFlota)) { toast('Ya existe un auto con ese número de flota'); return; }
+  const poliza = val('c_poliza');
+  if (poliza && S.cars.some(x => x.id !== id && String(x.polizaNumero || '').trim() === poliza)) { toast('Ya existe un auto con ese número de póliza'); return; }
   const tipo = val('c_tipo'), con = tipo === 'alquiler' || tipo === 'financiado';
   const ex = S.cars.find(x => x.id === id);
   const choferId = con ? val('c_chofer') : '';
@@ -311,6 +315,7 @@ export async function saveCar(id) {
     accesorios: (ex || {}).accesorios || [],
     disponibleDesde: tipo === 'disponible' ? ((ex && ex.tipo === 'disponible' && ex.disponibleDesde) || iso(today())) : '',
     vendido: (ex || {}).vendido || false,
+    favorito: (ex || {}).favorito || false,
     files: (ex || {}).files || [],
     ajustesDeuda: (ex || {}).ajustesDeuda || [],
     historialChoferes: actualizarHistorialChoferes(ex, choferId),
@@ -329,6 +334,10 @@ export async function saveCar(id) {
   if (!(await save('cars', o))) return;
   if (o.gpsAlerta && !(ex && ex.gpsAlerta)) await marcarEnTaller(o.id);
   closeModal(); toast('Auto guardado');
+}
+export async function toggleFavoritoAuto(id) {
+  const c = S.cars.find(x => x.id === id); if (!c) return;
+  await save('cars', Object.assign({}, c, { favorito: !c.favorito }));
 }
 export async function toggleVendido(id) {
   const c = S.cars.find(x => x.id === id); if (!c) return;

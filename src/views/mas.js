@@ -2,6 +2,7 @@ import { ui } from '../state.js';
 import { render } from '../nav.js';
 import { isAdmin } from '../roles.js';
 import { proveedoresView } from '../forms/proveedor.js';
+import { recordatoriosView } from '../forms/recordatorio.js';
 import { gastosGeneralesView } from '../forms/gastos-generales.js';
 import { usuariosView } from '../forms/usuarios.js';
 import { auditoriaView } from '../forms/auditoria.js';
@@ -45,6 +46,10 @@ export function viewMas() {
     ['Mapa de flota', 'mapaFlotaView()'],
   ]);
   h += grupo('Análisis', [['Reportes', "goMas('reportes')"]]);
+  h += grupo('Herramientas', [
+    ['Recordatorios', 'recordatoriosView()'],
+    ['Calculadora: financiar vs. alquilar', 'calculadoraForm()'],
+  ]);
   const admin = [['Ajustes', "goMas('ajustes')"], ['Copia de seguridad', "goMas('backup')"], ['Google', "goMas('google')"]];
   if (isAdmin()) admin.push(['Usuarios y permisos', 'usuariosView()'], ['Auditoría', 'auditoriaView()']);
   h += grupo('Administración', admin);

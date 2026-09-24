@@ -166,6 +166,8 @@ export async function saveDriver(id) {
   if (!nombre) { toast('Falta el nombre'); return; }
   const dni = val('d_dni');
   if (dni && S.drivers.some(x => x.id !== id && String(x.dni || '').trim() === dni)) { toast('Ya existe un chofer con ese DNI'); return; }
+  const tel = val('d_tel');
+  if (tel && S.drivers.some(x => x.id !== id && String(x.tel || '').trim() === tel)) { toast('Ya existe un chofer con ese teléfono'); return; }
   const docs = {}; DOCS.forEach(x => { docs[x[0]] = document.getElementById('dc_' + x[0]).checked; });
   const onboarding = {}; ONBOARDING_ITEMS.forEach(x => { onboarding[x[0]] = document.getElementById('ob_' + x[0]).checked; });
   const otrosTelefonos = [...document.querySelectorAll('.d-tel')].map(row => ({
@@ -180,7 +182,7 @@ export async function saveDriver(id) {
     otrosIngresos: val('d_otrosIngresos'), ocupacionAnterior: val('d_ocupacion'), experienciaChofer: val('d_experiencia'),
     aptoFinanciar: document.getElementById('d_apto').checked, depositoObjetivo: +val('d_depositoObjetivo') || 0,
     contactoEmergencia: { nombre: val('d_emerg_nombre'), tel: val('d_emerg_tel') },
-    otrosTelefonos, inactivo: (ex || {}).inactivo || false, prospecto: document.getElementById('d_prospecto').checked,
+    otrosTelefonos, inactivo: (ex || {}).inactivo || false, favorito: (ex || {}).favorito || false, prospecto: document.getElementById('d_prospecto').checked,
     etapaProspecto: val('d_etapaProspecto'), referidoPor: val('d_referidoPor'), onboarding,
     canalOrigen: val('d_canalOrigen'), canalOrigenOtro: val('d_canalOrigenOtro'),
     fotoPerfil: val('d_fotoPerfilData'),
@@ -201,6 +203,10 @@ export async function copiarLinkPortal(url) {
   } catch (e) {
     toast('No se pudo copiar: seleccioná el texto y copialo a mano');
   }
+}
+export async function toggleFavoritoChofer(id) {
+  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  await save('drivers', Object.assign({}, d, { favorito: !d.favorito }));
 }
 export async function toggleInactivo(id) {
   const d = S.drivers.find(x => x.id === id); if (!d) return;

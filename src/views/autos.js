@@ -17,7 +17,7 @@ export function viewAutos() {
 export function listAutos() {
   const q = ui.qCars.trim().toLowerCase();
   const L = S.cars.filter(c => (ui.showVendidos || !c.vendido) && (!ui.filtroAutoTipo || c.tipo === ui.filtroAutoTipo) && (!q || [c.patente, c.marca, c.modelo, driverName(c.choferId)].join(' ').toLowerCase().includes(q)))
-    .sort((a, b) => ui.ordenAutos === 'deuda' ? calc(b).debt - calc(a).debt : ui.ordenAutos === 'monto' ? (+b.monto || 0) - (+a.monto || 0) : String(a.patente).localeCompare(String(b.patente)));
+    .sort((a, b) => (Boolean(b.favorito) - Boolean(a.favorito)) || (ui.ordenAutos === 'deuda' ? calc(b).debt - calc(a).debt : ui.ordenAutos === 'monto' ? (+b.monto || 0) - (+a.monto || 0) : String(a.patente).localeCompare(String(b.patente))));
   if (!L.length) return '<div class="card empty">' + (S.cars.length ? 'Ningún auto coincide con la búsqueda.' : '<b>Todavía no cargaste autos</b>Tocá "Agregar" para empezar.') + '</div>';
   return L.map(c => {
     const i = calc(c); const al = [...VENC.map(v => vs(c[v[0]])), null].filter(Boolean).sort((a, b) => a.d - b.d)[0];
@@ -34,7 +34,7 @@ export function listAutos() {
     if (c.aReemplazar) b += ' ' + badge('warn', 'A reemplazar: ' + (MOTIVOS_REEMPLAZO.find(x => x[0] === c.motivoReemplazo) || [0, 'motivo'])[1]);
     if (!c.vendido && S.siniestros.some(s => s.carId === c.id && s.estado !== 'cerrado')) b += ' ' + badge('bad', 'Siniestro abierto');
     if (c.files && c.files.length) b += ' ' + badge('mute', c.files.length + (c.files.length === 1 ? ' archivo' : ' archivos'));
-    return '<div class="card tap" onclick="carForm(\'' + c.id + '\')"><div class="row between"><div>' + plate(c.patente) + '</div>' + tipoBadge(c.tipo) + '</div>' +
+    return '<div class="card tap" onclick="carForm(\'' + c.id + '\')"><div class="row between"><div><span class="tap" style="margin-right:4px" onclick="event.stopPropagation();toggleFavoritoAuto(\'' + c.id + '\')">' + (c.favorito ? '★' : '☆') + '</span>' + plate(c.patente) + '</div>' + tipoBadge(c.tipo) + '</div>' +
     '<div class="small muted" style="margin-top:6px">' + esc([c.marca, c.modelo, c.anio].filter(Boolean).join(' ')) + '</div>' +
     '<div class="row between" style="margin-top:4px"><div>' + (c.choferId ? esc(driverName(c.choferId)) : '<span class="muted">Sin chofer</span>') + '</div><div class="small muted">' + (isContract(c) ? mon(c.monto) + ' por semana' : '') + '</div></div>' +
     (b ? '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">' + b + '</div>' : '') + '</div>';

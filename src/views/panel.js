@@ -27,15 +27,17 @@ export function viewPanel() {
   const morosos = infos.filter(x => x.i.debt > 0 && x.c.tipo !== 'financiado').sort((a, b) => b.i.debt - a.i.debt).slice(0, 5);
   let h = '<h1>Panel</h1><p class="sub">' + t0.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) + '</p>';
   h += '<div class="row" style="margin-bottom:12px"><button class="btn grow" onclick="payForm()">Cobro rápido</button><button class="btn sec" onclick="gastoGeneralForm()">Gasto rápido</button><button class="btn sec" onclick="searchView()">Buscar</button></div>';
-  h += '<div class="grid">' +
-    '<div class="kpi tap" onclick="ui.showDesgloseCobrado=!ui.showDesgloseCobrado;render()"><div class="n">' + money(cobMes) + (cobMesUSD ? '<div class="small">+ ' + moneyUSD(cobMesUSD) + '</div>' : '') + '</div><div class="l">Cobrado este mes' + (deltaMes != null ? ' <span style="color:' + (deltaMes >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + (deltaMes >= 0 ? '▲' : '▼') + Math.abs(deltaMes) + '%</span>' : '') + '</div></div>' +
-    '<div class="kpi"><div class="n">' + money(esperado) + (esperadoUSD ? '<div class="small">+ ' + moneyUSD(esperadoUSD) + '</div>' : '') + '</div><div class="l">Esperado por semana</div></div>' +
-    '<div class="kpi ' + (deuda > 0 ? 'bad' : '') + '"><div class="n">' + money(deuda) + '</div><div class="l">Deuda de choferes</div></div>' +
-    '<div class="kpi"><div class="n">' + moneyUSD(saldoFin) + '</div><div class="l">Falta cobrar de financiados</div></div>' +
-    '<div class="kpi"><div class="n">' + act.length + ' de ' + flota.length + '</div><div class="l">Autos en la calle</div></div>' +
-    '<div class="kpi ' + (urg.length ? 'warn' : '') + ' tap" onclick="go(\'venc\')"><div class="n">' + urg.length + '</div><div class="l">Vencimientos urgentes</div></div>' +
-    '<div class="kpi tap" onclick="ui.filtroAutoTipo=\'disponible\';go(\'autos\')"><div class="n">' + disponibles + '</div><div class="l">Autos disponibles</div></div>' +
-  '</div>';
+  const kpis = {
+    cobrado: '<div class="kpi tap" onclick="ui.showDesgloseCobrado=!ui.showDesgloseCobrado;render()"><div class="n">' + money(cobMes) + (cobMesUSD ? '<div class="small">+ ' + moneyUSD(cobMesUSD) + '</div>' : '') + '</div><div class="l">Cobrado este mes' + (deltaMes != null ? ' <span style="color:' + (deltaMes >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + (deltaMes >= 0 ? '▲' : '▼') + Math.abs(deltaMes) + '%</span>' : '') + '</div></div>',
+    esperado: '<div class="kpi"><div class="n">' + money(esperado) + (esperadoUSD ? '<div class="small">+ ' + moneyUSD(esperadoUSD) + '</div>' : '') + '</div><div class="l">Esperado por semana</div></div>',
+    deuda: '<div class="kpi ' + (deuda > 0 ? 'bad' : '') + '"><div class="n">' + money(deuda) + '</div><div class="l">Deuda de choferes</div></div>',
+    saldoFin: '<div class="kpi"><div class="n">' + moneyUSD(saldoFin) + '</div><div class="l">Falta cobrar de financiados</div></div>',
+    autosCalle: '<div class="kpi"><div class="n">' + act.length + ' de ' + flota.length + '</div><div class="l">Autos en la calle</div></div>',
+    vencUrgentes: '<div class="kpi ' + (urg.length ? 'warn' : '') + ' tap" onclick="go(\'venc\')"><div class="n">' + urg.length + '</div><div class="l">Vencimientos urgentes</div></div>',
+    autosDisponibles: '<div class="kpi tap" onclick="ui.filtroAutoTipo=\'disponible\';go(\'autos\')"><div class="n">' + disponibles + '</div><div class="l">Autos disponibles</div></div>',
+  };
+  const activos = (settings.panelKpis && settings.panelKpis.length) ? settings.panelKpis : Object.keys(kpis);
+  h += '<div class="grid">' + activos.filter(k => kpis[k]).map(k => kpis[k]).join('') + '</div>';
   if (ui.showDesgloseCobrado) {
     const porMetodo = cobradoDelMesPorMetodo(0);
     const metodoLabel = m => m === 'sin_especificar' ? 'Sin especificar' : ((METODOS_PAGO.find(x => x[0] === m) || [0, m])[1]);

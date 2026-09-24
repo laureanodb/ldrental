@@ -39,6 +39,7 @@ export function listChoferes() {
   const q = ui.qDrivers.trim().toLowerCase();
   const L = S.drivers.filter(d => (ui.showInactivos || !d.inactivo) && (ui.showProspectos || !d.prospecto) && (!q || [d.nombre, d.dni, d.tel].join(' ').toLowerCase().includes(q)))
     .sort((a, b) => {
+      const fav = Boolean(b.favorito) - Boolean(a.favorito); if (fav) return fav;
       if (ui.ordenChoferes === 'deuda') return driverDebt(b.id) - driverDebt(a.id);
       if (ui.ordenChoferes === 'puntualidad') return (driverScore(a.id) == null ? 101 : driverScore(a.id)) - (driverScore(b.id) == null ? 101 : driverScore(b.id));
       return String(a.nombre).localeCompare(String(b.nombre));
@@ -66,7 +67,7 @@ export function listChoferes() {
     if (!d.prospecto && driverEnRiesgo(d.id)) b += ' ' + badge('bad', 'En riesgo');
     else if (!d.prospecto && driverCalificaBono(d.id)) b += ' ' + badge('ok', 'Bono puntualidad');
     const avatar = d.fotoPerfil ? '<img src="' + d.fotoPerfil + '" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;margin-right:8px;vertical-align:-8px">' : '';
-    return '<div class="card tap" onclick="driverForm(\'' + d.id + '\')"><div class="row between"><b>' + avatar + esc(d.nombre) + '</b><div>' + cars.map(c => plate(c.patente)).join(' ') + '</div></div>' +
+    return '<div class="card tap" onclick="driverForm(\'' + d.id + '\')"><div class="row between"><b><span class="tap" style="margin-right:4px" onclick="event.stopPropagation();toggleFavoritoChofer(\'' + d.id + '\')">' + (d.favorito ? '★' : '☆') + '</span>' + avatar + esc(d.nombre) + '</b><div>' + cars.map(c => plate(c.patente)).join(' ') + '</div></div>' +
     '<div class="small muted">' + esc(d.tel || 'Sin teléfono') + '</div><div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">' + b + '</div></div>';
   }).join('');
 }

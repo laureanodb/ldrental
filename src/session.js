@@ -9,6 +9,7 @@ import { makeStorage } from './storage.js';
 import { loadOwnProfile } from './roles.js';
 import { brandH1 } from './settings.js';
 import { generarGastosRecurrentes } from './recurrentes.js';
+import { checkChangelog } from './changelog.js';
 
 export function viewSetup() {
   return '<div class="login">' + brandH1() + '<div class="card"><b>Falta configurar la conexión</b><p class="small muted">Completá VITE_SUPABASE_URL y VITE_SUPABASE_KEY en el archivo .env, con los datos de tu proyecto de Supabase.</p></div></div>';
@@ -34,6 +35,7 @@ export async function start() {
   await Promise.all([...COLS.map(load), loadOwnProfile()]);
   S.ready = true; render();
   generarGastosRecurrentes();
+  checkChangelog();
   if (!S.chan) {
     S.chan = sb.channel('flota');
     const timers = {};
