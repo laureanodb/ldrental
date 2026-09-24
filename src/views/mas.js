@@ -7,6 +7,8 @@ import { gastosGeneralesView } from '../forms/gastos-generales.js';
 import { usuariosView } from '../forms/usuarios.js';
 import { auditoriaView } from '../forms/auditoria.js';
 import { mapaFlotaView } from '../forms/mapa.js';
+import { compararAutosForm } from '../forms/comparar.js';
+import { reportePersonalizadoForm } from '../forms/reporte-personalizado.js';
 import { viewMantenimiento } from './mantenimiento.js';
 import { viewReportes } from './reportes.js';
 import { viewMultas } from './multas.js';
@@ -45,11 +47,12 @@ export function viewMas() {
     ['Proveedores y talleres', 'proveedoresView()'],
     ['Mapa de flota', 'mapaFlotaView()'],
   ]);
-  h += grupo('Análisis', [['Reportes', "goMas('reportes')"]]);
+  h += grupo('Análisis', [['Reportes', "goMas('reportes')"], ['Reporte personalizado', 'reportePersonalizadoForm()']]);
   h += grupo('Herramientas', [
     ['Recordatorios', 'recordatoriosView()'],
     ['Calculadora: financiar vs. alquilar', 'calculadoraForm()'],
     ['Calculadora: ROI antes de comprar', 'roiAutoForm()'],
+    ['Comparar autos', 'compararAutosForm()'],
   ]);
   const admin = [['Ajustes', "goMas('ajustes')"], ['Copia de seguridad', "goMas('backup')"], ['Google', "goMas('google')"]];
   if (isAdmin()) admin.push(['Usuarios y permisos', 'usuariosView()'], ['Auditoría', 'auditoriaView()']);

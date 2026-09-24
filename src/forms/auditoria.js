@@ -54,3 +54,14 @@ async function auditCargar(reset) {
 }
 export function auditCargarMas() { auditCargar(false); }
 export function auditFiltrar(campo, valor) { filtros[campo] = valor; offset = 0; fin = false; auditCargar(true); }
+
+export async function historialAutoView(carId, patente) {
+  if (!isAdmin()) { toast('Solo un administrador puede ver esto'); return; }
+  openModal('<h3>Historial de cambios — ' + esc(patente || '') + '</h3><div class="small muted" style="margin-bottom:12px">Todo lo que se guardó o borró en este auto, con quién y cuándo.</div>' +
+    '<div id="hac_list" class="small muted">Cargando…</div>');
+  const r = await sb.from('audit_log').select('*').eq('tabla', 'cars').eq('registro_id', carId).order('created_at', { ascending: false }).limit(200);
+  const el = $('#hac_list'); if (!el) return;
+  if (r.error) { el.textContent = 'No se pudo cargar: ' + r.error.message; return; }
+  const rows = r.data || [];
+  el.innerHTML = rows.map(fila).join('') || '<div class="card muted">Sin movimientos registrados.</div>';
+}

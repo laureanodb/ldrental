@@ -1,6 +1,6 @@
 import { S, ui } from '../state.js';
 import { esc, money, moneyUSD, today } from '../utils.js';
-import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, badge } from '../calc.js';
+import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, badge } from '../calc.js';
 import { canVerFinanzas } from '../roles.js';
 import { GASTO_CATS, CANALES_PROSPECTO } from '../constants.js';
 
@@ -128,6 +128,20 @@ function seccionProspectosPorCanal() {
   (sinDato ? '<div class="card row between small muted"><span>Sin especificar</span><b>' + sinDato + '</b></div>' : '');
 }
 
+function seccionMapaCalorGastos() {
+  if (!canVerFinanzas()) return '';
+  const { meses, filas, max } = mapaCalorGastos(6);
+  if (!filas.length) return '';
+  const gridRows = filas.slice(0, 15).map(f => {
+    const celdas = f.valores.map(v => {
+      const op = v > 0 ? Math.max(0.12, Math.min(1, v / max)) : 0;
+      return '<div style="flex:1;aspect-ratio:1;border-radius:4px;background:rgba(200,60,50,' + op + ')" title="' + money(v) + '"></div>';
+    }).join('');
+    return '<div class="row" style="align-items:center;gap:4px;margin-bottom:4px"><div class="small" style="width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + plate(f.c.patente) + '</div><div style="display:flex;gap:4px;flex:1">' + celdas + '</div></div>';
+  }).join('');
+  const meselabels = '<div class="row" style="gap:4px;margin-left:74px;margin-bottom:4px">' + meses.map(m => '<div class="small muted" style="flex:1;text-align:center">' + esc(m.label) + '</div>').join('') + '</div>';
+  return '<h2>Mapa de calor de gastos por auto</h2><div class="card">' + meselabels + gridRows + '</div>';
+}
 function seccionMantenimiento() {
   const rows = activeCars().map(c => ({ c, total: gastoMantenimientoAuto(c) })).filter(x => x.total > 0).sort((a, b) => b.total - a.total);
   if (!rows.length) return '';
@@ -254,6 +268,7 @@ export function viewReportes() {
   h += seccionComparativaChoferes();
   h += seccionTablaComparativaChoferes();
   h += seccionGastosPorCategoria();
+  h += seccionMapaCalorGastos();
   h += seccionMantenimiento();
   h += seccionSiniestros();
   h += seccionMultasChoferes();

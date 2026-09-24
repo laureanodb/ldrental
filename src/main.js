@@ -7,6 +7,8 @@ import { doLogin, logout } from './session.js';
 import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento } from './forms/car.js';
 import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
 import { calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi } from './forms/calculadora.js';
+import { compararAutosForm, renderComparacionAutos } from './forms/comparar.js';
+import { reportePersonalizadoForm, toggleColumnaReporte, renderReportePersonalizado, exportarReportePersonalizado } from './forms/reporte-personalizado.js';
 import { mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento } from './forms/mantenimiento.js';
 import { mantAtajoFecha } from './views/mantenimiento.js';
 import { multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta } from './forms/multa.js';
@@ -35,7 +37,7 @@ import { ajusteForm, saveAjuste, delAjuste } from './forms/ajuste.js';
 import { searchView, doSearch } from './forms/search.js';
 import { flushQueue } from './data.js';
 import { usuariosView, cambiarRol, toggleActivo } from './forms/usuarios.js';
-import { auditoriaView, auditCargarMas, auditFiltrar } from './forms/auditoria.js';
+import { auditoriaView, auditCargarMas, auditFiltrar, historialAutoView } from './forms/auditoria.js';
 import { mapaFlotaView } from './forms/mapa.js';
 import { conectarGoogleUI } from './views/google-ui.js';
 import { googleConfigured, loadGis } from './google.js';
@@ -51,7 +53,8 @@ Object.assign(window, {
   doLogin, logout,
   carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento,
   recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio,
-  calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi,
+  calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, compararAutosForm, renderComparacionAutos,
+  reportePersonalizadoForm, toggleColumnaReporte, renderReportePersonalizado, exportarReportePersonalizado,
   goMas,
   mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, mantAtajoFecha,
   multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta,
@@ -72,7 +75,7 @@ Object.assign(window, {
   proveedoresView, saveProveedor, delProveedor,
   ajusteForm, saveAjuste, delAjuste,
   searchView, doSearch,
-  usuariosView, cambiarRol, toggleActivo, auditoriaView, auditCargarMas, auditFiltrar, mapaFlotaView,
+  usuariosView, cambiarRol, toggleActivo, auditoriaView, auditCargarMas, auditFiltrar, historialAutoView, mapaFlotaView,
   conectarGoogleUI, syncCalendarUI, syncSheetsUI, syncMultasSheetsUI, syncMantenimientoSheetsUI, syncDriveUI,
 });
 

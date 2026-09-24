@@ -487,6 +487,22 @@ export function gastosPorCategoria() {
   S.gastos.forEach(g => { const k = g.categoria || 'otro'; out[k] = (out[k] || 0) + (+g.costo || 0); });
   return out;
 }
+export function mapaCalorGastos(nMeses) {
+  const t = today();
+  const meses = [];
+  for (let i = nMeses - 1; i >= 0; i--) {
+    const d = new Date(t.getFullYear(), t.getMonth() - i, 1);
+    meses.push({ key: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'), label: d.toLocaleDateString('es-AR', { month: 'short' }) });
+  }
+  const cars = activeCars();
+  const filas = cars.map(c => {
+    const gastosAuto = S.gastos.filter(g => g.carId === c.id).concat(S.mantenimientos.filter(m => m.carId === c.id));
+    const valores = meses.map(m => gastosAuto.filter(g => (g.fecha || '').slice(0, 7) === m.key).reduce((a, g) => a + (+g.costo || 0), 0));
+    return { c, valores, total: valores.reduce((a, v) => a + v, 0) };
+  }).filter(f => f.total > 0).sort((a, b) => b.total - a.total);
+  const max = Math.max(1, ...filas.flatMap(f => f.valores));
+  return { meses, filas, max };
+}
 const RATING_ORDEN = { bueno: 0, regular: 1, malo: 2 };
 export function proveedoresActivos() {
   return S.proveedores.filter(p => !p.inactivo).slice().sort((a, b) => {

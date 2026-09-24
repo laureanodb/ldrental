@@ -5,7 +5,7 @@ import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenim
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
-import { canDelete } from '../roles.js';
+import { canDelete, isAdmin } from '../roles.js';
 import { inflacionAcumulada } from '../inflacion.js';
 import { settings } from '../settings.js';
 
@@ -79,6 +79,7 @@ export function carForm(id) {
   '<label class="f"><span>Transmisión</span><select id="c_transmision"><option value="">Sin especificar</option>' + TRANSMISIONES.map(x => '<option value="' + x[0] + '"' + (c.transmision === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
   '<div class="two"><label class="f"><span>VIN / chasis</span><input id="c_vin" value="' + esc(c.vin) + '"></label>' +
   '<label class="f"><span>Número de motor</span><input id="c_numeroMotor" value="' + esc(c.numeroMotor) + '"></label></div>' +
+  '<label class="f"><span>Etiquetas <small>separadas por coma</small></span><input id="c_tags" value="' + esc((c.tags || []).join(', ')) + '" placeholder="ej: premium, ejecutivo, nuevo"></label>' +
   '<div class="two"><label class="f"><span>Número de flota</span><input id="c_numflota" value="' + esc(c.numeroFlota) + '"></label>' +
   '<label class="f"><span>Combustible</span><select id="c_combustible"><option value="">Sin especificar</option>' + COMBUSTIBLES.map(x => '<option value="' + x[0] + '"' + (c.combustible === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
   '<div class="two"><label class="f"><span>Kilometraje actual</span><input id="c_km" inputmode="numeric" value="' + esc(c.km) + '"></label>' +
@@ -264,6 +265,7 @@ export function carForm(id) {
       const vencLabel = t => (VENC.find(v => v[0] === t) || [0, t])[1];
       hist += '<div class="sec-t">Historial de vencimientos resueltos</div>' + HV.map(x => '<div class="row between small" style="padding:4px 0"><span>' + esc(vencLabel(x.tipo)) + (x.fechaAnterior ? ': ' + fdate(x.fechaAnterior) + ' → ' + fdate(x.fechaNueva) : ': cargado ' + fdate(x.fechaNueva)) + '</span><span class="muted">' + fdate(x.cambiado) + '</span></div>').join('');
     }
+    if (isAdmin()) hist += '<button class="btn sec block" style="margin-top:12px" onclick="historialAutoView(\'' + c.id + '\',\'' + esc(c.patente) + '\')">Ver historial completo de cambios</button>';
   }
 
   const saveCancelRow = '<div class="row" style="margin:14px 0"><button class="btn grow" onclick="saveCar(' + (ex ? "'" + c.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
@@ -333,6 +335,7 @@ export async function saveCar(id) {
     gpsTipo: val('c_gpsTipo'), gpsAlerta: document.getElementById('c_gpsAlerta').checked,
     form08: document.getElementById('c_form08').checked,
     color: val('c_color'), transmision: val('c_transmision'), vin: val('c_vin'), numeroMotor: val('c_numeroMotor'),
+    tags: val('c_tags').split(',').map(s => s.trim()).filter(Boolean),
     gncInstaladoEmpresa: document.getElementById('c_gncInstaladoEmpresa').checked,
     gncInstalador: val('c_gncInstalador'), gncFechaInstalacion: val('c_gncFechaInstalacion'),
     coberturaSeguro: val('c_coberturaSeguro'), franquiciaSeguro: +val('c_franquiciaSeguro') || 0,
