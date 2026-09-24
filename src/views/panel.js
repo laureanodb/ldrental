@@ -27,6 +27,7 @@ export function viewPanel() {
   const morosos = infos.filter(x => x.i.debt > 0 && x.c.tipo !== 'financiado').sort((a, b) => b.i.debt - a.i.debt).slice(0, 5);
   let h = '<h1>Panel</h1><p class="sub">' + t0.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) + '</p>';
   h += '<div class="row" style="margin-bottom:12px"><button class="btn grow" onclick="payForm()">Cobro rápido</button><button class="btn sec" onclick="gastoGeneralForm()">Gasto rápido</button><button class="btn sec" onclick="searchView()">Buscar</button></div>';
+  h += notaInternaCard();
   const ef = resumenEstadoFlota();
   if (ef.total) {
     h += '<div class="card" style="margin-bottom:12px"><div class="small muted" style="margin-bottom:6px">Flota de un vistazo · ' + ef.total + ' auto' + (ef.total === 1 ? '' : 's') + '</div>' +
@@ -72,4 +73,15 @@ export function viewPanel() {
     h += '<h2>Pagadas, falta transferir titularidad</h2>' + finSinTransferir.map(c => '<div class="card tap row between" onclick="carForm(\'' + c.id + '\')"><div><div>' + plate(c.patente) + '</div><div class="small muted">' + esc(driverName(c.choferId)) + '</div></div>' + badge('warn', 'Pendiente') + '</div>').join('');
   }
   return h;
+}
+function notaInternaCard() {
+  if (ui.editandoNota) {
+    return '<div class="card" style="margin-bottom:12px;background:#fff8c4;border-color:#e8d47a"><div class="small muted" style="margin-bottom:6px">Nota interna <small>la ve todo el equipo</small></div>' +
+    '<textarea id="pn_nota" placeholder="ej: el sábado no hay atención, avisar a los choferes...">' + esc(settings.notaInterna) + '</textarea>' +
+    '<div class="row" style="margin-top:8px"><button class="btn sec sm" onclick="guardarNotaInterna()">Guardar</button><button class="btn sec sm" onclick="ui.editandoNota=false;render()">Cancelar</button></div></div>';
+  }
+  if (!settings.notaInterna) {
+    return '<div class="card tap" style="margin-bottom:12px" onclick="ui.editandoNota=true;render()"><span class="small muted">+ Agregar nota interna para el equipo</span></div>';
+  }
+  return '<div class="card tap" style="margin-bottom:12px;background:#fff8c4;border-color:#e8d47a" onclick="ui.editandoNota=true;render()"><div class="small muted" style="margin-bottom:4px">Nota interna</div><div style="white-space:pre-wrap">' + esc(settings.notaInterna) + '</div></div>';
 }

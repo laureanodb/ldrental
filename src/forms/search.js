@@ -14,8 +14,10 @@ export function doSearch() {
   if (!input || !el) return;
   const q = input.value.trim().toLowerCase();
   if (!q) { el.innerHTML = ''; return; }
+  const qDigits = q.replace(/\D/g, '');
   const autos = S.cars.filter(c => [c.patente, c.marca, c.modelo, driverName(c.choferId)].join(' ').toLowerCase().includes(q)).slice(0, 8);
-  const choferes = S.drivers.filter(d => [d.nombre, d.dni, d.tel].join(' ').toLowerCase().includes(q)).slice(0, 8);
+  const choferes = S.drivers.filter(d => [d.nombre, d.dni, d.tel].join(' ').toLowerCase().includes(q) ||
+    (qDigits && String(d.tel || '').replace(/\D/g, '').includes(qDigits))).slice(0, 8);
   const cobros = S.payments.filter(p => { const c = carById(p.carId); return c && [c.patente, driverName(p.choferId), p.nota].join(' ').toLowerCase().includes(q); }).slice(0, 8);
   const tipoLabel = k => (TIPOS_INFRACCION.find(x => x[0] === k) || [0, ''])[1];
   const multas = S.multas.filter(m => { const c = carById(m.carId); return [c && c.patente, driverName(m.choferId), m.numeroActa, tipoLabel(m.tipoInfraccion), m.organismo].join(' ').toLowerCase().includes(q); }).slice(0, 8);

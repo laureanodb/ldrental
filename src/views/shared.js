@@ -1,4 +1,4 @@
-import { S } from '../state.js';
+import { S, ui } from '../state.js';
 import { esc, val, fdate, iso, today } from '../utils.js';
 import { badge, usoDeDatos } from '../calc.js';
 import { settings, saveSettings } from '../settings.js';
@@ -11,6 +11,7 @@ import { isAdmin } from '../roles.js';
 import { pushSoportado, pushConfigurado, pushEstadoCache, refrescarPushEstado } from '../push.js';
 import { canVerFinanzas } from '../roles.js';
 import { biometricSoportado, biometricRegistrado } from '../biometric.js';
+import { modoConsultaActivo, modoConsultaHasta, activarModoConsulta, desactivarModoConsulta } from '../consulta.js';
 
 function biometricCard() {
   if (!biometricSoportado()) return '';
@@ -68,7 +69,31 @@ export function ajustesCard() {
   (isAdmin() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Protocolo de emergencia: se muestra a todos los usuarios y a los choferes en su portal.</div>' +
   '<label class="f"><span>Teléfono de emergencia</span><input id="a_telEmergencia" type="tel" value="' + esc(settings.telefonoEmergencia) + '"></label>' +
   '<label class="f"><span>Pasos a seguir</span><textarea id="a_protocoloEmergencia" placeholder="ej: 1) Ponerse a salvo. 2) Llamar al teléfono de emergencia. 3) Sacar fotos si es seguro hacerlo...">' + esc(settings.protocoloEmergencia) + '</textarea></label>' +
-  '<button class="btn sec block" onclick="guardarProtocoloEmergencia()">Guardar</button></div>' : '');
+  '<button class="btn sec block" onclick="guardarProtocoloEmergencia()">Guardar</button></div>' : '') +
+  (isAdmin() ? modoConsultaCard() : '');
+}
+function modoConsultaCard() {
+  const activo = modoConsultaActivo();
+  const hasta = modoConsultaHasta();
+  const txt = hasta ? new Date(hasta).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+  return '<div class="card"><div class="small muted" style="margin-bottom:10px">Bloquea guardar y eliminar para todos, por un tiempo. Útil para revisar datos sin riesgo de cambios accidentales.</div>' +
+  (activo ? '<div class="row between" style="margin-bottom:10px"><span>Activado hasta ' + esc(txt) + '</span><button class="btn sec sm" onclick="desactivarModoConsultaUI()">Desactivar</button></div>' :
+  '<div class="two"><select id="a_consultaHoras"><option value="1">1 hora</option><option value="4">4 horas</option><option value="24">24 horas</option></select>' +
+  '<button class="btn sec" onclick="activarModoConsultaUI()">Activar</button></div>') + '</div>';
+}
+export function activarModoConsultaUI() {
+  const horas = +val('a_consultaHoras') || 1;
+  activarModoConsulta(horas);
+  toast('Modo solo consulta activado'); render();
+}
+export function desactivarModoConsultaUI() {
+  desactivarModoConsulta();
+  toast('Modo solo consulta desactivado'); render();
+}
+export function guardarNotaInterna() {
+  saveSettings({ notaInterna: val('pn_nota') });
+  ui.editandoNota = false;
+  toast('Nota guardada'); render();
 }
 export function saveAjustes() {
   const w = +val('a_warn') || 15, s = +val('a_soft') || 30;

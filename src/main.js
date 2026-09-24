@@ -34,7 +34,9 @@ import { closeModal, confirmDel } from './modal.js';
 import { attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile } from './files.js';
 import { backup, pickRestore, doRestore, exportCSV, cancelRestore, archivarCobrosViejosForm, actualizarInfoArchivar, archivarCobrosViejos } from './backup.js';
 import { buscarArchivosHuerfanos, confirmarBorrarHuerfanos } from './huerfanos.js';
-import { saveAjustes, snoozeAlert, toggleEnTramite, silenciarAlertasAuto, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm, anunciosForm, agregarAnuncio, borrarAnuncio } from './views/shared.js';
+import { saveAjustes, snoozeAlert, toggleEnTramite, silenciarAlertasAuto, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm, anunciosForm, agregarAnuncio, borrarAnuncio, activarModoConsultaUI, desactivarModoConsultaUI, guardarNotaInterna } from './views/shared.js';
+import { imprimirContactosChoferes } from './views/choferes.js';
+import { mostrarNovedades } from './changelog.js';
 import { gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro, elegirCategoriaGasto } from './forms/gasto.js';
 import { gastosGeneralesView, gastoGeneralForm, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, saveGastoRecurrente, delGastoRecurrente } from './forms/gastos-generales.js';
 import { sancionForm, saveSancion, delSancion } from './forms/sancion.js';
@@ -81,7 +83,8 @@ Object.assign(window, {
   backup, pickRestore, doRestore, exportCSV, cancelRestore, archivarCobrosViejosForm, actualizarInfoArchivar, archivarCobrosViejos,
   buscarArchivosHuerfanos, confirmarBorrarHuerfanos,
   saveAjustes, snoozeAlert, toggleEnTramite, silenciarAlertasAuto, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm,
-  anunciosForm, agregarAnuncio, borrarAnuncio,
+  anunciosForm, agregarAnuncio, borrarAnuncio, activarModoConsultaUI, desactivarModoConsultaUI, guardarNotaInterna,
+  imprimirContactosChoferes, mostrarNovedades,
   gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro, elegirCategoriaGasto,
   gastosGeneralesView, gastoGeneralForm, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, saveGastoRecurrente, delGastoRecurrente,
   sancionForm, saveSancion, delSancion,

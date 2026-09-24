@@ -13,6 +13,7 @@ import { listMultas } from './views/multas.js';
 import { listSiniestros } from './views/siniestros.js';
 import { queueLength } from './offline.js';
 import { settings } from './settings.js';
+import { modoConsultaActivo, modoConsultaHasta } from './consulta.js';
 
 const ICONS = {
   panel: '<path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-4H4zM14 8h6V4h-6z"/>',
@@ -36,6 +37,12 @@ function offlineBar() {
   return '<div class="offlinebar row between"><span>' + (!navigator.onLine ? 'Sin conexión' : 'Conectado') + (n ? ' · ' + n + ' cambio' + (n === 1 ? '' : 's') + ' por sincronizar' : '') + '</span>' +
   (navigator.onLine && n ? '<span class="tap" style="text-decoration:underline" onclick="sincronizarAhora()">Reintentar</span>' : '') + '</div>';
 }
+function consultaBar() {
+  if (!modoConsultaActivo()) return '';
+  const hasta = modoConsultaHasta();
+  const txt = hasta ? new Date(hasta).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+  return '<div class="offlinebar row between"><span>Modo solo consulta activado' + (txt ? ' hasta ' + txt : '') + '</span></div>';
+}
 function syncDot() {
   const n = queueLength();
   const cls = !navigator.onLine ? 'bad' : n ? 'warn' : 'ok';
@@ -53,7 +60,7 @@ export function render() {
   if (!S.user) { app.innerHTML = viewLogin(); return; }
   if (!S.ready) { app.innerHTML = '<div class="loading">Cargando tu flota…</div>'; return; }
   const v = { panel: viewPanel, autos: viewAutos, choferes: viewChoferes, cobros: viewCobros, venc: viewVenc, mas: viewMas }[ui.tab]();
-  app.innerHTML = offlineBar() + topBar() + v;
+  app.innerHTML = offlineBar() + consultaBar() + topBar() + v;
   renderList();
 }
 export function renderList() {

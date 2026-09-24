@@ -55,6 +55,7 @@ export function viewMas() {
     ['Calculadora: ROI antes de comprar', 'roiAutoForm()'],
     ['Comparar autos', 'compararAutosForm()'],
     ['Protocolo de emergencia', 'protocoloEmergenciaForm()'],
+    ['Novedades de la app', 'mostrarNovedades()'],
   ]);
   if (isAdmin()) h += grupo('Comunicación', [['Tablón de anuncios (portal del chofer)', 'anunciosForm()']]);
   const admin = [['Ajustes', "goMas('ajustes')"], ['Copia de seguridad', "goMas('backup')"], ['Google', "goMas('google')"]];

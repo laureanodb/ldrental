@@ -3,6 +3,7 @@ import { toast } from './modal.js';
 import { render } from './nav.js';
 import { normCar } from './constants.js';
 import { queueOp, getQueue, setQueue, cacheCollection, readCachedCollection, isNetworkError } from './offline.js';
+import { modoConsultaActivo } from './consulta.js';
 
 export function rowOf(obj) { const d = Object.assign({}, obj); delete d.id; return { id: obj.id, data: d, updated_at: new Date().toISOString() }; }
 export function putLocal(col, obj) { const i = S[col].findIndex(x => x.id === obj.id); if (i >= 0) S[col][i] = obj; else S[col].push(obj); }
@@ -34,6 +35,7 @@ export async function load(col) {
   }
 }
 export async function save(col, obj) {
+  if (modoConsultaActivo()) { toast('No se puede guardar: modo solo consulta activado', 'error'); return false; }
   if (!navigator.onLine) {
     putLocal(col, obj); render(); queueOp({ type: 'save', col, obj });
     toast('Guardado sin conexión, se sincroniza solo cuando vuelva internet'); return true;
@@ -57,6 +59,7 @@ export async function saveMany(col, arr) {
   return true;
 }
 export async function remove(col, id) {
+  if (modoConsultaActivo()) { toast('No se puede eliminar: modo solo consulta activado', 'error'); return false; }
   if (!navigator.onLine) {
     S[col] = S[col].filter(x => x.id !== id); render(); queueOp({ type: 'remove', col, id });
     toast('Eliminado sin conexión, se sincroniza solo cuando vuelva internet'); return true;

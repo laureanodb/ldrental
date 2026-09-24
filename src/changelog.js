@@ -4,7 +4,7 @@ import { CHANGELOG } from './constants.js';
 
 const KEY = 'flota-lastversion';
 
-function mostrarNovedades() {
+export function mostrarNovedades() {
   const h = '<h3>Novedades</h3><div class="small muted" style="margin-bottom:10px">Esto es lo nuevo desde la última vez que entraste.</div>' +
   CHANGELOG[0].items.map(t => '<div class="card">' + esc(t) + '</div>').join('') +
   '<div class="row" style="margin-top:14px"><button class="btn grow" onclick="closeModal()">Entendido</button></div>';

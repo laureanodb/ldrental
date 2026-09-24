@@ -12,6 +12,19 @@ function tarjetaPostulacion() {
   '<a class="btn sec sm" target="_blank" href="https://wa.me/?text=' + encodeURIComponent('¿Te interesa manejar con nosotros? Postulate acá: ' + url) + '">WhatsApp</a></div></div>';
 }
 
+export function imprimirContactosChoferes() {
+  const activos = S.drivers.filter(d => !d.inactivo && !d.prospecto).slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+  const filas = activos.map(d => '<tr><td>' + esc(d.nombre) + '</td><td>' + esc(d.tel || '') + '</td></tr>').join('');
+  const w = window.open('', '_blank');
+  if (!w) { return; }
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Contactos de choferes</title>' +
+    '<style>body{font-family:Arial,sans-serif;padding:24px;color:#111}h1{font-size:20px}table{width:100%;border-collapse:collapse;margin-top:12px}td,th{border:1px solid #ccc;padding:8px 10px;text-align:left;font-size:14px}th{background:#f2f2f2}</style>' +
+    '</head><body><h1>Contactos de choferes</h1><div>' + activos.length + ' choferes activos</div>' +
+    '<table><thead><tr><th>Nombre</th><th>Teléfono</th></tr></thead><tbody>' + filas + '</tbody></table></body></html>');
+  w.document.close();
+  w.focus();
+  w.print();
+}
 function embudoResumen() {
   const P = S.drivers.filter(d => d.prospecto);
   if (!P.length) return '';
@@ -23,7 +36,8 @@ export function viewChoferes() {
   const nProspectos = S.drivers.filter(d => d.prospecto).length;
   const links = [
     nInactivos ? '<span class="tap" style="text-decoration:underline" onclick="ui.showInactivos=!ui.showInactivos;renderList()">' + (ui.showInactivos ? 'ocultar' : 'ver') + ' ' + nInactivos + ' inactivos</span>' : '',
-    nProspectos ? '<span class="tap" style="text-decoration:underline" onclick="ui.showProspectos=!ui.showProspectos;renderList()">' + (ui.showProspectos ? 'ocultar' : 'ver') + ' ' + nProspectos + ' prospectos</span>' : ''
+    nProspectos ? '<span class="tap" style="text-decoration:underline" onclick="ui.showProspectos=!ui.showProspectos;renderList()">' + (ui.showProspectos ? 'ocultar' : 'ver') + ' ' + nProspectos + ' prospectos</span>' : '',
+    '<span class="tap" style="text-decoration:underline" onclick="imprimirContactosChoferes()">imprimir contactos</span>'
   ].filter(Boolean).join(' · ');
   return '<h1>Choferes</h1><p class="sub">' + S.drivers.filter(d => !d.inactivo && !d.prospecto).length + ' en total' + (links ? ' · ' + links : '') + '</p>' +
   tarjetaPostulacion() +
