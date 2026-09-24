@@ -77,6 +77,7 @@ export function carForm(id) {
   '<label class="f"><span>Valor de mercado actual</span><input id="c_valormercado" inputmode="decimal" value="' + esc(c.valorMercado || '') + '"></label>' +
   '<label class="f"><span>Estado</span><select id="c_tipo" data-orig="' + esc(ex ? c.tipo : '') + '" onchange="onTipo(this)">' + Object.keys(TIPOS).map(k => '<option value="' + k + '"' + (c.tipo === k ? ' selected' : '') + '>' + TIPOS[k] + '</option>').join('') + '</select></label>' +
   '<div class="sec-t">Vencimientos</div><div class="two">' + VENC.map(v => '<label class="f"><span>' + v[1] + '</span><input id="v_' + v[0] + '" type="date" value="' + esc(c[v[0]]) + '"></label>').join('') + '</div>' +
+  '<label class="chk"><input type="checkbox" id="c_form08"' + (c.form08 ? ' checked' : '') + '><span>08</span></label>' +
   '<div class="two"><label class="f"><span>N° de póliza</span><input id="c_poliza" value="' + esc(c.polizaNumero) + '"></label>' +
   (() => {
     const fija = c.aseguradora && ASEGURADORAS.slice(0, -1).includes(c.aseguradora);
@@ -302,6 +303,7 @@ export async function saveCar(id) {
     seguroMensual: +val('c_seguroMensual') || 0, patenteMensual: +val('c_patenteMensual') || 0,
     dondeDuerme: val('c_dondeDuerme'), dondeDuermeMaps: val('c_dondeDuermeMaps'),
     gpsTipo: val('c_gpsTipo'), gpsAlerta: document.getElementById('c_gpsAlerta').checked,
+    form08: document.getElementById('c_form08').checked,
     soloAlquiler: document.getElementById('c_soloAlquiler').checked,
     enPreparacion: document.getElementById('c_enPreparacion').checked,
     reservado: document.getElementById('c_reservado').checked, reservadoPara: val('c_reservadoPara'),
