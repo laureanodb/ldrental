@@ -296,6 +296,11 @@ export function alerts() {
     const key = 'driver:' + d.id + ':inactivo'; if (isSnoozed(key)) return;
     out.push({ who: d.nombre, sub: 'Posible chofer inactivo', kind: 'driver', id: d.id, key, d: 0, cls: 'bad', t: 'Sin cobros hace ' + diasSinPago + ' días' });
   });
+  S.proveedores.filter(p => !p.inactivo && p.deudaPendiente).forEach(p => {
+    const key = 'proveedor:' + p.id + ':deuda'; if (isSnoozed(key)) return;
+    const s = p.fechaPago ? vs(p.fechaPago) : { d: 0, cls: 'warn', t: 'Pago pendiente' };
+    out.push(Object.assign({ who: p.nombre, sub: 'Cuenta por pagar: ' + money(p.deudaPendiente), kind: 'proveedor', id: p.id, key }, s));
+  });
   return out.sort((a, b) => a.d - b.d);
 }
 export const urgent = () => alerts().filter(a => a.d <= settings.avisoWarn);
@@ -401,10 +406,19 @@ export function gastosPorCategoria() {
 const RATING_ORDEN = { bueno: 0, regular: 1, malo: 2 };
 export function proveedoresActivos() {
   return S.proveedores.filter(p => !p.inactivo).slice().sort((a, b) => {
+    if (Boolean(a.preferido) !== Boolean(b.preferido)) return a.preferido ? -1 : 1;
     const ra = RATING_ORDEN[a.rating] != null ? RATING_ORDEN[a.rating] : 3;
     const rb = RATING_ORDEN[b.rating] != null ? RATING_ORDEN[b.rating] : 3;
     return ra !== rb ? ra - rb : String(a.nombre).localeCompare(String(b.nombre));
   });
+}
+export function gastoTotalProveedor(proveedorId) {
+  const p = S.proveedores.find(x => x.id === proveedorId);
+  if (!p) return 0;
+  const deGastos = S.gastos.filter(g => g.proveedor === p.nombre).reduce((a, g) => a + (+g.costo || 0), 0);
+  const deMant = S.mantenimientos.filter(m => m.proveedorId === proveedorId).reduce((a, m) => a + (+m.costo || 0), 0);
+  const deSin = S.siniestros.filter(s => s.proveedorId === proveedorId).reduce((a, s) => a + (+s.costoTaller || 0), 0);
+  return deGastos + deMant + deSin;
 }
 export function siniestrosDeAuto(c) {
   return S.siniestros.filter(s => s.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
