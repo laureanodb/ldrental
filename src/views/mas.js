@@ -53,6 +53,7 @@ export function viewMas() {
     ['Recordatorios', 'recordatoriosView()'],
     ['Calculadora: financiar vs. alquilar', 'calculadoraForm()'],
     ['Calculadora: ROI antes de comprar', 'roiAutoForm()'],
+    ['Simular un aumento general de la flota', 'escenarioFlotaForm()'],
     ['Comparar autos', 'compararAutosForm()'],
     ['Protocolo de emergencia', 'protocoloEmergenciaForm()'],
     ['Novedades de la app', 'mostrarNovedades()'],

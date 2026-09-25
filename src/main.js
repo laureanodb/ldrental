@@ -9,7 +9,7 @@ import { asignarChoferForm, guardarAsignacionChofer, quitarChofer, asignarAutoFo
 import { altaRapidaAutoForm, onAltaRapidaAutoTipo, guardarAltaRapidaAuto, altaRapidaChoferForm, guardarAltaRapidaChofer } from './forms/alta-rapida.js';
 import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento } from './forms/car.js';
 import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
-import { calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi } from './forms/calculadora.js';
+import { calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, escenarioFlotaForm, calcularEscenarioFlota } from './forms/calculadora.js';
 import { compararAutosForm, renderComparacionAutos } from './forms/comparar.js';
 import { reportePersonalizadoForm, toggleColumnaReporte, renderReportePersonalizado, exportarReportePersonalizado, exportarReportePersonalizadoPDF, guardarFavoritoReporte, cargarFavoritoReporte, borrarFavoritoReporte } from './forms/reporte-personalizado.js';
 import { traspasoForm, saveTraspaso } from './forms/traspaso.js';
@@ -19,9 +19,10 @@ import { mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delManteni
 import { mantAtajoFecha } from './views/mantenimiento.js';
 import { multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta } from './forms/multa.js';
 import { siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro } from './forms/siniestro.js';
-import { reciboPDF, reciboCompartir } from './recibo.js';
+import { reciboPDF, reciboCompartir, estadoCuentaPDF } from './recibo.js';
 import { descargarReporteEjecutivo } from './reporte-ejecutivo.js';
 import { contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion } from './contrato.js';
+import { plantillaForm, generarPlantilla } from './plantillas.js';
 import { exportarExcel } from './export-excel.js';
 import { activarPush, desactivarPush, guardarHorarioPush, guardarPreferenciasPush } from './push.js';
 import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion } from './forms/driver.js';
@@ -40,7 +41,7 @@ import { mostrarNovedades } from './changelog.js';
 import { gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro, elegirCategoriaGasto } from './forms/gasto.js';
 import { gastosGeneralesView, gastoGeneralForm, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, saveGastoRecurrente, delGastoRecurrente } from './forms/gastos-generales.js';
 import { sancionForm, saveSancion, delSancion } from './forms/sancion.js';
-import { inspeccionForm, saveInspeccion, delInspeccion } from './forms/inspeccion.js';
+import { inspeccionForm, saveInspeccion, delInspeccion, limpiarFirmaInspeccion } from './forms/inspeccion.js';
 import { proveedoresView, saveProveedor, delProveedor } from './forms/proveedor.js';
 import { ajusteForm, saveAjuste, delAjuste } from './forms/ajuste.js';
 import { searchView, doSearch } from './forms/search.js';
@@ -64,7 +65,7 @@ Object.assign(window, {
   altaRapidaAutoForm, onAltaRapidaAutoTipo, guardarAltaRapidaAuto, altaRapidaChoferForm, guardarAltaRapidaChofer,
   carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento,
   recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio,
-  calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, compararAutosForm, renderComparacionAutos,
+  calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, escenarioFlotaForm, calcularEscenarioFlota, compararAutosForm, renderComparacionAutos,
   reportePersonalizadoForm, toggleColumnaReporte, renderReportePersonalizado, exportarReportePersonalizado, exportarReportePersonalizadoPDF, guardarFavoritoReporte, cargarFavoritoReporte, borrarFavoritoReporte,
   traspasoForm, saveTraspaso,
   reemplazoTemporalForm, saveReemplazoTemporal, finalizarReemplazoTemporal,
@@ -73,8 +74,8 @@ Object.assign(window, {
   mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, mantAtajoFecha,
   multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta,
   siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro,
-  reciboPDF, reciboCompartir, descargarReporteEjecutivo, exportarExcel, activarPush, desactivarPush, guardarHorarioPush, guardarPreferenciasPush,
-  contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion,
+  reciboPDF, reciboCompartir, estadoCuentaPDF, descargarReporteEjecutivo, exportarExcel, activarPush, desactivarPush, guardarHorarioPush, guardarPreferenciasPush,
+  contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion, plantillaForm, generarPlantilla,
   driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion,
   depositoForm, saveDeposito, delDeposito,
   payForm, onPayCar, savePay, delPay, toggleDepositado,
@@ -88,7 +89,7 @@ Object.assign(window, {
   gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro, elegirCategoriaGasto,
   gastosGeneralesView, gastoGeneralForm, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, saveGastoRecurrente, delGastoRecurrente,
   sancionForm, saveSancion, delSancion,
-  inspeccionForm, saveInspeccion, delInspeccion,
+  inspeccionForm, saveInspeccion, delInspeccion, limpiarFirmaInspeccion,
   proveedoresView, saveProveedor, delProveedor,
   ajusteForm, saveAjuste, delAjuste,
   searchView, doSearch,

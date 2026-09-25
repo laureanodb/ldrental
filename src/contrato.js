@@ -4,6 +4,14 @@ import { esc, money, moneyUSD, fdate, iso, today } from './utils.js';
 import { settings } from './settings.js';
 import { toast, openModal } from './modal.js';
 import { TIPOS } from './constants.js';
+import { save } from './data.js';
+
+async function registrarGeneracionContrato(c) {
+  const historial = (c.contratoHistorial || []).concat([{
+    fecha: iso(today()), tipo: c.tipo, monto: +c.monto || 0, cuotas: c.cuotas || null, total: c.total || null,
+  }]);
+  await save('cars', Object.assign({}, c, { contratoHistorial: historial }));
+}
 
 let firmaCtx = null, firmaTrazada = false, firmaDrawing = false, firmaUltimo = null;
 
@@ -136,6 +144,7 @@ export async function generarContrato(carId) {
     const r = await construirContrato(carId);
     if (!r) return;
     r.doc.save(r.filename);
+    const c = carById(carId); if (c) await registrarGeneracionContrato(c);
     toast('Contrato generado');
   } catch (e) {
     toast('No se pudo generar el contrato: ' + ((e && e.message) || 'error'));
@@ -145,6 +154,7 @@ export async function compartirContrato(carId) {
   try {
     const r = await construirContrato(carId);
     if (!r) return;
+    const c = carById(carId); if (c) await registrarGeneracionContrato(c);
     if (navigator.share && navigator.canShare) {
       const blob = r.doc.output('blob');
       const file = new File([blob], r.filename, { type: 'application/pdf' });

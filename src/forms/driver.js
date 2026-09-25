@@ -1,11 +1,11 @@
 import { $, esc, val, uid, money, moneyUSD, fdate, iso, today } from '../utils.js';
 import { S } from '../state.js';
 import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS, CANALES_PROSPECTO, METODOS_PAGO, COMUNICACION_TIPOS } from '../constants.js';
-import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer, estadoGeneralChofer, promedioIngresos3MesesChofer } from '../calc.js';
+import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer, estadoGeneralChofer, promedioIngresos3MesesChofer, encuestasDeChofer, promedioNpsChofer } from '../calc.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
-import { canDelete } from '../roles.js';
+import { canDelete, canVerFinanzas } from '../roles.js';
 import { settings } from '../settings.js';
 
 function telRow(t) {
@@ -128,6 +128,7 @@ export function driverForm(id) {
     financiacion += '<div class="sec-t row between">Depósito de garantía<span class="small muted">' + money(saldoDep) + (d.depositoObjetivo ? ' de ' + money(d.depositoObjetivo) : '') + '</span></div>';
     if (DEP.length) financiacion += DEP.map(x => '<div class="card row"><div class="grow"><div>' + (x.monto >= 0 ? '+' + money(x.monto) : '-' + money(-x.monto)) + ' <span class="small muted">' + fdate(x.fecha) + '</span></div>' + (x.nota ? '<div class="small muted">' + esc(x.nota) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delDeposito(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     financiacion += '<button class="btn sec block" style="margin:8px 0 20px" onclick="depositoForm(\'' + d.id + '\')">+ Registrar pago de depósito</button>';
+    if (canVerFinanzas()) financiacion += '<button class="btn sec block" style="margin-bottom:20px" onclick="estadoCuentaPDF(\'' + d.id + '\')">Estado de cuenta del mes (PDF)</button>';
     if (!d.inactivo && !d.prospecto) {
       financiacion += '<div class="sec-t">Baja del chofer</div><button class="btn danger block" style="margin-bottom:20px" onclick="liquidacionForm(\'' + d.id + '\')">Dar de baja / Liquidación final</button>';
     }
@@ -165,6 +166,11 @@ export function driverForm(id) {
     '<label class="f"><span>Notas</span><textarea id="cm_notas" placeholder="ej: llamó por atraso en el pago, dijo que paga el viernes"></textarea></label>' +
     '<button class="btn sec block" style="margin-bottom:14px" onclick="agregarComunicacion(\'' + d.id + '\')">Agregar</button>' +
     (COM.length ? COM.map(c => '<div class="card row"><div class="grow"><div>' + esc((COMUNICACION_TIPOS.find(x => x[0] === c.tipo) || [0, c.tipo])[1]) + '</div><div class="small muted">' + fdate(c.fecha) + (c.notas ? ' · ' + esc(c.notas) : '') + '</div></div><button class="btn danger sm" onclick="confirmDel(this,()=>borrarComunicacion(\'' + d.id + '\',\'' + c.id + '\'))">Borrar</button></div>').join('') : '<div class="small muted" style="margin-bottom:20px">Sin comunicaciones registradas.</div>');
+    const ENC = encuestasDeChofer(d.id);
+    const prom = promedioNpsChofer(d.id);
+    hist += '<div class="sec-t row between">Encuestas de satisfacción' + (prom != null ? '<span class="small muted">' + prom.toFixed(1) + '/5 promedio</span>' : '') + '</div>';
+    hist += ENC.length ? ENC.map(e => '<div class="card row between small"><span>' + '★'.repeat(e.rating) + '<span style="opacity:.3">' + '★'.repeat(5 - e.rating) + '</span>' + (e.comentario ? ' — ' + esc(e.comentario) : '') + '</span><span class="muted">' + fdate(e.fecha) + '</span></div>').join('') : '<div class="small muted">Todavía no respondió ninguna encuesta desde el portal.</div>';
+    hist += '<div class="sec-t">Documentación legal</div><button class="btn sec block" style="margin-bottom:20px" onclick="plantillaForm(\'' + d.id + '\')">Generar carta documento / intimación</button>';
   }
 
   const saveCancelRow = '<div class="row stickysave"><button class="btn grow" onclick="saveDriver(' + (ex ? "'" + d.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';

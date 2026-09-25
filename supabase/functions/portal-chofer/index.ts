@@ -79,6 +79,10 @@ Deno.serve(async (req) => {
       } else if (accion === 'encuesta') {
         const rating = Math.max(1, Math.min(5, +body.rating || 0));
         const comentario = String(body.comentario || '').trim().slice(0, 300);
+        await sb.from('encuestas').insert({
+          id: crypto.randomUUID(),
+          data: { choferId: driverId, rating, comentario, fecha: new Date().toISOString().slice(0, 10) },
+        });
         await avisarPush(sb, 'Encuesta de satisfacción', (d.nombre || 'Chofer') + ' · ' + rating + '/5' + (comentario ? ' — ' + comentario : ''));
       } else if (accion === 'foto') {
         const carId = String(body.carId || '');

@@ -1,11 +1,25 @@
 import { $, esc, money, moneyUSD, fdate } from '../utils.js';
 import { S } from '../state.js';
 import { openModal } from '../modal.js';
-import { plate, driverName, carById } from '../calc.js';
+import { plate, driverName, carById, alertaService, driverDebt, kmUltimaSemana } from '../calc.js';
 import { TIPOS_INFRACCION, TIPOS_SINIESTRO } from '../constants.js';
+import { settings } from '../settings.js';
+
+const FILTROS_INTELIGENTES = [
+  { re: /sin service|service vencido|necesitan? service/, label: 'Autos con service vencido', run: () => S.cars.filter(c => !c.vendido && alertaService(c) && alertaService(c).cls === 'bad') },
+  { re: /con deuda|deben|deudor/, label: 'Choferes con deuda', run: () => S.drivers.filter(d => !d.prospecto && driverDebt(d.id) > 0) },
+  { re: /sin chofer|disponible/, label: 'Autos sin chofer asignado', run: () => S.cars.filter(c => !c.vendido && !c.choferId) },
+  { re: /en taller/, label: 'Autos en el taller', run: () => S.cars.filter(c => !c.vendido && c.tipo === 'taller') },
+  { re: /sobrekilometraje|exceso de km|mucho km/, label: 'Autos con sobrekilometraje', run: () => S.cars.filter(c => !c.vendido && (kmUltimaSemana(c) || 0) > settings.kmSemanaEsperado) },
+];
+function filtroInteligente(q) {
+  const f = FILTROS_INTELIGENTES.find(x => x.re.test(q));
+  if (!f) return null;
+  return { label: f.label, items: f.run() };
+}
 
 export function searchView() {
-  const h = '<h3>Buscar</h3><input id="sr_q" type="search" placeholder="Patente, marca, chofer, DNI..." oninput="doSearch()"><div id="sr_results" style="margin-top:12px"></div>';
+  const h = '<h3>Buscar</h3><input id="sr_q" type="search" placeholder="Patente, marca, chofer, DNI... o: sin service, con deuda, en taller" oninput="doSearch()"><div id="sr_results" style="margin-top:12px"></div>';
   openModal(h);
   setTimeout(() => { const el = $('#sr_q'); if (el) el.focus(); }, 50);
 }
@@ -14,6 +28,17 @@ export function doSearch() {
   if (!input || !el) return;
   const q = input.value.trim().toLowerCase();
   if (!q) { el.innerHTML = ''; return; }
+  const smart = filtroInteligente(q);
+  if (smart) {
+    const rows = smart.items;
+    const esChofer = rows.length && rows[0].nombre !== undefined;
+    el.innerHTML = '<div class="sec-t">' + smart.label + ' (' + rows.length + ')</div>' +
+      (rows.length ? rows.map(x => esChofer ?
+        '<div class="card tap" onclick="driverForm(\'' + x.id + '\')">' + esc(x.nombre) + (driverDebt(x.id) ? ' <span class="small" style="color:var(--bad)">' + money(driverDebt(x.id)) + '</span>' : '') + '</div>' :
+        '<div class="card tap" onclick="carForm(\'' + x.id + '\')">' + plate(x.patente) + ' <span class="small muted">' + esc([x.marca, x.modelo].filter(Boolean).join(' ')) + '</span></div>'
+      ).join('') : '<div class="small muted">Nada coincide con este filtro ahora.</div>');
+    return;
+  }
   const qDigits = q.replace(/\D/g, '');
   const autos = S.cars.filter(c => [c.patente, c.marca, c.modelo, driverName(c.choferId)].join(' ').toLowerCase().includes(q)).slice(0, 8);
   const choferes = S.drivers.filter(d => [d.nombre, d.dni, d.tel].join(' ').toLowerCase().includes(q) ||

@@ -28,6 +28,7 @@ export function viewPanel() {
   let h = '<h1>Panel</h1><p class="sub">' + t0.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) + '</p>';
   h += '<div class="row" style="margin-bottom:12px"><button class="btn grow" onclick="payForm()">Cobro rápido</button><button class="btn sec" onclick="gastoGeneralForm()">Gasto rápido</button><button class="btn sec" onclick="searchView()">Buscar</button></div>';
   h += notaInternaCard();
+  h += seccionSugerenciasHoy(morosos, urg);
   const ef = resumenEstadoFlota();
   if (ef.total) {
     h += '<div class="card" style="margin-bottom:12px"><div class="small muted" style="margin-bottom:6px">Flota de un vistazo · ' + ef.total + ' auto' + (ef.total === 1 ? '' : 's') + '</div>' +
@@ -73,6 +74,16 @@ export function viewPanel() {
     h += '<h2>Pagadas, falta transferir titularidad</h2>' + finSinTransferir.map(c => '<div class="card tap row between" onclick="carForm(\'' + c.id + '\')"><div><div>' + plate(c.patente) + '</div><div class="small muted">' + esc(driverName(c.choferId)) + '</div></div>' + badge('warn', 'Pendiente') + '</div>').join('');
   }
   return h;
+}
+function seccionSugerenciasHoy(morosos, urg) {
+  const sugerencias = [];
+  if (morosos.length) sugerencias.push({ t: 'Llamá a ' + driverName(morosos[0].c.choferId) + ': debe ' + money(morosos[0].i.debt), accion: "payForm('" + morosos[0].c.id + "')", cta: 'Cobrar' });
+  const venc = urg.filter(a => a.cls === 'bad').concat(urg.filter(a => a.cls === 'warn'))[0];
+  if (venc) sugerencias.push({ t: (venc.sub || 'Vencimiento') + ' de ' + venc.who + ': ' + venc.t, accion: venc.kind === 'car' ? "carForm('" + venc.id + "')" : "driverForm('" + venc.id + "')", cta: 'Ver' });
+  if (morosos.length > 1) sugerencias.push({ t: 'También debe ' + driverName(morosos[1].c.choferId) + ': ' + money(morosos[1].i.debt), accion: "payForm('" + morosos[1].c.id + "')", cta: 'Cobrar' });
+  if (!sugerencias.length) return '';
+  return '<div class="card" style="margin-bottom:12px"><div class="small muted" style="margin-bottom:6px">Sugerido para hoy</div>' +
+  sugerencias.slice(0, 3).map(s => '<div class="row between" style="padding:4px 0"><span class="small">' + esc(s.t) + '</span><button class="btn sec sm" onclick="' + s.accion + '">' + s.cta + '</button></div>').join('') + '</div>';
 }
 function notaInternaCard() {
   if (ui.editandoNota) {

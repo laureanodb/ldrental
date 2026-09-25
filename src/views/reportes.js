@@ -1,6 +1,6 @@
 import { S, ui } from '../state.js';
 import { esc, money, moneyUSD, today, fdate, iso } from '../utils.js';
-import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, costoTotalAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, planRenovacionFlota, badge } from '../calc.js';
+import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, costoTotalAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, planRenovacionFlota, badge, tendenciaNps, flujoCajaSemanal, utilizacionFlota, mejorPeorMesAuto } from '../calc.js';
 import { canVerFinanzas } from '../roles.js';
 import { GASTO_CATS, CANALES_PROSPECTO, MOTIVOS_REEMPLAZO } from '../constants.js';
 
@@ -257,6 +257,39 @@ function seccionProyeccion() {
   (p.totalUSD ? '<div class="small muted" style="margin-top:4px">+ ' + moneyUSD(p.totalUSD) + ' de financiados</div>' : '') + '</div>';
 }
 
+function seccionUtilizacion() {
+  const U = utilizacionFlota(90);
+  if (!U.length) return '';
+  const prom = Math.round(U.reduce((a, x) => a + x.pct, 0) / U.length);
+  const peores = U.filter(x => x.pct < 80).slice(0, 5);
+  return '<h2>Utilización de la flota (últimos 90 días)</h2><div class="card">' +
+  '<div class="row between"><span class="muted">Promedio con chofer asignado</span><b style="color:' + (prom >= 80 ? 'var(--ok)' : prom >= 50 ? 'var(--warn)' : 'var(--bad)') + '">' + prom + '%</b></div></div>' +
+  (peores.length ? '<div class="small muted" style="margin:8px 2px">Con más días libres, ordenados de peor a mejor:</div>' +
+  peores.map(x => '<div class="card row between tap" onclick="carForm(\'' + x.c.id + '\')"><span>' + plate(x.c.patente) + '</span><b style="color:' + (x.pct < 50 ? 'var(--bad)' : 'var(--warn)') + '">' + x.pct + '%</b></div>').join('') : '');
+}
+function seccionVentaOptima() {
+  if (!canVerFinanzas()) return '';
+  const candidatos = activeCars().filter(c => c.tipo !== 'disponible' && !c.vendido).map(c => ({ c, mp: mejorPeorMesAuto(c) }))
+    .filter(x => x.mp && x.mp.peor[1] < 0 && x.mp.mejor[1] <= x.mp.peor[1] * -0.3);
+  if (!candidatos.length) return '';
+  return '<h2>Candidatos a vender según tendencia</h2><div class="small muted" style="margin:0 2px 8px">Autos cuyo peor mes reciente dio pérdida y el mejor no la compensa. Vale la pena revisarlos.</div>' +
+  candidatos.map(x => '<div class="card row between tap" onclick="carForm(\'' + x.c.id + '\')"><span>' + plate(x.c.patente) + '</span><span class="small" style="color:var(--bad)">peor mes: ' + money(x.mp.peor[1]) + '</span></div>').join('');
+}
+function seccionFlujoCaja() {
+  if (!canVerFinanzas()) return '';
+  const F = flujoCajaSemanal(8);
+  if (!F.some(x => x.ingreso || x.egreso)) return '';
+  const max = Math.max(...F.map(x => Math.max(x.ingreso, x.egreso, 1)));
+  const acumulado = F.reduce((a, x) => a + x.neto, 0);
+  return '<h2>Flujo de caja: próximas 8 semanas</h2><div class="card">' +
+  '<div class="small muted" style="margin-bottom:8px">Según el alquiler semanal esperado de los contratos activos (en pesos) menos los gastos recurrentes activos. No incluye financiados en USD ni gastos puntuales.</div>' +
+  '<div class="row" style="align-items:flex-end;gap:6px;height:80px">' + F.map(x => {
+    const h = Math.max(4, Math.round(x.ingreso / max * 70));
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:' + h + 'px;background:' + (x.neto >= 0 ? 'var(--ok)' : 'var(--bad)') + ';border-radius:4px 4px 0 0"></div><div class="small muted">S' + x.semana + '</div></div>';
+  }).join('') + '</div>' +
+  '<div class="row between small" style="margin-top:8px"><span class="muted">Neto acumulado en 8 semanas</span><b style="color:' + (acumulado >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(acumulado) + '</b></div></div>';
+}
+
 function seccionAlertasTendencia() {
   const A = alertasTendencia();
   if (!A.length) return '';
@@ -303,6 +336,20 @@ function seccionSaludChoferes() {
   '<div class="row between small muted" style="margin-top:4px"><span>' + (x.score != null ? x.score + '% puntual' : 'sin datos') + '</span><span>' + x.multas + (x.multas === 1 ? ' multa' : ' multas') + '</span><span>' + x.siniestros + (x.siniestros === 1 ? ' siniestro' : ' siniestros') + '</span></div></div>').join('');
 }
 
+function seccionNps() {
+  const rows = tendenciaNps(6);
+  if (!rows.length) return '';
+  const max = 5;
+  return '<h2>Satisfacción de choferes (encuestas del portal)</h2><div class="card">' +
+  '<div class="row" style="align-items:flex-end;gap:6px;height:80px">' + rows.map(r => {
+    const h = Math.max(4, Math.round(r.promedio / max * 70));
+    const color = r.promedio >= 4 ? 'var(--ok)' : r.promedio >= 3 ? 'var(--warn)' : 'var(--bad)';
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:' + h + 'px;background:' + color + ';border-radius:4px 4px 0 0"></div><div class="small muted">' + r.mes.slice(5) + '</div></div>';
+  }).join('') + '</div>' +
+  '<div class="row between small" style="margin-top:8px"><span class="muted">Promedio del último mes con datos</span><b>' + rows[rows.length - 1].promedio.toFixed(1) + '/5</b></div>' +
+  '<div class="small muted" style="margin-top:2px">' + rows.reduce((a, r) => a + r.n, 0) + ' respuesta' + (rows.reduce((a, r) => a + r.n, 0) === 1 ? '' : 's') + ' en total.</div></div>';
+}
+
 function seccionRangoPersonalizado() {
   if (!canVerFinanzas()) return '';
   const desde = ui.repDesde, hasta = ui.repHasta;
@@ -328,6 +375,7 @@ export function viewReportes() {
   let h = '<h1>Reportes</h1><p class="sub">Rentabilidad, comparativas y proyecciones</p>';
   if (canVerFinanzas()) h += '<div class="row" style="margin-bottom:14px"><button class="btn sec grow" onclick="descargarReporteEjecutivo()">Descargar reporte ejecutivo (PDF)</button></div>';
   h += seccionAlertasTendencia();
+  h += seccionFlujoCaja();
   h += seccionRangoPersonalizado();
   h += seccionComparacionMensual();
   h += seccionGrafico();
@@ -355,5 +403,8 @@ export function viewReportes() {
   h += seccionSiniestrosChoferes();
   h += seccionRankingMensual();
   h += seccionProspectosPorCanal();
+  h += seccionNps();
+  h += seccionUtilizacion();
+  h += seccionVentaOptima();
   return h;
 }

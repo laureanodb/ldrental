@@ -1,7 +1,7 @@
 import { S } from '../state.js';
 import { $, val, uid, iso, today, esc, fdate, money, moneyUSD, parse, days } from '../utils.js';
 import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS, MOTIVOS_REEMPLAZO, TIPOS_SINIESTRO, SINIESTRO_ESTADOS, ASEGURADORAS, TRANSMISIONES, COBERTURAS_SEGURO, ELEMENTOS_SEGURIDAD, CUMPLIMIENTO_NORMATIVO_ITEMS, RECLAMO_SEGURO_ESTADOS } from '../constants.js';
-import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas, estadoGeneralAuto, mejorPeorMesAuto, lineaDeTiempoAuto } from '../calc.js';
+import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas, estadoGeneralAuto, mejorPeorMesAuto, lineaDeTiempoAuto, contratoVencimiento, vs } from '../calc.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -195,7 +195,17 @@ export function carForm(id) {
       '<label class="chk"><input type="checkbox" id="c_tituloTransferido"' + (c.tituloTransferido ? ' checked' : '') + '><span>Título transferido al chofer</span></label>' +
       '<label class="f"><span>Fecha de transferencia</span><input id="c_tituloTransferidoFecha" type="date" value="' + esc(c.tituloTransferidoFecha || iso(today())) + '"></label></div>';
     }
-    if (c.choferId) contrato += '<div class="row" style="margin:8px 0"><button class="btn sec grow" onclick="contratoForm(\'' + c.id + '\')">Generar contrato</button><button class="btn sec" onclick="generarConstanciaCesion(\'' + c.id + '\')">Constancia de uso</button></div>';
+    if (c.choferId) {
+      const cv = contratoVencimiento(c);
+      const cvs = cv ? vs(cv) : null;
+      if (cvs && cvs.cls !== 'ok') contrato += '<div class="card row between small" style="margin-bottom:6px"><span>Contrato ' + (cvs.d < 0 ? 'vencido' : 'próximo a vencer') + '</span>' + badge(cvs.cls, cvs.t) + '</div>';
+      else if (cv) contrato += '<div class="small muted" style="margin-bottom:6px">Contrato vigente hasta ' + fdate(cv) + '.</div>';
+      contrato += '<div class="row" style="margin:8px 0"><button class="btn sec grow" onclick="contratoForm(\'' + c.id + '\')">' + (cvs && cvs.cls !== 'ok' ? 'Renovar contrato' : 'Generar contrato') + '</button><button class="btn sec" onclick="generarConstanciaCesion(\'' + c.id + '\')">Constancia de uso</button></div>';
+      if ((c.contratoHistorial || []).length > 1) {
+        contrato += '<details style="margin-bottom:8px"><summary class="small muted" style="cursor:pointer">Historial de contratos (' + c.contratoHistorial.length + ')</summary>' +
+        c.contratoHistorial.slice().reverse().map(h => '<div class="row between small" style="padding:2px 0"><span>' + fdate(h.fecha) + '</span><span class="muted">' + (h.tipo === 'financiado' ? moneyUSD(h.monto) : money(h.monto)) + (h.cuotas ? ' · ' + h.cuotas + ' cuotas' : '') + '</span></div>').join('') + '</details>';
+      }
+    }
     const mp = mejorPeorMesAuto(c);
     if (mp) {
       const mesLabel = k => new Date(k + '-02').toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
@@ -286,7 +296,7 @@ export function carForm(id) {
     }
     const I = S.inspecciones.filter(x => x.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     hist += '<div class="sec-t">Inspecciones de entrega/recepción</div>';
-    if (I.length) hist += I.map(x => '<div class="card row"><div class="grow"><div>' + (x.tipo === 'entrega' ? 'Entrega' : 'Recepción') + ' <span class="small muted">' + fdate(x.fecha) + (x.km ? ' · ' + x.km + ' km' : '') + '</span></div>' + (x.notas ? '<div class="small muted">' + esc(x.notas) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delInspeccion(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    if (I.length) hist += I.map(x => '<div class="card row"><div class="grow"><div>' + (x.tipo === 'entrega' ? 'Entrega' : 'Recepción') + ' <span class="small muted">' + fdate(x.fecha) + (x.km ? ' · ' + x.km + ' km' : '') + (x.firma ? ' · firmado' : '') + '</span></div>' + (x.notas ? '<div class="small muted">' + esc(x.notas) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delInspeccion(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     else hist += '<div class="small muted" style="margin-bottom:8px">Sin inspecciones registradas.</div>';
     hist += '<button class="btn sec block" style="margin:8px 0 6px" onclick="inspeccionForm(\'' + c.id + '\')">+ Registrar inspección</button>';
     hist += '<button class="btn sec block" style="margin-bottom:20px" onclick="traspasoForm(\'' + c.id + '\')">Traspaso (cambiar chofer con checklist)</button>';
