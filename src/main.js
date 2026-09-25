@@ -21,8 +21,8 @@ import { multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta }
 import { siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro } from './forms/siniestro.js';
 import { reciboPDF, reciboCompartir, estadoCuentaPDF } from './recibo.js';
 import { descargarReporteEjecutivo } from './reporte-ejecutivo.js';
-import { contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion } from './contrato.js';
-import { plantillaForm, generarPlantilla } from './plantillas.js';
+import { contratoForm, renovarContratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion } from './contrato.js';
+import { plantillaForm, onPlantillaTipo, generarPlantilla, marcarCartaEnviada } from './plantillas.js';
 import { exportarExcel } from './export-excel.js';
 import { activarPush, desactivarPush, guardarHorarioPush, guardarPreferenciasPush } from './push.js';
 import { driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion } from './forms/driver.js';
@@ -36,18 +36,19 @@ import { attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPas
 import { backup, pickRestore, doRestore, exportCSV, cancelRestore, archivarCobrosViejosForm, actualizarInfoArchivar, archivarCobrosViejos } from './backup.js';
 import { buscarArchivosHuerfanos, confirmarBorrarHuerfanos } from './huerfanos.js';
 import { saveAjustes, snoozeAlert, toggleEnTramite, silenciarAlertasAuto, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm, anunciosForm, agregarAnuncio, borrarAnuncio, activarModoConsultaUI, desactivarModoConsultaUI, guardarNotaInterna, desafioMesForm, guardarDesafioMes, borrarDesafioMes } from './views/shared.js';
+import { posponerSugerencia, resolverSugerencia } from './views/panel.js';
 import { socioForm, guardarSocio, borrarSocio, reporteSocios } from './forms/socios.js';
 import { adelantoForm, guardarAdelanto, borrarAdelanto } from './forms/adelanto.js';
 import { autoseguroForm, registrarTransaccionAutoseguro, borrarTransaccionAutoseguro } from './autoseguro.js';
 import { imprimirContactosChoferes } from './views/choferes.js';
 import { mostrarNovedades } from './changelog.js';
 import { gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro, elegirCategoriaGasto } from './forms/gasto.js';
-import { gastosGeneralesView, gastoGeneralForm, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, saveGastoRecurrente, delGastoRecurrente } from './forms/gastos-generales.js';
+import { gastosGeneralesView, gastoGeneralForm, onGastoGeneralCat, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, onGastoRecurrenteCat, saveGastoRecurrente, delGastoRecurrente } from './forms/gastos-generales.js';
 import { sancionForm, saveSancion, delSancion } from './forms/sancion.js';
 import { inspeccionForm, saveInspeccion, delInspeccion, limpiarFirmaInspeccion } from './forms/inspeccion.js';
 import { proveedoresView, saveProveedor, delProveedor } from './forms/proveedor.js';
 import { ajusteForm, saveAjuste, delAjuste } from './forms/ajuste.js';
-import { searchView, doSearch } from './forms/search.js';
+import { searchView, doSearch, usarFiltroReciente } from './forms/search.js';
 import { flushQueue } from './data.js';
 import { usuariosView, cambiarRol, toggleActivo } from './forms/usuarios.js';
 import { auditoriaView, auditCargarMas, auditFiltrar, historialAutoView } from './forms/auditoria.js';
@@ -78,7 +79,7 @@ Object.assign(window, {
   multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta,
   siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro,
   reciboPDF, reciboCompartir, estadoCuentaPDF, descargarReporteEjecutivo, exportarExcel, activarPush, desactivarPush, guardarHorarioPush, guardarPreferenciasPush,
-  contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion, plantillaForm, generarPlantilla,
+  contratoForm, renovarContratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion, plantillaForm, onPlantillaTipo, generarPlantilla, marcarCartaEnviada,
   driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion,
   adelantoForm, guardarAdelanto, borrarAdelanto,
   depositoForm, saveDeposito, delDeposito,
@@ -90,16 +91,17 @@ Object.assign(window, {
   saveAjustes, snoozeAlert, toggleEnTramite, silenciarAlertasAuto, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm,
   anunciosForm, agregarAnuncio, borrarAnuncio, activarModoConsultaUI, desactivarModoConsultaUI, guardarNotaInterna,
   desafioMesForm, guardarDesafioMes, borrarDesafioMes,
+  posponerSugerencia, resolverSugerencia,
   socioForm, guardarSocio, borrarSocio, reporteSocios,
   autoseguroForm, registrarTransaccionAutoseguro, borrarTransaccionAutoseguro,
   imprimirContactosChoferes, mostrarNovedades,
   gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro, elegirCategoriaGasto,
-  gastosGeneralesView, gastoGeneralForm, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, saveGastoRecurrente, delGastoRecurrente,
+  gastosGeneralesView, gastoGeneralForm, onGastoGeneralCat, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, onGastoRecurrenteCat, saveGastoRecurrente, delGastoRecurrente,
   sancionForm, saveSancion, delSancion,
   inspeccionForm, saveInspeccion, delInspeccion, limpiarFirmaInspeccion,
   proveedoresView, saveProveedor, delProveedor,
   ajusteForm, saveAjuste, delAjuste,
-  searchView, doSearch,
+  searchView, doSearch, usarFiltroReciente,
   usuariosView, cambiarRol, toggleActivo, auditoriaView, auditCargarMas, auditFiltrar, historialAutoView, mapaFlotaView,
   conectarGoogleUI, syncCalendarUI, syncSheetsUI, syncMultasSheetsUI, syncMantenimientoSheetsUI, syncDriveUI,
   toggleTemaPortal,

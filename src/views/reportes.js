@@ -1,8 +1,11 @@
 import { S, ui } from '../state.js';
 import { esc, money, moneyUSD, today, fdate, iso } from '../utils.js';
-import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, costoTotalAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, planRenovacionFlota, badge, tendenciaNps, flujoCajaSemanal, utilizacionFlota, mejorPeorMesAuto, indiceSaludFlota, segmentoMasRentable } from '../calc.js';
+import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, costoTotalAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, planRenovacionFlota, badge, tendenciaNps, flujoCajaSemanal, flujoCajaSemanalUSD, utilizacionFlota, mejorPeorMesAuto, indiceSaludFlota, segmentoMasRentable } from '../calc.js';
 import { canVerFinanzas } from '../roles.js';
 import { GASTO_CATS, CANALES_PROSPECTO, MOTIVOS_REEMPLAZO } from '../constants.js';
+import { saldoAutoseguro } from '../autoseguro.js';
+import { settings, saveSettings } from '../settings.js';
+import { modoConsultaActivo } from '../consulta.js';
 
 function cobrosPorMes(n) {
   const t = today();
@@ -275,37 +278,70 @@ function seccionVentaOptima() {
   return '<h2>Candidatos a vender según tendencia</h2><div class="small muted" style="margin:0 2px 8px">Autos cuyo peor mes reciente dio pérdida y el mejor no la compensa. Vale la pena revisarlos.</div>' +
   candidatos.map(x => '<div class="card row between tap" onclick="carForm(\'' + x.c.id + '\')"><span>' + plate(x.c.patente) + '</span><span class="small" style="color:var(--bad)">peor mes: ' + money(x.mp.peor[1]) + '</span></div>').join('');
 }
+function barritas(rows, key, neto) {
+  const max = Math.max(...rows.map(x => Math.max(x[key], 1)));
+  return '<div class="row" style="align-items:flex-end;gap:6px;height:70px">' + rows.map(x => {
+    const h = Math.max(4, Math.round(x[key] / max * 60));
+    const color = neto ? (x.neto >= 0 ? 'var(--ok)' : 'var(--bad)') : 'var(--teal)';
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:' + h + 'px;background:' + color + ';border-radius:4px 4px 0 0"></div><div class="small muted">S' + x.semana + '</div></div>';
+  }).join('') + '</div>';
+}
 function seccionFlujoCaja() {
   if (!canVerFinanzas()) return '';
-  const F = flujoCajaSemanal(8);
+  const carId = ui.flujoCajaAutoId || '';
+  const F = flujoCajaSemanal(8, carId || undefined);
   if (!F.some(x => x.ingreso || x.egreso)) return '';
-  const max = Math.max(...F.map(x => Math.max(x.ingreso, x.egreso, 1)));
   const acumulado = F.reduce((a, x) => a + x.neto, 0);
+  const puntualTotal = F.reduce((a, x) => a + (x.egresoPuntual || 0), 0);
+  const autos = activeCars().filter(c => isContract(c) && c.choferId && c.tipo !== 'financiado');
+  const FUSD = flujoCajaSemanalUSD(8);
+  const totalUSD = FUSD.reduce((a, x) => a + x.ingreso, 0);
   return '<h2>Flujo de caja: próximas 8 semanas</h2><div class="card">' +
-  '<div class="small muted" style="margin-bottom:8px">Según el alquiler semanal esperado de los contratos activos (en pesos) menos los gastos recurrentes activos. No incluye financiados en USD ni gastos puntuales.</div>' +
-  '<div class="row" style="align-items:flex-end;gap:6px;height:80px">' + F.map(x => {
-    const h = Math.max(4, Math.round(x.ingreso / max * 70));
-    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:' + h + 'px;background:' + (x.neto >= 0 ? 'var(--ok)' : 'var(--bad)') + ';border-radius:4px 4px 0 0"></div><div class="small muted">S' + x.semana + '</div></div>';
-  }).join('') + '</div>' +
-  '<div class="row between small" style="margin-top:8px"><span class="muted">Neto acumulado en 8 semanas</span><b style="color:' + (acumulado >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(acumulado) + '</b></div></div>';
+  '<div class="small muted" style="margin-bottom:8px">Según el alquiler semanal esperado de los contratos activos (en pesos) menos los gastos recurrentes activos y los gastos puntuales ya cargados con fecha futura' + (puntualTotal ? ' (' + money(puntualTotal) + ' en total)' : '') + '.</div>' +
+  (autos.length > 1 ? '<label class="f" style="margin-bottom:8px"><span>Ver por auto <small>opcional</small></span><select onchange="ui.flujoCajaAutoId=this.value;render()"><option value="">Toda la flota</option>' + autos.map(c => '<option value="' + c.id + '"' + (carId === c.id ? ' selected' : '') + '>' + esc(c.patente) + '</option>').join('') + '</select></label>' : '') +
+  barritas(F, 'ingreso', true) +
+  '<div class="row between small" style="margin-top:8px"><span class="muted">Neto acumulado en 8 semanas</span><b style="color:' + (acumulado >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(acumulado) + '</b></div>' +
+  '<div class="row between small" style="margin-top:2px"><span class="muted">Reserva disponible en el fondo de autoseguro</span><b>' + money(saldoAutoseguro()) + '</b></div></div>' +
+  (totalUSD && !carId ? '<div class="card" style="margin-top:10px"><div class="small muted" style="margin-bottom:8px">Financiados, en dólares (cuotas esperadas, sin gastos)</div>' +
+  barritas(FUSD, 'ingreso', false) +
+  '<div class="row between small" style="margin-top:8px"><span class="muted">Total esperado en 8 semanas</span><b>' + moneyUSD(totalUSD) + '</b></div></div>' : '');
 }
 
 function seccionIndiceSalud() {
   const idx = indiceSaludFlota();
   if (!idx) return '';
   const color = idx.score >= 80 ? 'var(--ok)' : idx.score >= 55 ? 'var(--warn)' : 'var(--bad)';
+  const mesActual = iso(today()).slice(0, 7);
+  const hist = settings.indiceSaludHistorial || [];
+  if (!modoConsultaActivo() && !hist.some(x => x.mes === mesActual)) {
+    saveSettings({ indiceSaludHistorial: hist.concat([{ mes: mesActual, score: idx.score }]).slice(-12) });
+  }
+  const ultimos = (settings.indiceSaludHistorial || []).slice(-6);
   return '<h2>Índice de salud de la flota</h2><div class="card">' +
   '<div class="row between" style="align-items:center"><span class="muted">Puntaje del mes</span><b style="font-size:26px;color:' + color + '">' + idx.score + '</b></div>' +
   '<div class="row between small" style="margin-top:6px"><span class="muted">Choferes al día</span><span>' + idx.pctAlDia + '%</span></div>' +
   '<div class="row between small"><span class="muted">Utilización de flota (90 días)</span><span>' + idx.pctUtilizacion + '%</span></div>' +
-  '<div class="row between small"><span class="muted">Vencimientos urgentes</span><span>' + idx.urg + '</span></div></div>';
+  '<div class="row between small"><span class="muted">Vencimientos urgentes</span><span>' + idx.urg + '</span></div>' +
+  (ultimos.length > 1 ? '<div class="small muted" style="margin-top:10px;margin-bottom:4px">Evolución (últimos ' + ultimos.length + ' meses)</div>' +
+  '<div class="row" style="align-items:flex-end;gap:6px;height:60px">' + ultimos.map(x => {
+    const h = Math.max(4, Math.round(x.score / 100 * 50));
+    const c = x.score >= 80 ? 'var(--ok)' : x.score >= 55 ? 'var(--warn)' : 'var(--bad)';
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:' + h + 'px;background:' + c + ';border-radius:4px 4px 0 0"></div><div class="small muted">' + x.mes.slice(5) + '</div></div>';
+  }).join('') + '</div>' : '') +
+  '</div>';
+}
+function filaSegmento(s) {
+  return '<div class="row between"><b>' + esc(s.key) + '</b><b style="color:' + (s.promedio >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(s.promedio) + '</b></div>' +
+  '<div class="small muted" style="margin-top:2px;margin-bottom:8px">Promedio sobre ' + s.n + ' auto' + (s.n === 1 ? '' : 's') + ' de ese modelo.</div>';
 }
 function seccionSegmentoRentable() {
   if (!canVerFinanzas()) return '';
-  const s = segmentoMasRentable();
-  if (!s || s.n < 2) return '';
-  return '<h2>Tu segmento más rentable</h2><div class="card"><div class="row between"><b>' + esc(s.key) + '</b><b style="color:' + (s.promedio >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(s.promedio) + '</b></div>' +
-  '<div class="small muted" style="margin-top:4px">Rentabilidad neta promedio acumulada, sobre ' + s.n + ' auto' + (s.n === 1 ? '' : 's') + ' de ese modelo. Si vas a comprar otro auto, este segmento históricamente te rindió mejor.</div></div>';
+  const r = segmentoMasRentable();
+  if (!r || !r.mejor || r.mejor.n < 2) return '';
+  return '<h2>Tu segmento más y menos rentable</h2><div class="card">' +
+  '<div class="small muted" style="margin-bottom:6px">Mejor</div>' + filaSegmento(r.mejor) +
+  (r.peor && r.peor.key !== r.mejor.key ? '<div class="small muted" style="margin-bottom:6px">Peor</div>' + filaSegmento(r.peor) : '') +
+  '<div class="small muted">Rentabilidad neta promedio acumulada. Si vas a comprar otro auto, mirá qué te rindió mejor y qué evitar.</div></div>';
 }
 function seccionAlertasTendencia() {
   const A = alertasTendencia();

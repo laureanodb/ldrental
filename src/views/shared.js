@@ -2,11 +2,11 @@ import { S, ui } from '../state.js';
 import { esc, val, fdate, iso, today } from '../utils.js';
 import { badge, usoDeDatos } from '../calc.js';
 import { settings, saveSettings } from '../settings.js';
-import { PANEL_KPIS } from '../constants.js';
+import { PANEL_KPIS, FEATURES_TOGGLEABLES } from '../constants.js';
 import { snooze } from '../snooze.js';
 import { isEnTramite, marcarEnTramite, quitarEnTramite } from '../tramite.js';
 import { toast, openModal } from '../modal.js';
-import { render } from '../nav.js';
+import { render, FAB_OPCIONES } from '../nav.js';
 import { isAdmin } from '../roles.js';
 import { pushSoportado, pushConfigurado, pushEstadoCache, refrescarPushEstado } from '../push.js';
 import { canVerFinanzas } from '../roles.js';
@@ -59,6 +59,20 @@ export function ajustesCard() {
   '<label class="f"><span>Auto disponible sin asignar: avisar a los <small>días</small></span><input id="a_autoParadoDias" inputmode="numeric" value="' + settings.autoParadoDias + '"></label>' +
   '<label class="f"><span>Cobros: solo admin puede borrar/editar los de más de <small>días</small></span><input id="a_cobroEdicionDias" inputmode="numeric" value="' + settings.cobroEdicionDias + '"></label>' +
   '<label class="f"><span>Avisar si el almacenamiento de archivos supera <small>MB</small></span><input id="a_almacenamientoMB" inputmode="numeric" value="' + settings.almacenamientoAvisoMB + '"></label>' +
+  '<div class="two"><label class="f"><span>Vigencia de contrato de alquiler <small>meses</small></span><input id="a_vigenciaAlquiler" inputmode="numeric" value="' + settings.vigenciaContratoAlquilerMeses + '"></label>' +
+  '<label class="f"><span>Vigencia de contrato financiado <small>meses</small></span><input id="a_vigenciaFinanciado" inputmode="numeric" value="' + settings.vigenciaContratoFinanciadoMeses + '"></label></div>' +
+  '<div class="two"><label class="f"><span>Costo mensual estimado de una aseguradora externa</span><input id="a_autoseguroCosto" inputmode="numeric" value="' + settings.autoseguroCostoEstimadoMensual + '"></label>' +
+  '<label class="f"><span>Avisar si el fondo de autoseguro baja de</span><input id="a_autoseguroUmbral" inputmode="numeric" value="' + settings.autoseguroUmbralAviso + '"></label></div>' +
+  '<div class="sec-t">Peso de cada factor del índice de salud <small>%, se normalizan solos</small></div>' +
+  '<div class="two"><label class="f"><span>Choferes al día</span><input id="a_pesoAlDia" inputmode="numeric" value="' + settings.pesoIndiceAlDia + '"></label>' +
+  '<label class="f"><span>Sin vencimientos urgentes</span><input id="a_pesoUrgentes" inputmode="numeric" value="' + settings.pesoIndiceUrgentes + '"></label></div>' +
+  '<label class="f"><span>Utilización de flota</span><input id="a_pesoUtilizacion" inputmode="numeric" value="' + settings.pesoIndiceUtilizacion + '"></label>' +
+  '<div class="sec-t">Funciones nuevas</div>' +
+  '<div class="small muted" style="margin-bottom:6px">Desmarcá las que no quieras usar por ahora. Se pueden volver a activar cuando quieras.</div>' +
+  FEATURES_TOGGLEABLES.map(x => '<label class="chk"><input type="checkbox" class="a_feat" value="' + x[0] + '"' + (!(settings.featuresOcultas || []).includes(x[0]) ? ' checked' : '') + '><span>' + x[1] + '</span></label>').join('') +
+  '<div class="sec-t">Botón flotante de acceso rápido</div>' +
+  '<div class="small muted" style="margin-bottom:6px">Elegí las 3 acciones y su orden. La última es el botón grande.</div>' +
+  [0, 1, 2].map(i => '<label class="f"><span>Botón ' + (i + 1) + (i === 2 ? ' (principal)' : '') + '</span><select id="a_fab' + i + '">' + FAB_OPCIONES.map(x => '<option value="' + x[0] + '"' + ((settings.fabAcciones || [])[i] === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>').join('') +
   '<button class="btn sec block" onclick="saveAjustes()">Guardar ajustes</button></div>' : '') +
   (isAdmin() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Nombre, teléfono y logo que aparecen en el login, el panel y los QR de los autos.</div>' +
   '<label class="f"><span>Nombre de la empresa</span><input id="a_companyName" value="' + esc(settings.companyName) + '"></label>' +
@@ -114,7 +128,17 @@ export function saveAjustes() {
     autoParadoDias: +val('a_autoParadoDias') || settings.autoParadoDias,
     cobroEdicionDias: +val('a_cobroEdicionDias') || settings.cobroEdicionDias,
     almacenamientoAvisoMB: +val('a_almacenamientoMB') || settings.almacenamientoAvisoMB,
+    vigenciaContratoAlquilerMeses: +val('a_vigenciaAlquiler') || settings.vigenciaContratoAlquilerMeses,
+    vigenciaContratoFinanciadoMeses: +val('a_vigenciaFinanciado') || settings.vigenciaContratoFinanciadoMeses,
+    autoseguroCostoEstimadoMensual: +val('a_autoseguroCosto') || 0,
+    autoseguroUmbralAviso: +val('a_autoseguroUmbral') || 0,
+    pesoIndiceAlDia: +val('a_pesoAlDia') || settings.pesoIndiceAlDia,
+    pesoIndiceUrgentes: +val('a_pesoUrgentes') || settings.pesoIndiceUrgentes,
+    pesoIndiceUtilizacion: +val('a_pesoUtilizacion') || settings.pesoIndiceUtilizacion,
+    fabAcciones: [val('a_fab0'), val('a_fab1'), val('a_fab2')].filter(Boolean),
   });
+  const featEls = document.querySelectorAll('.a_feat');
+  if (featEls.length) patch.featuresOcultas = [...featEls].filter(el => !el.checked).map(el => el.value);
   saveSettings(patch);
   toast('Ajustes guardados'); render();
 }
@@ -154,29 +178,30 @@ export function borrarAnuncio(id) {
   saveSettings({ anuncios: (settings.anuncios || []).filter(a => a.id !== id) });
   anunciosForm();
 }
-const DESAFIO_CRITERIOS = [['puntual', 'Pagó todo a tiempo este mes'], ['sin_siniestros', 'Sin siniestros este mes']];
+const DESAFIO_CRITERIOS = [['puntual', 'Al día con los pagos y pagó algo este mes'], ['sin_siniestros', 'Sin siniestros este mes'], ['sin_multas', 'Sin multas este mes'], ['satisfaccion', 'Encuesta de satisfacción ≥ 4/5']];
 export function desafioMesForm() {
-  const d = settings.desafioMes;
-  const h = '<h3>Desafío del mes</h3>' +
-  '<div class="small muted" style="margin-bottom:10px">Se muestra como insignia en la ficha del chofer que lo cumpla. Vos decidís si hay algún premio real para quien lo logre.</div>' +
-  '<label class="f"><span>Título</span><input id="dm_titulo" value="' + esc(d ? d.titulo : '') + '" placeholder="ej: Desafío puntualidad de marzo"></label>' +
-  '<label class="f"><span>Criterio</span><select id="dm_criterio">' + DESAFIO_CRITERIOS.map(x => '<option value="' + x[0] + '"' + (d && d.criterio === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
-  '<div class="row" style="margin-top:14px"><button class="btn grow" onclick="guardarDesafioMes()">Guardar</button>' +
-  (d ? '<button class="btn danger" onclick="borrarDesafioMes()">Quitar</button>' : '') + '</div>' +
-  '<div class="row" style="margin-top:8px"><button class="btn sec grow" onclick="closeModal()">Cerrar</button></div>';
+  const L = (settings.desafiosMes || []);
+  const h = '<h3>Desafíos del mes</h3>' +
+  '<div class="small muted" style="margin-bottom:10px">Se muestran como insignia en la ficha de cada chofer que los cumpla. Se recalculan solos todos los meses, no hace falta recrearlos. Vos decidís si hay algún premio real para quien los logre.</div>' +
+  (L.length ? L.map(d => '<div class="card row"><div class="grow"><div>' + esc(d.titulo) + '</div><div class="small muted">' + esc((DESAFIO_CRITERIOS.find(x => x[0] === d.criterio) || [0, d.criterio])[1]) + '</div></div><button class="btn danger sm" onclick="borrarDesafioMes(\'' + d.id + '\')">Quitar</button></div>').join('') : '<div class="small muted" style="margin-bottom:10px">Sin desafíos activos.</div>') +
+  '<div class="sec-t">Agregar desafío</div>' +
+  '<label class="f"><span>Título</span><input id="dm_titulo" placeholder="ej: Desafío puntualidad de marzo"></label>' +
+  '<label class="f"><span>Criterio</span><select id="dm_criterio">' + DESAFIO_CRITERIOS.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label>' +
+  '<button class="btn sec block" style="margin-bottom:14px" onclick="guardarDesafioMes()">Agregar</button>' +
+  '<div class="row"><button class="btn sec grow" onclick="closeModal()">Cerrar</button></div>';
   openModal(h);
 }
 export function guardarDesafioMes() {
   const titulo = val('dm_titulo');
   if (!titulo) { toast('Poné un título'); return; }
-  saveSettings({ desafioMes: { titulo, criterio: val('dm_criterio') } });
-  toast('Desafío del mes guardado');
-  closeModal();
+  const desafiosMes = (settings.desafiosMes || []).concat([{ id: String(Date.now()), titulo, criterio: val('dm_criterio') }]);
+  saveSettings({ desafiosMes });
+  toast('Desafío agregado');
+  desafioMesForm();
 }
-export function borrarDesafioMes() {
-  saveSettings({ desafioMes: null });
-  toast('Desafío quitado');
-  closeModal();
+export function borrarDesafioMes(id) {
+  saveSettings({ desafiosMes: (settings.desafiosMes || []).filter(x => x.id !== id) });
+  desafioMesForm();
 }
 export function protocoloEmergenciaForm() {
   const tel = settings.telefonoEmergencia;

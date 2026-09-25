@@ -7,6 +7,7 @@ import { render } from './nav.js';
 import { esc } from './utils.js';
 import { carById, driverName } from './calc.js';
 import { isAdmin } from './roles.js';
+import { settings, saveSettings } from './settings.js';
 
 export async function saveFile(filename, data, type) {
   if (dl) { await dl.save({ filename, data }); return; }
@@ -63,9 +64,9 @@ export async function exportCSV() {
 export function archivarCobrosViejosForm() {
   if (!isAdmin()) { toast('Solo un administrador puede hacer esto'); return; }
   const limiteDefault = iso(new Date(today().getFullYear() - 2, today().getMonth(), today().getDate()));
-  const h = '<h3>Archivar cobros viejos</h3>' +
-  '<div class="small muted" style="margin-bottom:10px">Exporta a Excel y después elimina de la base los cobros anteriores a la fecha elegida, para aligerar la app. Guardá bien el archivo exportado: esto no se puede deshacer.</div>' +
-  '<label class="f"><span>Archivar cobros anteriores a</span><input id="av_fecha" type="date" value="' + limiteDefault + '" onchange="actualizarInfoArchivar()"></label>' +
+  const h = '<h3>Archivar registros viejos</h3>' +
+  '<div class="small muted" style="margin-bottom:10px">Exporta a Excel y después elimina de la base los cobros, encuestas y movimientos de autoseguro anteriores a la fecha elegida, para aligerar la app. Guardá bien el archivo exportado: esto no se puede deshacer.</div>' +
+  '<label class="f"><span>Archivar anteriores a</span><input id="av_fecha" type="date" value="' + limiteDefault + '" onchange="actualizarInfoArchivar()"></label>' +
   '<div class="small muted" id="av_info" style="margin-bottom:10px"></div>' +
   '<div class="row"><button class="btn danger grow" onclick="confirmDel(this,()=>archivarCobrosViejos())">Exportar y eliminar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
   openModal(h);
@@ -75,27 +76,47 @@ export function actualizarInfoArchivar() {
   const el = document.getElementById('av_fecha'); const info = document.getElementById('av_info');
   if (!el || !info) return;
   const n = S.payments.filter(p => p.fecha < el.value).length;
-  info.textContent = n + ' cobro' + (n === 1 ? '' : 's') + ' se van a exportar y eliminar.';
+  const nEnc = S.encuestas.filter(e => e.fecha < el.value).length;
+  const nAs = (settings.autoseguroFondo || []).filter(t => t.fecha < el.value).length;
+  info.textContent = n + ' cobro' + (n === 1 ? '' : 's') + ', ' + nEnc + ' encuesta' + (nEnc === 1 ? '' : 's') + ' y ' + nAs + ' movimiento' + (nAs === 1 ? '' : 's') + ' de autoseguro se van a exportar y eliminar.';
 }
 export async function archivarCobrosViejos() {
   const el = document.getElementById('av_fecha'); if (!el) return;
   const viejos = S.payments.filter(p => p.fecha < el.value);
-  if (!viejos.length) { toast('No hay cobros para archivar'); closeModal(); return; }
+  const encViejas = S.encuestas.filter(e => e.fecha < el.value);
+  const asViejos = (settings.autoseguroFondo || []).filter(t => t.fecha < el.value);
+  if (!viejos.length && !encViejas.length && !asViejos.length) { toast('No hay nada para archivar'); closeModal(); return; }
   try {
     const XLSX = await import('xlsx');
-    const rows = viejos.map(p => { const c = carById(p.carId); return { Fecha: p.fecha, Patente: c ? c.patente : '', Chofer: driverName(p.choferId), Tipo: p.tipo, Monto: p.monto, Metodo: p.metodo || '', Nota: p.nota || '' }; });
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(rows);
-    XLSX.utils.book_append_sheet(wb, ws, 'Cobros archivados');
+    if (viejos.length) {
+      const rows = viejos.map(p => { const c = carById(p.carId); return { Fecha: p.fecha, Patente: c ? c.patente : '', Chofer: driverName(p.choferId), Tipo: p.tipo, Monto: p.monto, Metodo: p.metodo || '', Nota: p.nota || '' }; });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Cobros archivados');
+    }
+    if (encViejas.length) {
+      const rows = encViejas.map(e => ({ Fecha: e.fecha, Chofer: driverName(e.choferId), Puntaje: e.rating, Comentario: e.comentario || '' }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Encuestas archivadas');
+    }
+    if (asViejos.length) {
+      const rows = asViejos.map(t => ({ Fecha: t.fecha, Monto: t.monto, Motivo: t.motivo || '', Categoria: t.categoria || '' }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Autoseguro archivado');
+    }
     const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    await saveFile('cobros-archivados-' + iso(today()) + '.xlsx', out, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    await saveFile('archivo-' + iso(today()) + '.xlsx', out, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   } catch (e) {
     toast('No se pudo exportar, se canceló el archivado');
     return;
   }
-  toast('Eliminando ' + viejos.length + ' cobros…');
+  const total = viejos.length + encViejas.length + asViejos.length;
+  toast('Eliminando ' + total + ' registros…');
   let ok = 0;
   for (const p of viejos) { if (await remove('payments', p.id)) ok++; }
+  for (const e of encViejas) { if (await remove('encuestas', e.id)) ok++; }
+  if (asViejos.length) {
+    const idsViejos = new Set(asViejos.map(t => t.id));
+    saveSettings({ autoseguroFondo: (settings.autoseguroFondo || []).filter(t => !idsViejos.has(t.id)) });
+    ok += asViejos.length;
+  }
   closeModal();
-  toast(ok + ' cobro' + (ok === 1 ? '' : 's') + ' archivado' + (ok === 1 ? '' : 's') + ' y eliminado' + (ok === 1 ? '' : 's'));
+  toast(ok + ' registro' + (ok === 1 ? '' : 's') + ' archivado' + (ok === 1 ? '' : 's') + ' y eliminado' + (ok === 1 ? '' : 's'));
 }

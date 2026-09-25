@@ -3,6 +3,7 @@ import { money, moneyUSD, fdate, today } from './utils.js';
 import { settings } from './settings.js';
 import { toast } from './modal.js';
 import { resumenGeneral, resumenAnual, rankingRoiAutos, porcentajePerdidaGanancia, alertasTendencia, proyeccionRentabilidadTendencia, saludChoferes } from './calc.js';
+import { saldoAutoseguro } from './autoseguro.js';
 
 export async function descargarReporteEjecutivo() {
   const { jsPDF } = await import('jspdf');
@@ -66,6 +67,9 @@ export async function descargarReporteEjecutivo() {
     titulo('Top 5 choferes con deuda');
     deudores.forEach(x => linea(x.nombre, money(x.deuda)));
   }
+
+  titulo('Fondo de autoseguro');
+  linea('Saldo actual', money(saldoAutoseguro()));
 
   doc.save('reporte-ejecutivo-' + today().toISOString().slice(0, 10) + '.pdf');
   toast('Reporte descargado');

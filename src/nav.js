@@ -12,7 +12,7 @@ import { listMantenimiento } from './views/mantenimiento.js';
 import { listMultas } from './views/multas.js';
 import { listSiniestros } from './views/siniestros.js';
 import { queueLength } from './offline.js';
-import { settings } from './settings.js';
+import { settings, featureOculta } from './settings.js';
 import { modoConsultaActivo, modoConsultaHasta } from './consulta.js';
 
 const ICONS = {
@@ -53,12 +53,35 @@ function topBar() {
   return '<div class="topbar"><span class="tb-brand">' + esc(settings.companyName || 'LD Rental') + syncDot() + '</span>' +
   '<button class="tb-search" onclick="searchView()" aria-label="Buscar"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button></div>';
 }
+const FAB_CATALOG = {
+  buscar: ['Buscar', 'searchView()', '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>'],
+  gasto: ['Gasto rápido', 'gastoGeneralForm()', '<path d="M12 5v14M5 12h14"/>'],
+  cobro: ['Cobro rápido', 'payForm()', '<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>'],
+  chofer: ['Buscar chofer', "ui.tab='choferes';render();window.scrollTo(0,0)", '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>'],
+};
+export const FAB_OPCIONES = Object.keys(FAB_CATALOG).map(k => [k, FAB_CATALOG[k][0]]);
 function fabBar() {
-  return '<div class="fab-bar">' +
-  '<button class="fab sec" title="Buscar" onclick="searchView()"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button>' +
-  '<button class="fab sec" title="Gasto rápido" onclick="gastoGeneralForm()"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>' +
-  '<button class="fab main" title="Cobro rápido" onclick="payForm()"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg></button>' +
-  '</div>';
+  if (featureOculta('fab')) return '';
+  const claves = (settings.fabAcciones || []).filter(k => FAB_CATALOG[k]);
+  const acciones = (claves.length ? claves : ['buscar', 'gasto', 'cobro']).slice(0, 3);
+  return '<div class="fab-bar" id="fabBar">' + acciones.map((k, i) => {
+    const [label, action, svg] = FAB_CATALOG[k];
+    const main = i === acciones.length - 1;
+    const size = main ? 24 : 20;
+    return '<button class="fab ' + (main ? 'main' : 'sec') + '" title="' + esc(label) + '" onclick="' + action + '"><svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + svg + '</svg></button>';
+  }).join('') + '</div>';
+}
+let fabScrollBound = false, fabLastY = 0;
+function bindFabScroll() {
+  if (fabScrollBound) return;
+  fabScrollBound = true;
+  window.addEventListener('scroll', () => {
+    const el = document.getElementById('fabBar'); if (!el) return;
+    const y = window.scrollY;
+    if (y > fabLastY && y > 80) el.classList.add('hide');
+    else el.classList.remove('hide');
+    fabLastY = y;
+  }, { passive: true });
 }
 export function render() {
   renderNav();
@@ -68,6 +91,7 @@ export function render() {
   if (!S.ready) { app.innerHTML = '<div class="loading">Cargando tu flota…</div>'; return; }
   const v = { panel: viewPanel, autos: viewAutos, choferes: viewChoferes, cobros: viewCobros, venc: viewVenc, mas: viewMas }[ui.tab]();
   app.innerHTML = offlineBar() + consultaBar() + topBar() + v + (modoConsultaActivo() ? '' : fabBar());
+  if (!modoConsultaActivo()) bindFabScroll();
   renderList();
 }
 export function renderList() {

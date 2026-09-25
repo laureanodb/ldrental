@@ -82,7 +82,8 @@ nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width
 nav button.on{color:var(--ink);font-weight:700;}
 nav button.on::before{content:"";position:absolute;top:-7px;left:25%;right:25%;height:3px;border-radius:0 0 3px 3px;background:var(--ink);}
 nav .dot{position:absolute;top:2px;left:calc(50% + 8px);background:var(--bad);color:#fff;font-size:11px;font-weight:700;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;}
-.fab-bar{position:fixed;right:14px;bottom:calc(72px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:10px;z-index:4;}
+.fab-bar{position:fixed;right:14px;bottom:calc(72px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:10px;z-index:4;transition:transform .2s ease,opacity .2s ease;}
+.fab-bar.hide{transform:translateY(24px);opacity:0;pointer-events:none;}
 .fab{border:0;border-radius:999px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.2);}
 .fab.main{width:52px;height:52px;background:var(--ink);color:var(--bg);}
 .fab.sec{width:40px;height:40px;background:var(--card);color:var(--ink);border:1px solid var(--line);}

@@ -42,7 +42,15 @@ export function vs(f) {
   return { d, cls: 'ok', t: 'Vence ' + fdate(f) };
 }
 
+let _indiceSaludCache = null;
 export function indiceSaludFlota() {
+  const now = Date.now();
+  if (_indiceSaludCache && now - _indiceSaludCache.t < 30000) return _indiceSaludCache.v;
+  const v = _indiceSaludFlota();
+  _indiceSaludCache = { t: now, v };
+  return v;
+}
+function _indiceSaludFlota() {
   const flota = activeCars();
   if (!flota.length) return null;
   const conChofer = flota.filter(c => isContract(c) && c.choferId);
@@ -51,7 +59,11 @@ export function indiceSaludFlota() {
   const pctSinUrgentes = Math.max(0, 100 - Math.min(100, urg * 5));
   const U = utilizacionFlota(90);
   const pctUtilizacion = U.length ? U.reduce((a, x) => a + x.pct, 0) / U.length : 100;
-  const score = Math.round(pctAlDia * 0.4 + pctSinUrgentes * 0.3 + pctUtilizacion * 0.3);
+  const pAlDia = settings.pesoIndiceAlDia != null ? settings.pesoIndiceAlDia : 40;
+  const pUrg = settings.pesoIndiceUrgentes != null ? settings.pesoIndiceUrgentes : 30;
+  const pUtil = settings.pesoIndiceUtilizacion != null ? settings.pesoIndiceUtilizacion : 30;
+  const totalPeso = pAlDia + pUrg + pUtil || 100;
+  const score = Math.round(pctAlDia * (pAlDia / totalPeso) + pctSinUrgentes * (pUrg / totalPeso) + pctUtilizacion * (pUtil / totalPeso));
   return { score, pctAlDia: Math.round(pctAlDia), pctUtilizacion: Math.round(pctUtilizacion), urg };
 }
 export function segmentoMasRentable() {
@@ -66,20 +78,31 @@ export function segmentoMasRentable() {
   const filas = Object.values(grupos).map(g => ({ key: g.key, promedio: g.total / g.n, n: g.n }));
   if (!filas.length) return null;
   filas.sort((a, b) => b.promedio - a.promedio);
-  return filas[0];
+  return { mejor: filas[0], peor: filas.length > 1 ? filas[filas.length - 1] : null };
 }
-export function cumpleDesafioMes(driverId) {
-  const desafio = settings.desafioMes;
-  if (!desafio || !desafio.criterio) return false;
-  if (desafio.criterio === 'puntual') {
-    const score = driverScore(driverId);
-    return score != null && score >= 95;
+export function cumpleCriterioDesafio(driverId, criterio) {
+  const mesActual = iso(today()).slice(0, 7);
+  if (criterio === 'puntual') {
+    const cars = S.cars.filter(c => c.choferId === driverId && isContract(c));
+    if (!cars.length) return false;
+    const alDia = cars.every(c => calc(c).debt <= 0);
+    const pagoEsteMes = S.payments.some(p => p.choferId === driverId && String(p.fecha).slice(0, 7) === mesActual);
+    return alDia && pagoEsteMes;
   }
-  if (desafio.criterio === 'sin_siniestros') {
-    const mesActual = iso(today()).slice(0, 7);
+  if (criterio === 'sin_siniestros') {
     return !S.siniestros.some(s => s.choferId === driverId && String(s.fecha).slice(0, 7) === mesActual);
   }
+  if (criterio === 'sin_multas') {
+    return !S.multas.some(m => m.choferId === driverId && String(m.fecha).slice(0, 7) === mesActual);
+  }
+  if (criterio === 'satisfaccion') {
+    const p = promedioNpsChofer(driverId);
+    return p != null && p >= 4;
+  }
   return false;
+}
+export function desafiosCumplidos(driverId) {
+  return (settings.desafiosMes || []).filter(d => cumpleCriterioDesafio(driverId, d.criterio));
 }
 export function utilizacionAuto(c, dias) {
   const hasta = today(); const desdeVentana = new Date(hasta); desdeVentana.setDate(desdeVentana.getDate() - dias);
@@ -95,19 +118,36 @@ export function utilizacionAuto(c, dias) {
 export function utilizacionFlota(dias) {
   return activeCars().map(c => ({ c, pct: utilizacionAuto(c, dias) })).sort((a, b) => a.pct - b.pct);
 }
-export function flujoCajaSemanal(semanas) {
+export function flujoCajaSemanal(semanas, carId) {
   const egresoSemanal = S.gastosrecurrentes.filter(g => g.activo).reduce((a, g) => a + (+g.montoMensual || 0), 0) / 4.33;
-  const ingresoSemanal = activeCars().filter(c => isContract(c) && c.choferId && c.tipo !== 'financiado').reduce((a, c) => a + (+c.monto || 0), 0);
+  const activos = activeCars().filter(c => isContract(c) && c.choferId && c.tipo !== 'financiado' && (!carId || c.id === carId));
+  const ingresoSemanal = activos.reduce((a, c) => a + (+c.monto || 0), 0);
+  const hoy = today();
+  const puntuales = S.gastos.concat(S.mantenimientos).filter(g => g.fecha && parse(g.fecha) > hoy && (+g.costo || 0) > 0);
   const out = [];
-  for (let i = 0; i < semanas; i++) out.push({ semana: i + 1, ingreso: ingresoSemanal, egreso: egresoSemanal, neto: ingresoSemanal - egresoSemanal });
+  for (let i = 0; i < semanas; i++) {
+    const desdeSem = new Date(hoy); desdeSem.setDate(desdeSem.getDate() + i * 7);
+    const hastaSem = new Date(hoy); hastaSem.setDate(hastaSem.getDate() + (i + 1) * 7);
+    const egresoPuntual = carId ? 0 : puntuales.filter(g => { const f = parse(g.fecha); return f >= desdeSem && f < hastaSem; }).reduce((a, g) => a + (+g.costo || 0), 0);
+    const egreso = (carId ? 0 : egresoSemanal) + egresoPuntual;
+    out.push({ semana: i + 1, ingreso: ingresoSemanal, egreso, egresoPuntual, neto: ingresoSemanal - egreso });
+  }
+  return out;
+}
+export function flujoCajaSemanalUSD(semanas) {
+  const activos = activeCars().filter(c => isContract(c) && c.choferId && c.tipo === 'financiado');
+  const ingresoSemanal = activos.reduce((a, c) => a + (+c.monto || 0), 0);
+  const out = [];
+  for (let i = 0; i < semanas; i++) out.push({ semana: i + 1, ingreso: ingresoSemanal });
   return out;
 }
 export function contratoVencimiento(c) {
   const hist = c.contratoHistorial || [];
   const desde = hist.length ? hist[hist.length - 1].fecha : c.inicio;
   if (!desde) return null;
+  const meses = c.tipo === 'financiado' ? settings.vigenciaContratoFinanciadoMeses : settings.vigenciaContratoAlquilerMeses;
   const venc = parse(desde);
-  venc.setMonth(venc.getMonth() + (settings.vigenciaContratoMeses || 12));
+  venc.setMonth(venc.getMonth() + (meses || 12));
   return iso(venc);
 }
 export function alertaService(c) {
@@ -314,6 +354,12 @@ export function alerts() {
     const key = 'car:' + c.id + ':contrato'; if (isSnoozed(key)) return;
     out.push(Object.assign({ who: c.patente || 'Auto sin patente', sub: 'Contrato para renovar', kind: 'car', id: c.id, key }, s));
   });
+  (() => {
+    const saldo = (settings.autoseguroFondo || []).reduce((a, x) => a + (+x.monto || 0), 0);
+    if (saldo >= (settings.autoseguroUmbralAviso || 0)) return;
+    const key = 'autoseguro:saldo'; if (isSnoozed(key)) return;
+    out.push({ who: 'Fondo de autoseguro', sub: 'Saldo bajo', kind: 'autoseguro', id: 'autoseguro', key, d: 0, cls: saldo < 0 ? 'bad' : 'warn', t: money(saldo) });
+  })();
   activeCars().forEach(c => {
     (c.mantenimientoPlan || []).forEach(p => {
       if (!p.intervaloKm && !p.intervaloMeses) return;
@@ -532,6 +578,14 @@ export function sugerenciasAnticipacionVenc() {
 }
 export function rentabilidadPorChofer() {
   return activeCars().filter(c => c.choferId && c.tipo !== 'financiado').map(c => Object.assign({ c, driverId: c.choferId }, rentabilidadAuto(c))).sort((a, b) => b.neta - a.neta);
+}
+export function montoSugeridoGasto(categoria) {
+  const G = S.gastos.filter(g => g.categoria === categoria).slice(-5);
+  if (!G.length) return null;
+  const counts = {};
+  G.forEach(g => { counts[g.costo] = (counts[g.costo] || 0) + 1; });
+  const moda = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+  return +moda || null;
 }
 export function montoSugeridoCobro(c) {
   const kind = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';

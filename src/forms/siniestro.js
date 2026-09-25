@@ -6,6 +6,7 @@ import { save, remove } from '../data.js';
 import { carById, choferEnFecha, driverName, proveedoresActivos, isContract } from '../calc.js';
 import { carForm } from './car.js';
 import { renderFiles } from '../files.js';
+import { registrarPagoAutoseguro, saldoAutoseguro } from '../autoseguro.js';
 
 function proveedoresParaSelect(actualId) {
   const L = proveedoresActivos();
@@ -47,6 +48,7 @@ export function siniestroForm(carId, editId) {
   '<label class="f"><span>Recuperado del seguro</span><input id="si_montoSeguro" inputmode="decimal" value="' + esc(ex && ex.montoSeguro || '') + '"></label></div>' +
   '<label class="f"><span>Estado</span><select id="si_estado">' + SINIESTRO_ESTADOS.map(x => '<option value="' + x[0] + '"' + ((ex ? ex.estado : 'abierto') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
   '<label class="chk"><input type="checkbox" id="si_gasto"' + (ex && ex.gastoGenerado ? ' checked disabled' : '') + '><span>' + (ex && ex.gastoGenerado ? 'Ya se registró el costo neto como gasto' : 'Registrar el costo neto (reparación − seguro) como gasto del auto al guardar') + '</span></label>' +
+  '<label class="chk"><input type="checkbox" id="si_autoseguro"' + (ex && ex.pagadoAutoseguro ? ' checked disabled' : '') + '><span>' + (ex && ex.pagadoAutoseguro ? 'Costo neto ya pagado desde el fondo de autoseguro' : 'Pagar el costo neto desde el fondo de autoseguro al guardar (saldo actual: ' + Math.round(saldoAutoseguro()).toLocaleString('es-AR') + ')') + '</span></label>' +
   '<div id="siCobroBox" style="display:' + ((ex ? ex.responsable : '') === 'chofer' ? '' : 'none') + '">' +
   '<label class="chk"><input type="checkbox" id="si_descontarDeposito"' + (ex && ex.costoDescontadoDeposito ? ' checked disabled' : '') + '><span>' + (ex && ex.costoDescontadoDeposito ? 'Costo neto ya descontado del depósito de garantía' : 'Descontar el costo neto del depósito de garantía al guardar') + '</span></label>' +
   (isContract(c) ? '<label class="chk"><input type="checkbox" id="si_descontarDeuda"' + (ex && ex.costoDescontadoDeuda ? ' checked disabled' : '') + '><span>' + (ex && ex.costoDescontadoDeuda ? 'Costo neto ya sumado a la deuda del chofer' : 'Sumar el costo neto a la deuda del chofer al guardar') + '</span></label>' : '') +
@@ -87,6 +89,7 @@ export async function saveSiniestro(editId) {
     gastoGenerado: (ex && ex.gastoGenerado) || false,
     costoDescontadoDeposito: (ex && ex.costoDescontadoDeposito) || false,
     costoDescontadoDeuda: (ex && ex.costoDescontadoDeuda) || false,
+    pagadoAutoseguro: (ex && ex.pagadoAutoseguro) || false,
     files: (ex && ex.files) || [],
   };
   if (!(await save('siniestros', o))) return;
@@ -96,6 +99,8 @@ export async function saveSiniestro(editId) {
   if (chkDep && chkDep.checked && !chkDep.disabled) await descontarSiniestroDeDeposito(o.id);
   const chkDeuda = document.getElementById('si_descontarDeuda');
   if (chkDeuda && chkDeuda.checked && !chkDeuda.disabled) await descontarSiniestroDeDeuda(o.id);
+  const chkAutoseguro = document.getElementById('si_autoseguro');
+  if (chkAutoseguro && chkAutoseguro.checked && !chkAutoseguro.disabled) await pagarSiniestroDesdeAutoseguro(o.id);
   if (!editId) { toast('Siniestro registrado. Podés adjuntar fotos o el parte.'); siniestroForm(carId, o.id); }
   else { closeModal(); toast('Siniestro guardado'); }
 }
@@ -133,6 +138,16 @@ export async function descontarSiniestroDeDeposito(siniestroId) {
   if (!(await save('depositos', o))) return;
   await save('siniestros', Object.assign({}, s, { costoDescontadoDeposito: true }));
   toast('Costo neto descontado del depósito de garantía');
+}
+export async function pagarSiniestroDesdeAutoseguro(siniestroId) {
+  const s = S.siniestros.find(x => x.id === siniestroId);
+  if (!s || s.pagadoAutoseguro) return;
+  const neto = Math.max(0, (+s.costoTaller || 0) - (+s.montoSeguro || 0));
+  if (!neto) { toast('No hay costo neto para pagar (el seguro cubrió todo)'); return; }
+  const c = carById(s.carId);
+  registrarPagoAutoseguro(neto, 'Siniestro' + (s.numeroSiniestro ? ' Nº ' + s.numeroSiniestro : '') + (c ? ' · ' + c.patente : ''), s.tipo);
+  await save('siniestros', Object.assign({}, s, { pagadoAutoseguro: true }));
+  toast('Costo neto pagado desde el fondo de autoseguro');
 }
 export async function delSiniestro(id) {
   const s = S.siniestros.find(x => x.id === id);

@@ -8,7 +8,7 @@ import { renderFiles, purgeFiles } from '../files.js';
 import { canDelete, isAdmin, canVerFinanzas } from '../roles.js';
 import { seccionSocios } from './socios.js';
 import { inflacionAcumulada } from '../inflacion.js';
-import { settings } from '../settings.js';
+import { settings, featureOculta } from '../settings.js';
 
 const gastoCatLabel = k => (GASTO_CATS.find(x => x[0] === k) || [0, 'Gasto'])[1];
 
@@ -201,13 +201,14 @@ export function carForm(id) {
       const cvs = cv ? vs(cv) : null;
       if (cvs && cvs.cls !== 'ok') contrato += '<div class="card row between small" style="margin-bottom:6px"><span>Contrato ' + (cvs.d < 0 ? 'vencido' : 'próximo a vencer') + '</span>' + badge(cvs.cls, cvs.t) + '</div>';
       else if (cv) contrato += '<div class="small muted" style="margin-bottom:6px">Contrato vigente hasta ' + fdate(cv) + '.</div>';
-      contrato += '<div class="row" style="margin:8px 0"><button class="btn sec grow" onclick="contratoForm(\'' + c.id + '\')">' + (cvs && cvs.cls !== 'ok' ? 'Renovar contrato' : 'Generar contrato') + '</button><button class="btn sec" onclick="generarConstanciaCesion(\'' + c.id + '\')">Constancia de uso</button></div>';
+      const vencido = cvs && cvs.cls !== 'ok';
+      contrato += '<div class="row" style="margin:8px 0"><button class="btn sec grow" onclick="' + (vencido ? 'renovarContratoForm' : 'contratoForm') + '(\'' + c.id + '\')">' + (vencido ? 'Renovar contrato' : 'Generar contrato') + '</button><button class="btn sec" onclick="generarConstanciaCesion(\'' + c.id + '\')">Constancia de uso</button></div>';
       if ((c.contratoHistorial || []).length > 1) {
         contrato += '<details style="margin-bottom:8px"><summary class="small muted" style="cursor:pointer">Historial de contratos (' + c.contratoHistorial.length + ')</summary>' +
-        c.contratoHistorial.slice().reverse().map(h => '<div class="row between small" style="padding:2px 0"><span>' + fdate(h.fecha) + '</span><span class="muted">' + (h.tipo === 'financiado' ? moneyUSD(h.monto) : money(h.monto)) + (h.cuotas ? ' · ' + h.cuotas + ' cuotas' : '') + '</span></div>').join('') + '</details>';
+        c.contratoHistorial.slice().reverse().map(h => '<div class="row between small" style="padding:2px 0"><span>' + (h.renovacion ? 'Renovación · ' : '') + fdate(h.fecha) + '</span><span class="muted">' + (h.tipo === 'financiado' ? moneyUSD(h.monto) : money(h.monto)) + (h.cuotas ? ' · ' + h.cuotas + ' cuotas' : '') + (h.pdfId ? ' · <a class="tap" style="text-decoration:underline" onclick="viewFile(\'' + h.pdfId + '\',\'' + esc(h.pdfName || 'contrato.pdf') + '\')">ver PDF</a>' : '') + '</span></div>').join('') + '</details>';
       }
     }
-    if (canVerFinanzas()) contrato += seccionSocios(c);
+    if (canVerFinanzas() && !featureOculta('socios')) contrato += seccionSocios(c);
     const mp = mejorPeorMesAuto(c);
     if (mp) {
       const mesLabel = k => new Date(k + '-02').toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });

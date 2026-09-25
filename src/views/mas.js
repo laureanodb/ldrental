@@ -15,6 +15,7 @@ import { viewMultas } from './multas.js';
 import { viewSiniestros } from './siniestros.js';
 import { ajustesCard, backupCard } from './shared.js';
 import { googleCard } from './google-ui.js';
+import { featureOculta } from '../settings.js';
 
 export function goMas(v) { ui.masView = v; render(); window.scrollTo(0, 0); }
 
@@ -58,10 +59,10 @@ export function viewMas() {
     ['Protocolo de emergencia', 'protocoloEmergenciaForm()'],
     ['Novedades de la app', 'mostrarNovedades()'],
   ]);
-  if (isAdmin()) h += grupo('Motivación', [['Desafío del mes', 'desafioMesForm()']]);
+  if (isAdmin() && !featureOculta('desafios')) h += grupo('Motivación', [['Desafío del mes', 'desafioMesForm()']]);
   if (isAdmin()) h += grupo('Comunicación', [['Tablón de anuncios (portal del chofer)', 'anunciosForm()']]);
   const admin = [['Ajustes', "goMas('ajustes')"], ['Copia de seguridad', "goMas('backup')"], ['Google', "goMas('google')"]];
-  if (canVerFinanzas()) admin.push(['Fondo de autoseguro', 'autoseguroForm()']);
+  if (canVerFinanzas() && !featureOculta('autoseguro')) admin.push(['Fondo de autoseguro', 'autoseguroForm()']);
   if (isAdmin()) admin.push(['Usuarios y permisos', 'usuariosView()'], ['Auditoría', 'auditoriaView()']);
   h += grupo('Administración', admin);
   return h;

@@ -17,11 +17,28 @@ function filtroInteligente(q) {
   if (!f) return null;
   return { label: f.label, items: f.run() };
 }
+const RECIENTES_KEY = 'flota-search-recientes';
+function leerRecientesFiltros() {
+  try { return JSON.parse(localStorage.getItem(RECIENTES_KEY)) || []; } catch (e) { return []; }
+}
+function guardarRecienteFiltro(q, label) {
+  let r = leerRecientesFiltros().filter(x => x.label !== label);
+  r.unshift({ q, label });
+  try { localStorage.setItem(RECIENTES_KEY, JSON.stringify(r.slice(0, 5))); } catch (e) {}
+}
 
 export function searchView() {
-  const h = '<h3>Buscar</h3><input id="sr_q" type="search" placeholder="Patente, marca, chofer, DNI... o: sin service, con deuda, en taller" oninput="doSearch()"><div id="sr_results" style="margin-top:12px"></div>';
+  const recientes = leerRecientesFiltros();
+  const h = '<h3>Buscar</h3><input id="sr_q" type="search" placeholder="Patente, marca, chofer, DNI... o: sin service, con deuda, en taller" oninput="doSearch()">' +
+  (recientes.length ? '<div class="row" style="flex-wrap:wrap;gap:6px;margin-top:8px">' + recientes.map((r, i) => '<button class="btn sec sm" onclick="usarFiltroReciente(' + i + ')">' + esc(r.label) + '</button>').join('') + '</div>' : '') +
+  '<div id="sr_results" style="margin-top:12px"></div>';
   openModal(h);
   setTimeout(() => { const el = $('#sr_q'); if (el) el.focus(); }, 50);
+}
+export function usarFiltroReciente(i) {
+  const r = leerRecientesFiltros()[i];
+  const input = $('#sr_q');
+  if (r && input) { input.value = r.q; doSearch(); }
 }
 export function doSearch() {
   const input = $('#sr_q'), el = $('#sr_results');
@@ -30,6 +47,7 @@ export function doSearch() {
   if (!q) { el.innerHTML = ''; return; }
   const smart = filtroInteligente(q);
   if (smart) {
+    guardarRecienteFiltro(q, smart.label);
     const rows = smart.items;
     const esChofer = rows.length && rows[0].nombre !== undefined;
     el.innerHTML = '<div class="sec-t">' + smart.label + ' (' + rows.length + ')</div>' +

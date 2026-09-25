@@ -4,6 +4,16 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas'];
 
 export const CHANGELOG = [
+  { v: '2026-09-25', items: [
+    'Fondo de autoseguro: registrá aportes y pagos de siniestros, con comparación contra una aseguradora externa.',
+    'Adelantos y devoluciones a choferes, con vínculo opcional a una cuota de financiación.',
+    'Socios inversores por auto: reparto automático de la rentabilidad neta acumulada.',
+    'Desafíos del mes: ahora podés tener varios activos a la vez (puntualidad, sin siniestros, sin multas, satisfacción).',
+    'Contratos: quedan guardados en PDF y podés renovarlos cuando vencen.',
+    'Botón flotante configurable en Ajustes: elegí tus 3 accesos rápidos favoritos.',
+    'Búsqueda: los filtros inteligentes que más usás quedan a un toque de distancia.',
+    'Flujo de caja: ahora se puede ver por auto y en dólares para los financiados.',
+  ] },
   { v: '2026-09-24', items: [
     'Marcá autos y choferes como favoritos para tenerlos siempre arriba de la lista.',
     'Nuevo: recordatorios de tareas manuales, con aviso en Vencimientos.',
@@ -14,7 +24,14 @@ export const CHANGELOG = [
   ] },
 ];
 
-export const ASEGURADORAS = ['Allianz', 'Sancor', 'Mercantil', 'Fed. Pat.', 'Zurich', 'Nación', 'Rivadavia', 'Provincia', 'Mapfre', 'Holando', 'Otro'];
+export const FEATURES_TOGGLEABLES = [
+  ['autoseguro', 'Fondo de autoseguro'],
+  ['socios', 'Socios inversores'],
+  ['adelantos', 'Adelantos a choferes'],
+  ['desafios', 'Desafíos del mes'],
+  ['fab', 'Botón flotante de acceso rápido'],
+];
+export const ASEGURADORAS =['Allianz', 'Sancor', 'Mercantil', 'Fed. Pat.', 'Zurich', 'Nación', 'Rivadavia', 'Provincia', 'Mapfre', 'Holando', 'Otro'];
 export const COMBUSTIBLES = [['nafta', 'Nafta'], ['diesel', 'Diésel'], ['gnc', 'GNC'], ['electrico', 'Eléctrico'], ['hibrido', 'Híbrido']];
 export const RATINGS = [['bueno', 'Cumplidor'], ['regular', 'Regular'], ['malo', 'Problemático']];
 export const METODOS_PAGO = [['efectivo', 'Efectivo'], ['transferencia', 'Transferencia'], ['mercadopago', 'MercadoPago'], ['credito', 'Tarjeta de crédito'], ['otro', 'Otro']];

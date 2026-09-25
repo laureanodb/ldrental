@@ -3,7 +3,7 @@ import { S } from '../state.js';
 import { GASTO_CATS } from '../constants.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
-import { proveedoresActivos, badge } from '../calc.js';
+import { proveedoresActivos, badge, montoSugeridoGasto } from '../calc.js';
 import { canDelete } from '../roles.js';
 
 const catLabel = k => (GASTO_CATS.find(x => x[0] === k) || [0, 'Gasto'])[1];
@@ -32,10 +32,11 @@ export function gastosGeneralesView() {
 }
 export function gastoGeneralForm(editId) {
   const ex = editId ? S.gastos.find(x => x.id === editId) : null;
+  const sugerido = ex ? null : montoSugeridoGasto(GASTO_CATS[0][0]);
   const h = '<h3>' + (ex ? 'Editar gasto general' : 'Nuevo gasto general') + '</h3>' +
-  '<div class="two"><label class="f"><span>Categoría</span><select id="gg_cat">' + GASTO_CATS.map(x => '<option value="' + x[0] + '"' + (ex && ex.categoria === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
+  '<div class="two"><label class="f"><span>Categoría</span><select id="gg_cat" onchange="onGastoGeneralCat()">' + GASTO_CATS.map(x => '<option value="' + x[0] + '"' + (ex && ex.categoria === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
   '<label class="f"><span>Fecha</span><input id="gg_fecha" type="date" value="' + esc(ex ? ex.fecha : iso(today())) + '"></label></div>' +
-  '<label class="f"><span>Costo</span><input id="gg_costo" inputmode="decimal" value="' + esc(ex ? ex.costo : '') + '"></label>' +
+  '<label class="f"><span>Costo</span><input id="gg_costo" inputmode="decimal" value="' + esc(ex ? ex.costo : (sugerido || '')) + '" oninput="this.dataset.touched=1"></label>' +
   '<label class="f"><span>Proveedor <small>opcional</small></span><select id="gg_proveedorSel" onchange="document.getElementById(\'gg_proveedorOtroBox\').style.display=this.value===\'__otro__\'?\'\':\'none\'"><option value="">Sin especificar</option>' + proveedoresActivos().map(p => '<option value="' + esc(p.nombre) + '"' + (ex && ex.proveedor === p.nombre ? ' selected' : '') + '>' + esc(p.nombre) + '</option>').join('') + '<option value="__otro__">Otro (escribir)</option></select></label>' +
   '<div id="gg_proveedorOtroBox" style="display:none"><label class="f"><span>Nombre del proveedor</span><input id="gg_proveedorOtro" value="' + esc(ex ? ex.proveedor : '') + '"></label></div>' +
   '<label class="f"><span>Descripción</span><textarea id="gg_desc">' + esc(ex ? ex.descripcion : '') + '</textarea></label>' +
@@ -43,6 +44,12 @@ export function gastoGeneralForm(editId) {
   '<div class="row"><button class="btn grow" onclick="saveGastoGeneral(' + (ex ? "'" + ex.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="gastosGeneralesView()">Cancelar</button></div>' +
   (ex && canDelete() ? '<div style="margin-top:8px"><button class="btn danger block" onclick="confirmDel(this,()=>delGastoGeneral(\'' + ex.id + '\'))">Eliminar gasto</button></div>' : '');
   openModal(h);
+}
+export function onGastoGeneralCat() {
+  const cat = val('gg_cat');
+  const sugerido = montoSugeridoGasto(cat);
+  const costoEl = document.getElementById('gg_costo');
+  if (costoEl && !costoEl.dataset.touched && sugerido) costoEl.value = sugerido;
 }
 export async function saveGastoGeneral(editId) {
   const costo = +val('gg_costo');
@@ -65,12 +72,20 @@ export function gastoRecurrenteForm(editId) {
   const h = '<h3>' + (ex ? 'Editar gasto recurrente' : 'Nuevo gasto recurrente') + '</h3>' +
   '<div class="small muted" style="margin-bottom:10px">Se genera solo un gasto general por mes con este monto, mientras esté activo.</div>' +
   '<label class="f"><span>Nombre</span><input id="gr_nombre" placeholder="ej: Alquiler del depósito" value="' + esc(ex ? ex.nombre : '') + '"></label>' +
-  '<div class="two"><label class="f"><span>Categoría</span><select id="gr_cat">' + GASTO_CATS.map(x => '<option value="' + x[0] + '"' + (ex && ex.categoria === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
-  '<label class="f"><span>Monto mensual</span><input id="gr_monto" inputmode="decimal" value="' + esc(ex ? ex.montoMensual : '') + '"></label></div>' +
+  '<div class="two"><label class="f"><span>Categoría</span><select id="gr_cat" onchange="onGastoRecurrenteCat()">' + GASTO_CATS.map(x => '<option value="' + x[0] + '"' + (ex && ex.categoria === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
+  '<label class="f"><span>Monto mensual</span><input id="gr_monto" inputmode="decimal" value="' + esc(ex ? ex.montoMensual : '') + '" oninput="this.dataset.touched=1"></label></div>' +
   '<label class="chk"><input type="checkbox" id="gr_activo"' + (!ex || ex.activo !== false ? ' checked' : '') + '><span>Activo (se genera automáticamente cada mes)</span></label>' +
   '<div class="row"><button class="btn grow" onclick="saveGastoRecurrente(' + (ex ? "'" + ex.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="gastosGeneralesView()">Cancelar</button></div>' +
   (ex && canDelete() ? '<div style="margin-top:8px"><button class="btn danger block" onclick="confirmDel(this,()=>delGastoRecurrente(\'' + ex.id + '\'))">Eliminar recurrente</button></div>' : '');
   openModal(h);
+}
+export function onGastoRecurrenteCat() {
+  const cat = val('gr_cat');
+  const iguales = S.gastosrecurrentes.filter(r => r.categoria === cat && r.activo !== false);
+  if (!iguales.length) return;
+  const prom = Math.round(iguales.reduce((a, r) => a + (+r.montoMensual || 0), 0) / iguales.length);
+  const montoEl = document.getElementById('gr_monto');
+  if (montoEl && !montoEl.dataset.touched && prom) montoEl.value = prom;
 }
 export async function saveGastoRecurrente(editId) {
   const nombre = val('gr_nombre');

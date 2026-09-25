@@ -1,4 +1,4 @@
-import { S } from './state.js';
+import { S, as } from './state.js';
 import { carById } from './calc.js';
 import { esc, money, moneyUSD, fdate, iso, today } from './utils.js';
 import { settings } from './settings.js';
@@ -6,10 +6,19 @@ import { toast, openModal } from './modal.js';
 import { TIPOS } from './constants.js';
 import { save } from './data.js';
 
-async function registrarGeneracionContrato(c) {
-  const historial = (c.contratoHistorial || []).concat([{
-    fecha: iso(today()), tipo: c.tipo, monto: +c.monto || 0, cuotas: c.cuotas || null, total: c.total || null,
-  }]);
+let renovando = false;
+
+async function registrarGeneracionContrato(c, doc, filename) {
+  const entry = { fecha: iso(today()), tipo: c.tipo, monto: +c.monto || 0, cuotas: c.cuotas || null, total: c.total || null, renovacion: renovando };
+  if (as) {
+    try {
+      const blob = doc.output('blob');
+      const r = await as.upload(blob);
+      entry.pdfId = r.id;
+      entry.pdfName = filename;
+    } catch (e) { /* si falla la subida, igual queda el registro sin PDF adjunto */ }
+  }
+  const historial = (c.contratoHistorial || []).concat([entry]);
   await save('cars', Object.assign({}, c, { contratoHistorial: historial }));
 }
 
@@ -41,13 +50,21 @@ export async function generarConstanciaCesion(carId) {
 }
 
 export function contratoForm(carId) {
+  renovando = false;
+  contratoFormInterno(carId);
+}
+export function renovarContratoForm(carId) {
+  renovando = true;
+  contratoFormInterno(carId);
+}
+function contratoFormInterno(carId) {
   const c = carById(carId);
   if (!c) { toast('Auto no encontrado'); return; }
   if (!c.choferId) { toast('Asigná un chofer al auto antes de generar el contrato'); return; }
   const d = S.drivers.find(x => x.id === c.choferId);
   if (!d) { toast('Chofer no encontrado'); return; }
   const mon = c.tipo === 'financiado' ? moneyUSD : money;
-  const h = '<h3>Contrato — ' + esc(c.patente) + '</h3>' +
+  const h = '<h3>' + (renovando ? 'Renovar contrato — ' : 'Contrato — ') + esc(c.patente) + '</h3>' +
   '<div class="small muted" style="margin-bottom:10px">Se genera con los datos actuales del auto y el chofer. Pedile al chofer que firme abajo antes de generar el PDF.</div>' +
   '<div class="card small" style="margin-bottom:10px">' +
     '<div><b>Chofer:</b> ' + esc(d.nombre) + (d.dni ? ' · DNI ' + esc(d.dni) : '') + '</div>' +
@@ -144,17 +161,17 @@ export async function generarContrato(carId) {
     const r = await construirContrato(carId);
     if (!r) return;
     r.doc.save(r.filename);
-    const c = carById(carId); if (c) await registrarGeneracionContrato(c);
+    const c = carById(carId); if (c) await registrarGeneracionContrato(c, r.doc, r.filename);
     toast('Contrato generado');
   } catch (e) {
     toast('No se pudo generar el contrato: ' + ((e && e.message) || 'error'));
-  }
+  } finally { renovando = false; }
 }
 export async function compartirContrato(carId) {
   try {
     const r = await construirContrato(carId);
     if (!r) return;
-    const c = carById(carId); if (c) await registrarGeneracionContrato(c);
+    const c = carById(carId); if (c) await registrarGeneracionContrato(c, r.doc, r.filename);
     if (navigator.share && navigator.canShare) {
       const blob = r.doc.output('blob');
       const file = new File([blob], r.filename, { type: 'application/pdf' });

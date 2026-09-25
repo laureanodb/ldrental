@@ -4,6 +4,9 @@ import { isContract, calc, urgent, driverName, plate, activeCars, cobradoDelMes,
 import { METODOS_PAGO, TIPOS } from '../constants.js';
 import { settings } from '../settings.js';
 import { alertRow } from './shared.js';
+import { isSnoozed, snooze } from '../snooze.js';
+import { render } from '../nav.js';
+import { toast } from '../modal.js';
 
 export function viewPanel() {
   const flota = activeCars();
@@ -77,22 +80,32 @@ export function viewPanel() {
 }
 function saludo(t0, cantMorosos, cantUrg) {
   const hora = t0.getHours();
+  const finde = t0.getDay() === 0 || t0.getDay() === 6;
   const momento = hora < 6 ? 'Buenas noches' : hora < 12 ? 'Buen día' : hora < 20 ? 'Buenas tardes' : 'Buenas noches';
   const fecha = t0.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
   const pend = [];
   if (cantMorosos) pend.push(cantMorosos + ' cobro' + (cantMorosos === 1 ? '' : 's') + ' pendiente' + (cantMorosos === 1 ? '' : 's'));
   if (cantUrg) pend.push(cantUrg + ' vencimiento' + (cantUrg === 1 ? '' : 's') + ' urgente' + (cantUrg === 1 ? '' : 's'));
-  return momento + ' · ' + fecha + (pend.length ? ' · hoy tenés ' + pend.join(' y ') : ' · todo al día');
+  if (!pend.length) return momento + ' · ' + fecha + (finde ? ' · disfrutá, no hay nada urgente' : ' · todo al día');
+  return momento + ' · ' + fecha + ' · ' + (finde ? 'para cuando quieras: ' : 'hoy tenés ') + pend.join(' y ');
 }
 function seccionSugerenciasHoy(morosos, urg) {
   const sugerencias = [];
-  if (morosos.length) sugerencias.push({ t: 'Llamá a ' + driverName(morosos[0].c.choferId) + ': debe ' + money(morosos[0].i.debt), accion: "payForm('" + morosos[0].c.id + "')", cta: 'Cobrar' });
+  if (morosos.length) sugerencias.push({ key: 'sug:cobro:' + morosos[0].c.id, t: 'Llamá a ' + driverName(morosos[0].c.choferId) + ': debe ' + money(morosos[0].i.debt), accion: "payForm('" + morosos[0].c.id + "')", cta: 'Cobrar' });
   const venc = urg.filter(a => a.cls === 'bad').concat(urg.filter(a => a.cls === 'warn'))[0];
-  if (venc) sugerencias.push({ t: (venc.sub || 'Vencimiento') + ' de ' + venc.who + ': ' + venc.t, accion: venc.kind === 'car' ? "carForm('" + venc.id + "')" : "driverForm('" + venc.id + "')", cta: 'Ver' });
-  if (morosos.length > 1) sugerencias.push({ t: 'También debe ' + driverName(morosos[1].c.choferId) + ': ' + money(morosos[1].i.debt), accion: "payForm('" + morosos[1].c.id + "')", cta: 'Cobrar' });
-  if (!sugerencias.length) return '';
+  if (venc) sugerencias.push({ key: 'sug:venc:' + venc.kind + ':' + venc.id, t: (venc.sub || 'Vencimiento') + ' de ' + venc.who + ': ' + venc.t, accion: venc.kind === 'car' ? "carForm('" + venc.id + "')" : "driverForm('" + venc.id + "')", cta: 'Ver' });
+  if (morosos.length > 1) sugerencias.push({ key: 'sug:cobro:' + morosos[1].c.id, t: 'También debe ' + driverName(morosos[1].c.choferId) + ': ' + money(morosos[1].i.debt), accion: "payForm('" + morosos[1].c.id + "')", cta: 'Cobrar' });
+  const vigentes = sugerencias.filter(s => !isSnoozed(s.key));
+  if (!vigentes.length) return '';
   return '<div class="card" style="margin-bottom:12px"><div class="small muted" style="margin-bottom:6px">Sugerido para hoy</div>' +
-  sugerencias.slice(0, 3).map(s => '<div class="row between" style="padding:4px 0"><span class="small">' + esc(s.t) + '</span><button class="btn sec sm" onclick="' + s.accion + '">' + s.cta + '</button></div>').join('') + '</div>';
+  vigentes.slice(0, 3).map(s => '<div class="row between" style="padding:4px 0"><span class="small">' + esc(s.t) + '</span><span class="row" style="gap:6px"><button class="btn sec sm" onclick="resolverSugerencia(\'' + s.key + '\');' + s.accion + '">' + s.cta + '</button><button class="btn sec sm" onclick="posponerSugerencia(\'' + s.key + '\')" title="Posponer">···</button></span></div>').join('') + '</div>';
+}
+export function posponerSugerencia(key) {
+  snooze(key, 3);
+  toast('Pospuesto por 3 días'); render();
+}
+export function resolverSugerencia(key) {
+  snooze(key, 1);
 }
 function notaInternaCard() {
   if (ui.editandoNota) {
