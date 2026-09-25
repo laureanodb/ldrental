@@ -35,7 +35,10 @@ import { closeModal, confirmDel } from './modal.js';
 import { attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile } from './files.js';
 import { backup, pickRestore, doRestore, exportCSV, cancelRestore, archivarCobrosViejosForm, actualizarInfoArchivar, archivarCobrosViejos } from './backup.js';
 import { buscarArchivosHuerfanos, confirmarBorrarHuerfanos } from './huerfanos.js';
-import { saveAjustes, snoozeAlert, toggleEnTramite, silenciarAlertasAuto, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm, anunciosForm, agregarAnuncio, borrarAnuncio, activarModoConsultaUI, desactivarModoConsultaUI, guardarNotaInterna } from './views/shared.js';
+import { saveAjustes, snoozeAlert, toggleEnTramite, silenciarAlertasAuto, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm, anunciosForm, agregarAnuncio, borrarAnuncio, activarModoConsultaUI, desactivarModoConsultaUI, guardarNotaInterna, desafioMesForm, guardarDesafioMes, borrarDesafioMes } from './views/shared.js';
+import { socioForm, guardarSocio, borrarSocio, reporteSocios } from './forms/socios.js';
+import { adelantoForm, guardarAdelanto, borrarAdelanto } from './forms/adelanto.js';
+import { autoseguroForm, registrarTransaccionAutoseguro, borrarTransaccionAutoseguro } from './autoseguro.js';
 import { imprimirContactosChoferes } from './views/choferes.js';
 import { mostrarNovedades } from './changelog.js';
 import { gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro, elegirCategoriaGasto } from './forms/gasto.js';
@@ -77,6 +80,7 @@ Object.assign(window, {
   reciboPDF, reciboCompartir, estadoCuentaPDF, descargarReporteEjecutivo, exportarExcel, activarPush, desactivarPush, guardarHorarioPush, guardarPreferenciasPush,
   contratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion, plantillaForm, generarPlantilla,
   driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion,
+  adelantoForm, guardarAdelanto, borrarAdelanto,
   depositoForm, saveDeposito, delDeposito,
   payForm, onPayCar, savePay, delPay, toggleDepositado,
   closeModal, confirmDel,
@@ -85,6 +89,9 @@ Object.assign(window, {
   buscarArchivosHuerfanos, confirmarBorrarHuerfanos,
   saveAjustes, snoozeAlert, toggleEnTramite, silenciarAlertasAuto, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm,
   anunciosForm, agregarAnuncio, borrarAnuncio, activarModoConsultaUI, desactivarModoConsultaUI, guardarNotaInterna,
+  desafioMesForm, guardarDesafioMes, borrarDesafioMes,
+  socioForm, guardarSocio, borrarSocio, reporteSocios,
+  autoseguroForm, registrarTransaccionAutoseguro, borrarTransaccionAutoseguro,
   imprimirContactosChoferes, mostrarNovedades,
   gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro, elegirCategoriaGasto,
   gastosGeneralesView, gastoGeneralForm, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, saveGastoRecurrente, delGastoRecurrente,

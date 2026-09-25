@@ -42,6 +42,45 @@ export function vs(f) {
   return { d, cls: 'ok', t: 'Vence ' + fdate(f) };
 }
 
+export function indiceSaludFlota() {
+  const flota = activeCars();
+  if (!flota.length) return null;
+  const conChofer = flota.filter(c => isContract(c) && c.choferId);
+  const pctAlDia = conChofer.length ? conChofer.filter(c => calc(c).debt <= 0).length / conChofer.length * 100 : 100;
+  const urg = urgent().length;
+  const pctSinUrgentes = Math.max(0, 100 - Math.min(100, urg * 5));
+  const U = utilizacionFlota(90);
+  const pctUtilizacion = U.length ? U.reduce((a, x) => a + x.pct, 0) / U.length : 100;
+  const score = Math.round(pctAlDia * 0.4 + pctSinUrgentes * 0.3 + pctUtilizacion * 0.3);
+  return { score, pctAlDia: Math.round(pctAlDia), pctUtilizacion: Math.round(pctUtilizacion), urg };
+}
+export function segmentoMasRentable() {
+  const grupos = {};
+  S.cars.filter(c => c.tipo !== 'financiado' && (c.marca || c.modelo)).forEach(c => {
+    const key = [c.marca, c.modelo].filter(Boolean).join(' ') || 'Sin marca/modelo';
+    const neta = rentabilidadAuto(c).neta;
+    if (neta == null) return;
+    if (!grupos[key]) grupos[key] = { key, total: 0, n: 0 };
+    grupos[key].total += neta; grupos[key].n++;
+  });
+  const filas = Object.values(grupos).map(g => ({ key: g.key, promedio: g.total / g.n, n: g.n }));
+  if (!filas.length) return null;
+  filas.sort((a, b) => b.promedio - a.promedio);
+  return filas[0];
+}
+export function cumpleDesafioMes(driverId) {
+  const desafio = settings.desafioMes;
+  if (!desafio || !desafio.criterio) return false;
+  if (desafio.criterio === 'puntual') {
+    const score = driverScore(driverId);
+    return score != null && score >= 95;
+  }
+  if (desafio.criterio === 'sin_siniestros') {
+    const mesActual = iso(today()).slice(0, 7);
+    return !S.siniestros.some(s => s.choferId === driverId && String(s.fecha).slice(0, 7) === mesActual);
+  }
+  return false;
+}
 export function utilizacionAuto(c, dias) {
   const hasta = today(); const desdeVentana = new Date(hasta); desdeVentana.setDate(desdeVentana.getDate() - dias);
   const desdeVentanaIso = iso(desdeVentana), hastaIso = iso(hasta);
@@ -419,8 +458,12 @@ export function diasSinCobrosGlobal() {
 export const urgent = () => alerts().filter(a => a.d <= settings.avisoWarn);
 export const driverName = id => { const d = S.drivers.find(x => x.id === id); return d ? d.nombre : ''; };
 export const carById = id => S.cars.find(x => x.id === id);
+export function saldoAdelantos(driverId) {
+  const d = S.drivers.find(x => x.id === driverId);
+  return ((d && d.adelantos) || []).reduce((a, x) => a + (+x.monto || 0), 0);
+}
 export function driverDebt(id) {
-  return S.cars.filter(c => c.choferId === id && isContract(c)).reduce((a, c) => a + calc(c).debt, 0);
+  return S.cars.filter(c => c.choferId === id && isContract(c)).reduce((a, c) => a + calc(c).debt, 0) + saldoAdelantos(id);
 }
 export function choferEnFecha(c, fecha) {
   const h = (c.historialChoferes || []).find(x => x.desde <= fecha && (!x.hasta || fecha <= x.hasta));
@@ -489,6 +532,24 @@ export function sugerenciasAnticipacionVenc() {
 }
 export function rentabilidadPorChofer() {
   return activeCars().filter(c => c.choferId && c.tipo !== 'financiado').map(c => Object.assign({ c, driverId: c.choferId }, rentabilidadAuto(c))).sort((a, b) => b.neta - a.neta);
+}
+export function montoSugeridoCobro(c) {
+  const kind = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';
+  const pagos = S.payments.filter(p => p.carId === c.id && p.tipo === kind && !p.parcial).slice(-5);
+  if (!pagos.length) return +c.monto || 0;
+  const counts = {};
+  pagos.forEach(p => { counts[p.monto] = (counts[p.monto] || 0) + 1; });
+  const moda = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+  return +moda || +c.monto || 0;
+}
+export function repartoSocios(c) {
+  const socios = c.socios || [];
+  if (!socios.length) return null;
+  const rent = rentabilidadAuto(c);
+  if (rent.moneda === 'USD' || rent.neta == null) return null;
+  const asignadoPct = socios.reduce((a, s) => a + (+s.pct || 0), 0);
+  const filas = socios.map(s => ({ id: s.id, nombre: s.nombre, pct: +s.pct || 0, monto: rent.neta * ((+s.pct || 0) / 100) }));
+  return { neta: rent.neta, socios: filas, asignadoPct, sinAsignarPct: Math.max(0, 100 - asignadoPct) };
 }
 export function rentabilidadAuto(c) {
   const cobrado = S.payments.filter(p => p.carId === c.id).reduce((a, p) => a + (+p.monto || 0), 0);

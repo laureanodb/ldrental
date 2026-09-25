@@ -66,8 +66,17 @@ export function calcularRoi() {
 export function escenarioFlotaForm() {
   const activos = activeCars().filter(c => isContract(c) && c.choferId && c.tipo !== 'financiado');
   const totalActual = activos.reduce((a, c) => a + (+c.monto || 0), 0);
+  const fmt = n => Math.round(n).toLocaleString('es-AR');
+  const preset = (label, pct) => {
+    const nuevo = totalActual * (1 + pct / 100);
+    return '<div class="card"><div class="small muted">' + label + ' (' + (pct >= 0 ? '+' : '') + pct + '%)</div><b>' + fmt(nuevo) + '</b><div class="small" style="color:' + (nuevo - totalActual >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + (nuevo - totalActual >= 0 ? '+' : '') + fmt(nuevo - totalActual) + '/sem</div></div>';
+  };
   const h = '<h3>Simular un aumento general</h3>' +
-  '<div class="small muted" style="margin-bottom:10px">Aplica el % a los ' + activos.length + ' autos alquilados activos (no financiados). Monto semanal actual de la flota: ' + Math.round(totalActual).toLocaleString('es-AR') + '.</div>' +
+  '<div class="small muted" style="margin-bottom:10px">Aplica el % a los ' + activos.length + ' autos alquilados activos (no financiados). Monto semanal actual de la flota: ' + fmt(totalActual) + '.</div>' +
+  '<div class="sec-t">Qué pasaría si…</div>' +
+  '<div class="two" style="gap:8px 8px;margin-bottom:6px">' + preset('Pesimista', -5) + preset('Optimista', 10) + '</div>' +
+  '<div style="margin-bottom:14px">' + preset('Actual', 0) + '</div>' +
+  '<div class="sec-t">Simulación a medida</div>' +
   '<div class="two"><label class="f"><span>Aumento <small>%</small></span><input id="ef_pct" inputmode="decimal" value="10" oninput="calcularEscenarioFlota()"></label>' +
   '<label class="f"><span>Semanas a proyectar</span><input id="ef_semanas" inputmode="numeric" value="12" oninput="calcularEscenarioFlota()"></label></div>' +
   '<div id="ef_resultado" class="card"></div>' +

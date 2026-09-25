@@ -53,6 +53,13 @@ function topBar() {
   return '<div class="topbar"><span class="tb-brand">' + esc(settings.companyName || 'LD Rental') + syncDot() + '</span>' +
   '<button class="tb-search" onclick="searchView()" aria-label="Buscar"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button></div>';
 }
+function fabBar() {
+  return '<div class="fab-bar">' +
+  '<button class="fab sec" title="Buscar" onclick="searchView()"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button>' +
+  '<button class="fab sec" title="Gasto rápido" onclick="gastoGeneralForm()"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>' +
+  '<button class="fab main" title="Cobro rápido" onclick="payForm()"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg></button>' +
+  '</div>';
+}
 export function render() {
   renderNav();
   const app = $('#app');
@@ -60,7 +67,7 @@ export function render() {
   if (!S.user) { app.innerHTML = viewLogin(); return; }
   if (!S.ready) { app.innerHTML = '<div class="loading">Cargando tu flota…</div>'; return; }
   const v = { panel: viewPanel, autos: viewAutos, choferes: viewChoferes, cobros: viewCobros, venc: viewVenc, mas: viewMas }[ui.tab]();
-  app.innerHTML = offlineBar() + consultaBar() + topBar() + v;
+  app.innerHTML = offlineBar() + consultaBar() + topBar() + v + (modoConsultaActivo() ? '' : fabBar());
   renderList();
 }
 export function renderList() {

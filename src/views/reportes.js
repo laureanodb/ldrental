@@ -1,6 +1,6 @@
 import { S, ui } from '../state.js';
 import { esc, money, moneyUSD, today, fdate, iso } from '../utils.js';
-import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, costoTotalAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, planRenovacionFlota, badge, tendenciaNps, flujoCajaSemanal, utilizacionFlota, mejorPeorMesAuto } from '../calc.js';
+import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, costoTotalAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, planRenovacionFlota, badge, tendenciaNps, flujoCajaSemanal, utilizacionFlota, mejorPeorMesAuto, indiceSaludFlota, segmentoMasRentable } from '../calc.js';
 import { canVerFinanzas } from '../roles.js';
 import { GASTO_CATS, CANALES_PROSPECTO, MOTIVOS_REEMPLAZO } from '../constants.js';
 
@@ -290,6 +290,23 @@ function seccionFlujoCaja() {
   '<div class="row between small" style="margin-top:8px"><span class="muted">Neto acumulado en 8 semanas</span><b style="color:' + (acumulado >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(acumulado) + '</b></div></div>';
 }
 
+function seccionIndiceSalud() {
+  const idx = indiceSaludFlota();
+  if (!idx) return '';
+  const color = idx.score >= 80 ? 'var(--ok)' : idx.score >= 55 ? 'var(--warn)' : 'var(--bad)';
+  return '<h2>Índice de salud de la flota</h2><div class="card">' +
+  '<div class="row between" style="align-items:center"><span class="muted">Puntaje del mes</span><b style="font-size:26px;color:' + color + '">' + idx.score + '</b></div>' +
+  '<div class="row between small" style="margin-top:6px"><span class="muted">Choferes al día</span><span>' + idx.pctAlDia + '%</span></div>' +
+  '<div class="row between small"><span class="muted">Utilización de flota (90 días)</span><span>' + idx.pctUtilizacion + '%</span></div>' +
+  '<div class="row between small"><span class="muted">Vencimientos urgentes</span><span>' + idx.urg + '</span></div></div>';
+}
+function seccionSegmentoRentable() {
+  if (!canVerFinanzas()) return '';
+  const s = segmentoMasRentable();
+  if (!s || s.n < 2) return '';
+  return '<h2>Tu segmento más rentable</h2><div class="card"><div class="row between"><b>' + esc(s.key) + '</b><b style="color:' + (s.promedio >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(s.promedio) + '</b></div>' +
+  '<div class="small muted" style="margin-top:4px">Rentabilidad neta promedio acumulada, sobre ' + s.n + ' auto' + (s.n === 1 ? '' : 's') + ' de ese modelo. Si vas a comprar otro auto, este segmento históricamente te rindió mejor.</div></div>';
+}
 function seccionAlertasTendencia() {
   const A = alertasTendencia();
   if (!A.length) return '';
@@ -374,6 +391,7 @@ export function viewReportes() {
   if (!S.cars.length) return '<h1>Reportes</h1><p class="sub">Rentabilidad, comparativas y proyecciones</p><div class="card empty">Cargá autos y cobros para ver reportes acá.</div>';
   let h = '<h1>Reportes</h1><p class="sub">Rentabilidad, comparativas y proyecciones</p>';
   if (canVerFinanzas()) h += '<div class="row" style="margin-bottom:14px"><button class="btn sec grow" onclick="descargarReporteEjecutivo()">Descargar reporte ejecutivo (PDF)</button></div>';
+  h += seccionIndiceSalud();
   h += seccionAlertasTendencia();
   h += seccionFlujoCaja();
   h += seccionRangoPersonalizado();
@@ -406,5 +424,6 @@ export function viewReportes() {
   h += seccionNps();
   h += seccionUtilizacion();
   h += seccionVentaOptima();
+  h += seccionSegmentoRentable();
   return h;
 }

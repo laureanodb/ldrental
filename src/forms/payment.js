@@ -1,6 +1,6 @@
 import { S } from '../state.js';
 import { $, val, uid, iso, today, esc, money, moneyUSD, num1 } from '../utils.js';
-import { isContract, calc, carById, driverName, metodoPreferidoChofer } from '../calc.js';
+import { isContract, calc, carById, driverName, metodoPreferidoChofer, montoSugeridoCobro } from '../calc.js';
 import { METODOS_PAGO } from '../constants.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
@@ -27,7 +27,7 @@ export function onPayCar() {
   const c = carById($('#p_car').value); if (!c) return;
   const i = calc(c);
   const mon = c.tipo === 'financiado' ? moneyUSD : money;
-  $('#p_monto').value = c.monto || '';
+  $('#p_monto').value = montoSugeridoCobro(c) || '';
   $('#p_tipo').value = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';
   $('#p_lblmonto').textContent = c.tipo === 'financiado' ? 'Monto (en dólares)' : 'Monto';
   $('#p_info').textContent = (i.debt > 0 ? 'Debe ' + mon(i.debt) + ' (' + num1(i.late) + ' semanas). ' : 'Está al día. ') + (c.tipo === 'alquiler' ? 'Alquiler' : 'Cuota') + ' semanal: ' + mon(c.monto) + '.';

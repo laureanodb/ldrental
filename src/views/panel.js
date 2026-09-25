@@ -25,7 +25,7 @@ export function viewPanel() {
     '<div class="card empty"><b>Empecemos por lo básico</b>Cargá tus choferes y tus autos. Después registrás cada cobro semanal y la app te dice quién debe y qué vence.<div style="margin-top:16px" class="row" ><button class="btn grow" onclick="altaRapidaChoferForm()">Cargar chofer</button><button class="btn grow" onclick="altaRapidaAutoForm()">Cargar auto</button></div></div>';
   }
   const morosos = infos.filter(x => x.i.debt > 0 && x.c.tipo !== 'financiado').sort((a, b) => b.i.debt - a.i.debt).slice(0, 5);
-  let h = '<h1>Panel</h1><p class="sub">' + t0.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) + '</p>';
+  let h = '<h1>Panel</h1><p class="sub">' + saludo(t0, morosos.length, urg.length) + '</p>';
   h += '<div class="row" style="margin-bottom:12px"><button class="btn grow" onclick="payForm()">Cobro rápido</button><button class="btn sec" onclick="gastoGeneralForm()">Gasto rápido</button><button class="btn sec" onclick="searchView()">Buscar</button></div>';
   h += notaInternaCard();
   h += seccionSugerenciasHoy(morosos, urg);
@@ -74,6 +74,15 @@ export function viewPanel() {
     h += '<h2>Pagadas, falta transferir titularidad</h2>' + finSinTransferir.map(c => '<div class="card tap row between" onclick="carForm(\'' + c.id + '\')"><div><div>' + plate(c.patente) + '</div><div class="small muted">' + esc(driverName(c.choferId)) + '</div></div>' + badge('warn', 'Pendiente') + '</div>').join('');
   }
   return h;
+}
+function saludo(t0, cantMorosos, cantUrg) {
+  const hora = t0.getHours();
+  const momento = hora < 6 ? 'Buenas noches' : hora < 12 ? 'Buen día' : hora < 20 ? 'Buenas tardes' : 'Buenas noches';
+  const fecha = t0.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const pend = [];
+  if (cantMorosos) pend.push(cantMorosos + ' cobro' + (cantMorosos === 1 ? '' : 's') + ' pendiente' + (cantMorosos === 1 ? '' : 's'));
+  if (cantUrg) pend.push(cantUrg + ' vencimiento' + (cantUrg === 1 ? '' : 's') + ' urgente' + (cantUrg === 1 ? '' : 's'));
+  return momento + ' · ' + fecha + (pend.length ? ' · hoy tenés ' + pend.join(' y ') : ' · todo al día');
 }
 function seccionSugerenciasHoy(morosos, urg) {
   const sugerencias = [];

@@ -1,11 +1,12 @@
 import { $, esc, val, uid, money, moneyUSD, fdate, iso, today } from '../utils.js';
 import { S } from '../state.js';
 import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS, CANALES_PROSPECTO, METODOS_PAGO, COMUNICACION_TIPOS } from '../constants.js';
-import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer, estadoGeneralChofer, promedioIngresos3MesesChofer, encuestasDeChofer, promedioNpsChofer } from '../calc.js';
+import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer, estadoGeneralChofer, promedioIngresos3MesesChofer, encuestasDeChofer, promedioNpsChofer, cumpleDesafioMes } from '../calc.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
 import { canDelete, canVerFinanzas } from '../roles.js';
+import { seccionAdelantos } from './adelanto.js';
 import { settings } from '../settings.js';
 
 function telRow(t) {
@@ -114,6 +115,7 @@ export function driverForm(id) {
     (() => { const pr = promedioIngresos3MesesChofer(d.id); return (pr.promedio || pr.promedioUSD) ? '<div class="row between"><span class="muted">Promedio mensual (3 meses)</span><b>' + (pr.promedio ? money(pr.promedio) : '') + (pr.promedioUSD ? (pr.promedio ? ' + ' : '') + moneyUSD(pr.promedioUSD) : '') + '</b></div>' : ''; })() +
     (!d.prospecto && driverEnRiesgo(d.id) ? '<div class="row between"><span class="muted">Riesgo</span>' + badge('bad', 'En riesgo por atrasos') + '</div>' : '') +
     (!d.prospecto && driverCalificaBono(d.id) ? '<div class="row between"><span class="muted">Bono</span>' + badge('ok', 'Califica por puntualidad') + '</div>' : '') +
+    (!d.prospecto && settings.desafioMes && cumpleDesafioMes(d.id) ? '<div class="row between"><span class="muted">' + esc(settings.desafioMes.titulo) + '</span>' + badge('ok', '★ Cumplido') + '</div>' : '') +
     (() => { const m = metodoPreferidoChofer(d.id); return m ? '<div class="row between small"><span class="muted">Método de pago habitual</span><span>' + esc((METODOS_PAGO.find(x => x[0] === m) || [0, m])[1]) + '</span></div>' : ''; })() + '</div>';
   }
   financiacion += (ex ? (() => { const s = sugerirAptoFinanciar(d.id); return '<div class="small muted" style="margin-bottom:8px">Sugerido según puntualidad, antigüedad y sanciones: <b style="color:' + (s.cumple ? 'var(--ok)' : 'var(--muted)') + '">' + (s.cumple ? 'Calificaría' : 'Todavía no calificaría') + '</b></div>'; })() : '') +
@@ -129,6 +131,7 @@ export function driverForm(id) {
     if (DEP.length) financiacion += DEP.map(x => '<div class="card row"><div class="grow"><div>' + (x.monto >= 0 ? '+' + money(x.monto) : '-' + money(-x.monto)) + ' <span class="small muted">' + fdate(x.fecha) + '</span></div>' + (x.nota ? '<div class="small muted">' + esc(x.nota) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delDeposito(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     financiacion += '<button class="btn sec block" style="margin:8px 0 20px" onclick="depositoForm(\'' + d.id + '\')">+ Registrar pago de depósito</button>';
     if (canVerFinanzas()) financiacion += '<button class="btn sec block" style="margin-bottom:20px" onclick="estadoCuentaPDF(\'' + d.id + '\')">Estado de cuenta del mes (PDF)</button>';
+    financiacion += seccionAdelantos(d);
     if (!d.inactivo && !d.prospecto) {
       financiacion += '<div class="sec-t">Baja del chofer</div><button class="btn danger block" style="margin-bottom:20px" onclick="liquidacionForm(\'' + d.id + '\')">Dar de baja / Liquidación final</button>';
     }

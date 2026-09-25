@@ -5,7 +5,8 @@ import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenim
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
-import { canDelete, isAdmin } from '../roles.js';
+import { canDelete, isAdmin, canVerFinanzas } from '../roles.js';
+import { seccionSocios } from './socios.js';
 import { inflacionAcumulada } from '../inflacion.js';
 import { settings } from '../settings.js';
 
@@ -206,6 +207,7 @@ export function carForm(id) {
         c.contratoHistorial.slice().reverse().map(h => '<div class="row between small" style="padding:2px 0"><span>' + fdate(h.fecha) + '</span><span class="muted">' + (h.tipo === 'financiado' ? moneyUSD(h.monto) : money(h.monto)) + (h.cuotas ? ' · ' + h.cuotas + ' cuotas' : '') + '</span></div>').join('') + '</details>';
       }
     }
+    if (canVerFinanzas()) contrato += seccionSocios(c);
     const mp = mejorPeorMesAuto(c);
     if (mp) {
       const mesLabel = k => new Date(k + '-02').toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });

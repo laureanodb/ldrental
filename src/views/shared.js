@@ -154,6 +154,30 @@ export function borrarAnuncio(id) {
   saveSettings({ anuncios: (settings.anuncios || []).filter(a => a.id !== id) });
   anunciosForm();
 }
+const DESAFIO_CRITERIOS = [['puntual', 'Pagó todo a tiempo este mes'], ['sin_siniestros', 'Sin siniestros este mes']];
+export function desafioMesForm() {
+  const d = settings.desafioMes;
+  const h = '<h3>Desafío del mes</h3>' +
+  '<div class="small muted" style="margin-bottom:10px">Se muestra como insignia en la ficha del chofer que lo cumpla. Vos decidís si hay algún premio real para quien lo logre.</div>' +
+  '<label class="f"><span>Título</span><input id="dm_titulo" value="' + esc(d ? d.titulo : '') + '" placeholder="ej: Desafío puntualidad de marzo"></label>' +
+  '<label class="f"><span>Criterio</span><select id="dm_criterio">' + DESAFIO_CRITERIOS.map(x => '<option value="' + x[0] + '"' + (d && d.criterio === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
+  '<div class="row" style="margin-top:14px"><button class="btn grow" onclick="guardarDesafioMes()">Guardar</button>' +
+  (d ? '<button class="btn danger" onclick="borrarDesafioMes()">Quitar</button>' : '') + '</div>' +
+  '<div class="row" style="margin-top:8px"><button class="btn sec grow" onclick="closeModal()">Cerrar</button></div>';
+  openModal(h);
+}
+export function guardarDesafioMes() {
+  const titulo = val('dm_titulo');
+  if (!titulo) { toast('Poné un título'); return; }
+  saveSettings({ desafioMes: { titulo, criterio: val('dm_criterio') } });
+  toast('Desafío del mes guardado');
+  closeModal();
+}
+export function borrarDesafioMes() {
+  saveSettings({ desafioMes: null });
+  toast('Desafío quitado');
+  closeModal();
+}
 export function protocoloEmergenciaForm() {
   const tel = settings.telefonoEmergencia;
   const h = '<h3>Protocolo de emergencia</h3>' +

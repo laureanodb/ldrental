@@ -1,6 +1,6 @@
 import { ui } from '../state.js';
 import { render } from '../nav.js';
-import { isAdmin } from '../roles.js';
+import { isAdmin, canVerFinanzas } from '../roles.js';
 import { proveedoresView } from '../forms/proveedor.js';
 import { recordatoriosView } from '../forms/recordatorio.js';
 import { gastosGeneralesView } from '../forms/gastos-generales.js';
@@ -58,8 +58,10 @@ export function viewMas() {
     ['Protocolo de emergencia', 'protocoloEmergenciaForm()'],
     ['Novedades de la app', 'mostrarNovedades()'],
   ]);
+  if (isAdmin()) h += grupo('Motivación', [['Desafío del mes', 'desafioMesForm()']]);
   if (isAdmin()) h += grupo('Comunicación', [['Tablón de anuncios (portal del chofer)', 'anunciosForm()']]);
   const admin = [['Ajustes', "goMas('ajustes')"], ['Copia de seguridad', "goMas('backup')"], ['Google', "goMas('google')"]];
+  if (canVerFinanzas()) admin.push(['Fondo de autoseguro', 'autoseguroForm()']);
   if (isAdmin()) admin.push(['Usuarios y permisos', 'usuariosView()'], ['Auditoría', 'auditoriaView()']);
   h += grupo('Administración', admin);
   return h;
