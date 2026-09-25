@@ -1,7 +1,7 @@
 import { $, esc, val, uid, money, moneyUSD, fdate, iso, today } from '../utils.js';
 import { S } from '../state.js';
 import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS, CANALES_PROSPECTO, METODOS_PAGO, COMUNICACION_TIPOS } from '../constants.js';
-import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer, estadoGeneralChofer, promedioIngresos3MesesChofer, encuestasDeChofer, promedioNpsChofer, desafiosCumplidos } from '../calc.js';
+import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, saldoSemanaAdelantada, semanaAdelantadaDeChofer, semanaAdelantadaDisponible, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer, estadoGeneralChofer, promedioIngresos3MesesChofer, encuestasDeChofer, promedioNpsChofer, desafiosCumplidos } from '../calc.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -130,6 +130,12 @@ export function driverForm(id) {
     financiacion += '<div class="sec-t row between">Depósito de garantía<span class="small muted">' + money(saldoDep) + (d.depositoObjetivo ? ' de ' + money(d.depositoObjetivo) : '') + '</span></div>';
     if (DEP.length) financiacion += DEP.map(x => '<div class="card row"><div class="grow"><div>' + (x.monto >= 0 ? '+' + money(x.monto) : '-' + money(-x.monto)) + ' <span class="small muted">' + fdate(x.fecha) + '</span></div>' + (x.nota ? '<div class="small muted">' + esc(x.nota) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delDeposito(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     financiacion += '<button class="btn sec block" style="margin:8px 0 20px" onclick="depositoForm(\'' + d.id + '\')">+ Registrar pago de depósito</button>';
+    const SEM = semanaAdelantadaDeChofer(d.id);
+    const saldoSem = saldoSemanaAdelantada(d.id);
+    financiacion += '<div class="sec-t row between">Semana adelantada<span class="small muted">' + money(saldoSem) + '</span></div>' +
+    '<div class="small muted" style="margin-bottom:8px">Plata pagada de más que se descuenta sola de las próximas semanas de deuda.</div>';
+    if (SEM.length) financiacion += SEM.map(x => '<div class="card row"><div class="grow"><div>' + (x.monto >= 0 ? '+' + money(x.monto) : '-' + money(-x.monto)) + ' <span class="small muted">' + fdate(x.fecha) + '</span></div>' + (x.nota ? '<div class="small muted">' + esc(x.nota) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delSemanaAdelantada(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    financiacion += '<button class="btn sec block" style="margin:8px 0 20px" onclick="semanaAdelantadaForm(\'' + d.id + '\')">+ Registrar semana adelantada</button>';
     if (canVerFinanzas()) financiacion += '<button class="btn sec block" style="margin-bottom:20px" onclick="estadoCuentaPDF(\'' + d.id + '\')">Estado de cuenta del mes (PDF)</button>';
     if (!featureOculta('adelantos')) financiacion += seccionAdelantos(d);
     if (!d.inactivo && !d.prospecto) {
@@ -280,9 +286,11 @@ export function addConceptoRow() { $('#lq_conceptos').insertAdjacentHTML('before
 export function liquidacionForm(id) {
   const d = S.drivers.find(x => x.id === id); if (!d) return;
   const saldoDep = saldoDeposito(d.id);
+  const saldoSem = semanaAdelantadaDisponible(d.id);
   const deuda = driverDebt(d.id);
   const h = '<h3>Liquidación final — ' + esc(d.nombre) + '</h3>' +
   '<div class="card"><div class="row between"><span class="muted">Saldo de depósito</span><b>' + money(saldoDep) + '</b></div>' +
+  (saldoSem ? '<div class="row between"><span class="muted">Semana adelantada sin consumir</span><b>' + money(saldoSem) + '</b></div>' : '') +
   '<div class="row between"><span class="muted">Deuda pendiente</span><b style="color:' + (deuda > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(deuda) + '</b></div></div>' +
   '<div class="sec-t">Descuentos adicionales <small>opcional, ej. daños</small></div><div id="lq_conceptos"></div>' +
   '<button class="btn sec sm" style="margin-bottom:14px" onclick="addConceptoRow()">+ Agregar descuento</button>' +
@@ -301,6 +309,7 @@ async function comprobanteLiquidacion(d, r) {
   linea('Chofer:', d.nombre || '—');
   linea('Fecha:', fdate(iso(today())));
   linea('Saldo de depósito:', money(r.saldoDep));
+  if (r.saldoSem) linea('Saldo de semana adelantada:', money(r.saldoSem));
   linea('Deuda pendiente:', '-' + money(r.deuda));
   r.conceptos.forEach(c => linea((c.motivo || 'Descuento') + ':', '-' + money(c.monto)));
   y += 4;
@@ -312,20 +321,25 @@ async function comprobanteLiquidacion(d, r) {
 export async function confirmarLiquidacion(id) {
   const d = S.drivers.find(x => x.id === id); if (!d) return;
   const saldoDep = saldoDeposito(d.id);
+  const saldoSemTotal = saldoSemanaAdelantada(d.id);
+  const saldoSem = semanaAdelantadaDisponible(d.id);
   const deuda = driverDebt(d.id);
   const conceptos = [...document.querySelectorAll('.d-concepto')].map(row => ({
     motivo: row.querySelector('.d-concepto-motivo').value.trim(),
     monto: +row.querySelector('.d-concepto-monto').value || 0,
   })).filter(c => c.monto > 0);
   const totalDescuentos = conceptos.reduce((a, c) => a + c.monto, 0);
-  const montoFinal = saldoDep - deuda - totalDescuentos;
+  const montoFinal = saldoDep + saldoSem - deuda - totalDescuentos;
   if (saldoDep) {
-    if (!(await save('depositos', { id: uid(), driverId: id, fecha: iso(today()), monto: -saldoDep, nota: 'Liquidación final' }))) return;
+    if (!(await save('depositos', { id: uid(), driverId: id, fecha: iso(today()), monto: -saldoDep, tipo: 'garantia', nota: 'Liquidación final' }))) return;
+  }
+  if (saldoSemTotal) {
+    if (!(await save('depositos', { id: uid(), driverId: id, fecha: iso(today()), monto: -saldoSemTotal, tipo: 'semana_adelantada', nota: 'Liquidación final' }))) return;
   }
   for (const c of S.cars.filter(c => c.choferId === id)) {
     await save('cars', Object.assign({}, c, { choferId: '', tipo: 'disponible' }));
   }
   if (!(await save('drivers', Object.assign({}, d, { inactivo: true })))) return;
-  await comprobanteLiquidacion(d, { saldoDep, deuda, conceptos, montoFinal });
+  await comprobanteLiquidacion(d, { saldoDep, saldoSem, deuda, conceptos, montoFinal });
   closeModal(); toast('Chofer dado de baja. Liquidación registrada.');
 }

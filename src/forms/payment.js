@@ -18,6 +18,7 @@ export function payForm(carId) {
   '<div class="two"><label class="f"><span>Tipo</span><select id="p_tipo"><option value="alquiler">Alquiler</option><option value="cuota">Cuota de financiación</option><option value="otro">Otro (anticipo, seña, etc.)</option></select></label>' +
   '<label class="f"><span>Método de pago</span><select id="p_metodo">' + METODOS_PAGO.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label></div>' +
   '<label class="chk"><input type="checkbox" id="p_parcial"><span>Es un pago parcial</span></label>' +
+  '<label class="chk"><input type="checkbox" id="p_acuenta"><span>El monto no coincide con el semanal (a cuenta, adelanto de varias semanas, etc.)</span></label>' +
   '<label class="f"><span>Km actual <small>opcional</small></span><input id="p_km" inputmode="numeric" placeholder="' + esc(c.km || '') + '"></label>' +
   '<label class="f"><span>Nota</span><input id="p_nota"></label>' +
   '<div class="row"><button class="btn grow" onclick="savePay(this)">Guardar cobro</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
@@ -41,15 +42,16 @@ export async function savePay(btn) {
   if (!monto || monto <= 0) { toast('Poné el monto cobrado'); return; }
   if (!val('p_fecha')) { toast('Poné la fecha'); return; }
   const parcial = document.getElementById('p_parcial').checked;
+  const aCuenta = document.getElementById('p_acuenta').checked;
   const esperado = +c.monto || 0;
-  if (!parcial && esperado && (monto > esperado * 1.5 || monto < esperado * 0.5) && payAnomaloArmed !== btn) {
+  if (!parcial && !aCuenta && esperado && (monto > esperado * 1.5 || monto < esperado * 0.5) && payAnomaloArmed !== btn) {
     payAnomaloArmed = btn;
     const mon = c.tipo === 'financiado' ? moneyUSD : money;
     toast('Este monto (' + mon(monto) + ') es muy distinto al habitual (' + mon(esperado) + '). Tocá "Guardar cobro" de nuevo para confirmar.');
     return;
   }
   payAnomaloArmed = null;
-  const o = { id: uid(), carId: c.id, choferId: c.choferId, fecha: val('p_fecha'), monto, tipo: val('p_tipo'), metodo: val('p_metodo'), parcial, nota: val('p_nota'), depositado: false };
+  const o = { id: uid(), carId: c.id, choferId: c.choferId, fecha: val('p_fecha'), monto, tipo: val('p_tipo'), metodo: val('p_metodo'), parcial, aCuenta, nota: val('p_nota'), depositado: false };
   const km = val('p_km');
   if (await save('payments', o)) { if (km) await actualizarKm(c.id, km); closeModal(); toast('Cobro registrado'); }
 }

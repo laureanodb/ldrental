@@ -26,8 +26,12 @@ export function calc(c) {
   if (c.tipo === 'financiado' && c.cuotas) weeks = Math.min(weeks, +c.cuotas);
   const paid = S.payments.filter(p => p.carId === c.id && p.tipo === kind && p.fecha >= c.inicio).reduce((a, p) => a + (+p.monto || 0), 0);
   const ajustes = (c.ajustesDeuda || []).reduce((a, x) => a + (+x.monto || 0), 0);
-  r.weeks = weeks; r.paid = paid; r.due = weeks * c.monto; r.ajustes = ajustes;
-  r.debt = Math.max(0, r.due - paid - ajustes); r.late = r.debt / c.monto;
+  const due = weeks * c.monto;
+  const adelantoDisponible = c.choferId ? saldoSemanaAdelantada(c.choferId) : 0;
+  const debtSinAdelanto = Math.max(0, due - paid - ajustes);
+  r.weeks = weeks; r.paid = paid; r.due = due; r.ajustes = ajustes;
+  r.adelantoAplicado = Math.min(adelantoDisponible, debtSinAdelanto);
+  r.debt = Math.max(0, debtSinAdelanto - adelantoDisponible); r.late = r.debt / c.monto;
   if (c.tipo === 'financiado') { r.total = +c.total || c.monto * (+c.cuotas || 0); r.saldo = Math.max(0, r.total - paid); }
   return r;
 }
@@ -299,11 +303,27 @@ export function gastoMantenimientoDelMes(offsetMeses) {
   const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   return S.mantenimientos.filter(m => (m.fecha || '').slice(0, 7) === key).reduce((a, m) => a + (+m.costo || 0), 0);
 }
-export function saldoDeposito(driverId) {
-  return S.depositos.filter(x => x.driverId === driverId).reduce((a, x) => a + (+x.monto || 0), 0);
+function esDeTipo(x, tipo) {
+  if (tipo === 'garantia') return !x.tipo || x.tipo === 'cuota' || x.tipo === 'garantia';
+  return x.tipo === tipo;
 }
-export function depositosDeChofer(driverId) {
-  return S.depositos.filter(x => x.driverId === driverId).sort((a, b) => b.fecha.localeCompare(a.fecha));
+export function saldoDeposito(driverId, tipo) {
+  return S.depositos.filter(x => x.driverId === driverId && esDeTipo(x, tipo || 'garantia')).reduce((a, x) => a + (+x.monto || 0), 0);
+}
+export function depositosDeChofer(driverId, tipo) {
+  return S.depositos.filter(x => x.driverId === driverId && esDeTipo(x, tipo || 'garantia')).sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+export function saldoSemanaAdelantada(driverId) {
+  return saldoDeposito(driverId, 'semana_adelantada');
+}
+export function semanaAdelantadaConsumida(driverId) {
+  return S.cars.filter(c => c.choferId === driverId && isContract(c)).reduce((a, c) => a + (calc(c).adelantoAplicado || 0), 0);
+}
+export function semanaAdelantadaDisponible(driverId) {
+  return Math.max(0, saldoSemanaAdelantada(driverId) - semanaAdelantadaConsumida(driverId));
+}
+export function semanaAdelantadaDeChofer(driverId) {
+  return depositosDeChofer(driverId, 'semana_adelantada');
 }
 export function multasPendientesChofer(driverId) {
   return S.multas.filter(m => m.choferId === driverId && (m.estado === 'pendiente' || m.estado === 'vencida')).reduce((a, m) => a + (+m.monto || 0), 0);
