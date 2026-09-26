@@ -13,6 +13,7 @@ import { viewMantenimiento } from './mantenimiento.js';
 import { viewReportes } from './reportes.js';
 import { viewMultas } from './multas.js';
 import { viewSiniestros } from './siniestros.js';
+import { viewStock } from './stock.js';
 import { ajustesCard, backupCard, saludDatosCard } from './shared.js';
 import { googleCard } from './google-ui.js';
 import { featureOculta } from '../settings.js';
@@ -35,6 +36,7 @@ export function viewMas() {
   if (v === 'reportes') return backBar('Reportes') + viewReportes();
   if (v === 'multas') return backBar('Multas') + viewMultas();
   if (v === 'siniestros') return backBar('Siniestros') + viewSiniestros();
+  if (v === 'stock') return backBar('Stock de repuestos') + viewStock();
   if (v === 'ajustes') return backBar('Ajustes') + ajustesCard();
   if (v === 'backup') return backBar('Copia de seguridad') + backupCard();
   if (v === 'saluddatos') return backBar('Salud de los datos') + saludDatosCard();
@@ -45,6 +47,7 @@ export function viewMas() {
     ['Mantenimiento', "goMas('mantenimiento')"],
     ['Multas', "goMas('multas')"],
     ['Siniestros', "goMas('siniestros')"],
+    ['Stock de repuestos', "goMas('stock')"],
     ['Gastos generales', 'gastosGeneralesView()'],
     ['Proveedores y talleres', 'proveedoresView()'],
     ['Mapa de flota', 'mapaFlotaView()'],

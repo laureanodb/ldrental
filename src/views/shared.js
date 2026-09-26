@@ -236,7 +236,7 @@ export function backupCard() {
   '<button class="btn sec block" style="margin-top:8px" onclick="logout()">Cerrar sesión (' + esc(S.user && S.user.email || '') + ')</button>';
 }
 export function alertRow(a) {
-  const open = a.kind === 'car' ? "carForm('" + a.id + "')" : a.kind === 'multa' ? "multaForm('" + a.carId + "','" + a.id + "')" : a.kind === 'proveedor' ? "proveedoresView('" + a.id + "')" : a.kind === 'recordatorio' ? "recordatoriosView('" + a.id + "')" : a.kind === 'sistema' ? "go('cobros')" : "driverForm('" + a.id + "')";
+  const open = a.kind === 'car' ? "carForm('" + a.id + "')" : a.kind === 'multa' ? "multaForm('" + a.carId + "','" + a.id + "')" : a.kind === 'proveedor' ? "proveedoresView('" + a.id + "')" : a.kind === 'recordatorio' ? "recordatoriosView('" + a.id + "')" : a.kind === 'repuesto' ? "repuestoForm('" + a.id + "')" : a.kind === 'sistema' ? "go('cobros')" : "driverForm('" + a.id + "')";
   const enTramite = isEnTramite(a.key);
   const vencCls = a.d < 0 ? ' alert-vencida' : (a.d <= 7 ? ' alert-proxima' : '');
   return '<div class="card row' + vencCls + '"><div class="grow tap" onclick="' + open + '"><div>' + esc(a.who) + '</div><div class="small muted">' + esc(a.sub) + '</div></div>' +

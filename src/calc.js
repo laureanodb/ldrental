@@ -477,6 +477,11 @@ export function alerts() {
     const key = 'car:' + c.id + ':sobrekm'; if (isSnoozed(key)) return;
     out.push({ who: c.patente || 'Auto sin patente', sub: 'Sobrekilometraje', kind: 'car', id: c.id, key, d: 20, cls: 'warn', t: semanal.toLocaleString('es-AR') + ' km/semana (esperado ' + settings.kmSemanaEsperado.toLocaleString('es-AR') + ')' });
   });
+  repuestosBajoStock().forEach(r => {
+    const key = 'repuesto:' + r.id; if (isSnoozed(key)) return;
+    const sinStock = (+r.stockActual || 0) <= 0;
+    out.push({ who: r.nombre, sub: 'Stock bajo', kind: 'repuesto', id: r.id, key, d: sinStock ? -1 : 15, cls: sinStock ? 'bad' : 'warn', t: (r.stockActual || 0) + ' ' + (r.unidad || 'unidad') + (r.stockActual === 1 ? '' : 's') + ' (mínimo: ' + (r.stockMinimo || 0) + ')' });
+  });
   activeDrivers().forEach(d => {
     if (d.prospecto) return;
     const cars = S.cars.filter(c => c.choferId === d.id && isContract(c) && c.inicio);
@@ -658,6 +663,11 @@ export function montoSugeridoGasto(categoria) {
   const moda = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
   return +moda || null;
 }
+export function repuestoById(id) { return S.repuestos.find(r => r.id === id); }
+export function repuestosActivos() { return S.repuestos.filter(r => !r.inactivo); }
+export function stockBajo(r) { return (+r.stockActual || 0) <= (+r.stockMinimo || 0); }
+export function repuestosBajoStock() { return repuestosActivos().filter(stockBajo).sort((a, b) => (+a.stockActual || 0) - (+b.stockActual || 0)); }
+export function valorStock() { return repuestosActivos().reduce((a, r) => a + (+r.stockActual || 0) * (+r.costoUnitario || 0), 0); }
 export function montoSugeridoCobro(c) {
   const kind = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';
   const pagos = S.payments.filter(p => p.carId === c.id && p.tipo === kind && !p.parcial).slice(-5);
