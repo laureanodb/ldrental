@@ -1,4 +1,5 @@
-import { ui } from '../state.js';
+import { S, ui } from '../state.js';
+import { esc } from '../utils.js';
 import { render } from '../nav.js';
 import { isAdmin, canVerFinanzas } from '../roles.js';
 import { proveedoresView } from '../forms/proveedor.js';
@@ -71,5 +72,6 @@ export function viewMas() {
   if (canVerFinanzas() && !featureOculta('autoseguro')) admin.push(['Fondo de autoseguro', 'autoseguroForm()']);
   if (isAdmin()) admin.push(['Usuarios y permisos', 'usuariosView()'], ['Auditoría', 'auditoriaView()']);
   h += grupo('Administración', admin);
+  h += grupo('Cuenta', [['Cerrar sesión (' + esc(S.user && S.user.email || '') + ')', 'logout()']]);
   return h;
 }

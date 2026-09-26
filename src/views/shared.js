@@ -1,4 +1,4 @@
-import { S, ui } from '../state.js';
+import { ui } from '../state.js';
 import { esc, val, fdate, iso, today } from '../utils.js';
 import { badge, usoDeDatos, saludDeDatos } from '../calc.js';
 import { settings, saveSettings } from '../settings.js';
@@ -232,8 +232,7 @@ export function backupCard() {
   (isAdmin() ? '<button class="btn sec block" style="margin-top:8px" onclick="buscarArchivosHuerfanos()">Buscar archivos huérfanos</button>' : '') +
   (isAdmin() ? '<button class="btn sec block" style="margin-top:8px" onclick="archivarCobrosViejosForm()">Archivar cobros viejos</button>' : '') + '</div>' +
   (canVerFinanzas() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Exportá todos los datos a un archivo Excel (una hoja por sección) para analizarlos o compartirlos.</div>' +
-  '<button class="btn sec block" onclick="exportarExcel()">Exportar todo a Excel</button></div>' : '') +
-  '<button class="btn sec block" style="margin-top:8px" onclick="logout()">Cerrar sesión (' + esc(S.user && S.user.email || '') + ')</button>';
+  '<button class="btn sec block" onclick="exportarExcel()">Exportar todo a Excel</button></div>' : '');
 }
 export function alertRow(a) {
   const open = a.kind === 'car' ? "carForm('" + a.id + "')" : a.kind === 'multa' ? "multaForm('" + a.carId + "','" + a.id + "')" : a.kind === 'proveedor' ? "proveedoresView('" + a.id + "')" : a.kind === 'recordatorio' ? "recordatoriosView('" + a.id + "')" : a.kind === 'repuesto' ? "repuestoForm('" + a.id + "')" : a.kind === 'sistema' ? "go('cobros')" : "driverForm('" + a.id + "')";
