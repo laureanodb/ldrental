@@ -34,6 +34,7 @@ export function viewPanel() {
   '<button class="btn sec sm" onclick="payFormACuenta()">A cuenta</button>' +
   '<button class="btn sec sm" onclick="gastoGeneralForm()">Gasto</button>' +
   '<button class="btn sec sm" onclick="searchView()">Buscar</button></div>';
+  h += '<div class="card tap row between" style="margin-bottom:12px" onclick="goMas(\'tablero\')"><div><b>Tablero semanal por auto</b><div class="small muted">Cobrado, gasto y ganancia de los últimos 7 días</div></div><span class="muted">›</span></div>';
   h += notaInternaCard();
   h += seccionSemanaAdelantada(act);
   h += seccionSugerenciasHoy(morosos, urg);

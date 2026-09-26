@@ -12,6 +12,7 @@ import { listMantenimiento } from './views/mantenimiento.js';
 import { listMultas } from './views/multas.js';
 import { listSiniestros } from './views/siniestros.js';
 import { listStock } from './views/stock.js';
+import { listTablero } from './views/tablero.js';
 import { queueLength } from './offline.js';
 import { settings, featureOculta } from './settings.js';
 import { modoConsultaActivo, modoConsultaHasta } from './consulta.js';
@@ -103,4 +104,5 @@ export function renderList() {
   if (ui.tab === 'mas' && ui.masView === 'multas') el.innerHTML = listMultas();
   if (ui.tab === 'mas' && ui.masView === 'siniestros') el.innerHTML = listSiniestros();
   if (ui.tab === 'mas' && ui.masView === 'stock') el.innerHTML = listStock();
+  if (ui.tab === 'mas' && ui.masView === 'tablero') el.innerHTML = listTablero();
 }

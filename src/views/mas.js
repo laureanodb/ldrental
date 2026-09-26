@@ -14,6 +14,7 @@ import { viewReportes } from './reportes.js';
 import { viewMultas } from './multas.js';
 import { viewSiniestros } from './siniestros.js';
 import { viewStock } from './stock.js';
+import { viewTablero } from './tablero.js';
 import { ajustesCard, backupCard, saludDatosCard } from './shared.js';
 import { googleCard } from './google-ui.js';
 import { featureOculta } from '../settings.js';
@@ -37,6 +38,7 @@ export function viewMas() {
   if (v === 'multas') return backBar('Multas') + viewMultas();
   if (v === 'siniestros') return backBar('Siniestros') + viewSiniestros();
   if (v === 'stock') return backBar('Stock de repuestos') + viewStock();
+  if (v === 'tablero') return backBar('Tablero semanal') + viewTablero();
   if (v === 'ajustes') return backBar('Ajustes') + ajustesCard();
   if (v === 'backup') return backBar('Copia de seguridad') + backupCard();
   if (v === 'saluddatos') return backBar('Salud de los datos') + saludDatosCard();
@@ -53,7 +55,7 @@ export function viewMas() {
     ['Mapa de flota', 'mapaFlotaView()'],
     ['Mantenimiento preventivo en lote', 'mantenimientoLoteForm()'],
   ]);
-  h += grupo('Análisis', [['Reportes', "goMas('reportes')"], ['Reporte personalizado', 'reportePersonalizadoForm()']]);
+  h += grupo('Análisis', [['Tablero semanal por auto', "goMas('tablero')"], ['Reportes', "goMas('reportes')"], ['Reporte personalizado', 'reportePersonalizadoForm()']]);
   h += grupo('Herramientas', [
     ['Recordatorios', 'recordatoriosView()'],
     ['Calculadora: financiar vs. alquilar', 'calculadoraForm()'],

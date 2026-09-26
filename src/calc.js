@@ -145,6 +145,17 @@ export function flujoCajaSemanalUSD(semanas) {
   for (let i = 0; i < semanas; i++) out.push({ semana: i + 1, ingreso: ingresoSemanal });
   return out;
 }
+export function tableroSemanal() {
+  const hoy = today();
+  const desde = new Date(hoy); desde.setDate(desde.getDate() - 7);
+  const desdeIso = iso(desde), hastaIso = iso(hoy);
+  return activeCars().filter(c => c.choferId && isContract(c)).map(c => {
+    const cobrado = S.payments.filter(p => p.carId === c.id && p.fecha >= desdeIso && p.fecha <= hastaIso).reduce((a, p) => a + (+p.monto || 0), 0);
+    const gasto = S.gastos.filter(g => g.carId === c.id && g.fecha >= desdeIso && g.fecha <= hastaIso).reduce((a, g) => a + (+g.costo || 0), 0) +
+      S.mantenimientos.filter(m => m.carId === c.id && m.fecha >= desdeIso && m.fecha <= hastaIso).reduce((a, m) => a + (+m.costo || 0), 0);
+    return { c, cobrado, gasto, neto: cobrado - gasto, deuda: calc(c).debt };
+  });
+}
 export function contratoVencimiento(c) {
   const hist = c.contratoHistorial || [];
   const desde = hist.length ? hist[hist.length - 1].fecha : c.inicio;
