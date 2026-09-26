@@ -29,7 +29,11 @@ export function viewPanel() {
   }
   const morosos = infos.filter(x => x.i.debt > 0 && x.c.tipo !== 'financiado').sort((a, b) => b.i.debt - a.i.debt).slice(0, 5);
   let h = '<h1>Panel</h1><p class="sub">' + saludo(t0, morosos.length, urg.length) + '</p>';
-  h += '<div class="row" style="margin-bottom:12px"><button class="btn grow" onclick="payForm()">Cobro rápido</button><button class="btn sec" onclick="payFormACuenta()">A cuenta</button><button class="btn sec" onclick="gastoGeneralForm()">Gasto rápido</button><button class="btn sec" onclick="searchView()">Buscar</button></div>';
+  h += '<button class="btn block" style="margin-bottom:8px" onclick="payForm()">Cobro rápido</button>' +
+  '<div class="grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:12px">' +
+  '<button class="btn sec sm" onclick="payFormACuenta()">A cuenta</button>' +
+  '<button class="btn sec sm" onclick="gastoGeneralForm()">Gasto</button>' +
+  '<button class="btn sec sm" onclick="searchView()">Buscar</button></div>';
   h += notaInternaCard();
   h += seccionSemanaAdelantada(act);
   h += seccionSugerenciasHoy(morosos, urg);
