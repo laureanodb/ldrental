@@ -134,7 +134,8 @@ export function carForm(id) {
   '<label class="f"><span>Dónde se compró</span><input id="c_dondeCompro" value="' + esc(c.dondeCompro) + '"></label></div>' +
   '<div class="two"><label class="f"><span>Gastos de patentamiento <small>opcional</small></span><input id="c_gastosPatentamiento" inputmode="decimal" value="' + esc(c.gastosPatentamiento || '') + '"></label>' +
   '<label class="f"><span>Titular registral <small>si no es la empresa</small></span><input id="c_titularRegistral" value="' + esc(c.titularRegistral) + '"></label></div>' +
-  '<div class="two"><label class="f"><span>Copias de llave</span><input id="c_copiasLlave" inputmode="numeric" value="' + esc(c.copiasLlave || '') + '"></label>' +
+  '<label class="chk"><input type="checkbox" id="c_llaveDuplicada"' + (c.llaveDuplicada ? ' checked' : '') + '><span>Tiene llave duplicada</span></label>' +
+  '<div class="two"><label class="f"><span>Copias de llave <small>en total</small></span><input id="c_copiasLlave" inputmode="numeric" value="' + esc(c.copiasLlave || '') + '"></label>' +
   '<label class="f"><span>Dónde están</span><input id="c_llavesUbicacion" value="' + esc(c.llavesUbicacion) + '"></label></div>' +
   '<div class="two"><label class="f"><span>Última inspección mecánica general</span><input id="c_ultimaInspeccionGeneral" type="date" value="' + esc(c.ultimaInspeccionGeneral) + '"></label>' +
   '<label class="f"><span>Último lavado / detailing</span><input id="c_ultimoLavado" type="date" value="' + esc(c.ultimoLavado) + '"></label></div>' +
@@ -465,7 +466,7 @@ export async function saveCar(btn, id) {
     coberturaSeguro: val('c_coberturaSeguro'), franquiciaSeguro: +val('c_franquiciaSeguro') || 0,
     fechaCompra: val('c_fechaCompra'), dondeCompro: val('c_dondeCompro'),
     gastosPatentamiento: +val('c_gastosPatentamiento') || 0, titularRegistral: val('c_titularRegistral'),
-    copiasLlave: +val('c_copiasLlave') || 0, llavesUbicacion: val('c_llavesUbicacion'),
+    llaveDuplicada: document.getElementById('c_llaveDuplicada').checked, copiasLlave: +val('c_copiasLlave') || 0, llavesUbicacion: val('c_llavesUbicacion'),
     ultimaInspeccionGeneral: val('c_ultimaInspeccionGeneral'), ultimoLavado: val('c_ultimoLavado'),
     cumplimientoNormativo: Object.fromEntries(CUMPLIMIENTO_NORMATIVO_ITEMS.map(x => [x[0], document.getElementById('cn_' + x[0]).checked])),
     elementosSeguridad: Object.fromEntries(ELEMENTOS_SEGURIDAD.map(x => [x[0], document.getElementById('es_' + x[0]).checked])),
