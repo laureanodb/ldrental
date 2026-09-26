@@ -15,8 +15,9 @@ import { reportePersonalizadoForm, toggleColumnaReporte, renderReportePersonaliz
 import { traspasoForm, saveTraspaso } from './forms/traspaso.js';
 import { reemplazoTemporalForm, saveReemplazoTemporal, finalizarReemplazoTemporal } from './forms/reemplazo-temporal.js';
 import { mantenimientoLoteForm, marcarTodosLote, saveMantenimientoLote } from './forms/mantenimiento-lote.js';
-import { mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento } from './forms/mantenimiento.js';
+import { mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, addRepuestoMantRow } from './forms/mantenimiento.js';
 import { mantAtajoFecha } from './views/mantenimiento.js';
+import { listaDeCompraForm } from './views/stock.js';
 import { multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta } from './forms/multa.js';
 import { siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro } from './forms/siniestro.js';
 import { repuestoForm, saveRepuesto, delRepuesto, movimientoStockForm, guardarMovimientoStock, delMovimientoStock } from './forms/repuesto.js';
@@ -76,7 +77,7 @@ Object.assign(window, {
   reemplazoTemporalForm, saveReemplazoTemporal, finalizarReemplazoTemporal,
   mantenimientoLoteForm, marcarTodosLote, saveMantenimientoLote,
   goMas,
-  mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, mantAtajoFecha,
+  mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, mantAtajoFecha, addRepuestoMantRow, listaDeCompraForm,
   multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta,
   siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro,
   repuestoForm, saveRepuesto, delRepuesto, movimientoStockForm, guardarMovimientoStock, delMovimientoStock,

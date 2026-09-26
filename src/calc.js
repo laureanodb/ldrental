@@ -668,6 +668,27 @@ export function repuestosActivos() { return S.repuestos.filter(r => !r.inactivo)
 export function stockBajo(r) { return (+r.stockActual || 0) <= (+r.stockMinimo || 0); }
 export function repuestosBajoStock() { return repuestosActivos().filter(stockBajo).sort((a, b) => (+a.stockActual || 0) - (+b.stockActual || 0)); }
 export function valorStock() { return repuestosActivos().reduce((a, r) => a + (+r.stockActual || 0) * (+r.costoUnitario || 0), 0); }
+export function movimientosSalidaPorAuto(carId) {
+  const out = [];
+  S.repuestos.forEach(r => (r.movimientos || []).forEach(m => { if (m.tipo === 'salida' && m.carId === carId) out.push({ r, m }); }));
+  return out.sort((a, b) => b.m.fecha.localeCompare(a.m.fecha));
+}
+export function gastosRepuestosPorAuto(carId) {
+  return movimientosSalidaPorAuto(carId).reduce((a, x) => a + (+x.m.cantidad || 0) * (+x.r.costoUnitario || 0), 0);
+}
+export function rankingGastoRepuestosPorAuto() {
+  return activeCars().map(c => ({ c, gasto: gastosRepuestosPorAuto(c.id) })).filter(x => x.gasto > 0).sort((a, b) => b.gasto - a.gasto);
+}
+export function listaDeCompra() {
+  const grupos = {};
+  repuestosBajoStock().forEach(r => {
+    const key = r.proveedorId || '';
+    if (!grupos[key]) grupos[key] = { proveedorId: key, proveedorNombre: key ? ((S.proveedores.find(p => p.id === key) || {}).nombre || 'Proveedor') : 'Sin proveedor asignado', items: [] };
+    const sugerido = Math.max((+r.stockMinimo || 0) - (+r.stockActual || 0), 0) || 1;
+    grupos[key].items.push({ r, sugerido });
+  });
+  return Object.values(grupos).sort((a, b) => (a.proveedorId ? 0 : 1) - (b.proveedorId ? 0 : 1) || a.proveedorNombre.localeCompare(b.proveedorNombre));
+}
 export function montoSugeridoCobro(c) {
   const kind = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';
   const pagos = S.payments.filter(p => p.carId === c.id && p.tipo === kind && !p.parcial).slice(-5);

@@ -1,6 +1,6 @@
 import { S, ui } from '../state.js';
 import { esc, money, moneyUSD, today, fdate, iso } from '../utils.js';
-import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, costoTotalAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, planRenovacionFlota, badge, tendenciaNps, flujoCajaSemanal, flujoCajaSemanalUSD, utilizacionFlota, mejorPeorMesAuto, indiceSaludFlota, segmentoMasRentable, gastosFijosMensuales, gastosFijosFlotaMensual, totalDepositosFlota, totalSemanaAdelantadaFlota, flujoCajaReal } from '../calc.js';
+import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, costoTotalAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, planRenovacionFlota, badge, tendenciaNps, flujoCajaSemanal, flujoCajaSemanalUSD, utilizacionFlota, mejorPeorMesAuto, indiceSaludFlota, segmentoMasRentable, gastosFijosMensuales, gastosFijosFlotaMensual, totalDepositosFlota, totalSemanaAdelantadaFlota, flujoCajaReal, rankingGastoRepuestosPorAuto } from '../calc.js';
 import { canVerFinanzas } from '../roles.js';
 import { GASTO_CATS, CANALES_PROSPECTO, MOTIVOS_REEMPLAZO } from '../constants.js';
 import { saldoAutoseguro } from '../autoseguro.js';
@@ -98,6 +98,13 @@ function seccionGastosFijos() {
   return '<h2>Gastos fijos mensuales (seguro y patente)</h2>' +
   '<div class="card row between" style="margin-bottom:10px"><span class="muted">Total de la flota</span><b>' + money(totalFlota) + '/mes</b></div>' +
   rows.map(r => '<div class="card row between small"><span>' + plate(r.c.patente) + '</span><span>' + money(r.total) + '/mes</span></div>').join('');
+}
+function seccionGastoRepuestos() {
+  if (!canVerFinanzas()) return '';
+  const rows = rankingGastoRepuestosPorAuto();
+  if (!rows.length) return '';
+  return '<h2>Gasto en repuestos por auto</h2>' +
+  rows.map(r => '<div class="card row between small"><span>' + plate(r.c.patente) + '</span><span>' + money(r.gasto) + '</span></div>').join('');
 }
 function seccionPasivosChofer() {
   if (!canVerFinanzas()) return '';
@@ -499,6 +506,7 @@ export function viewReportes() {
   h += seccionProyeccionRentabilidad();
   h += seccionRentabilidad();
   h += seccionGastosFijos();
+  h += seccionGastoRepuestos();
   h += seccionPasivosChofer();
   h += seccionComparacionTipos();
   h += seccionRentabilidadChofer();

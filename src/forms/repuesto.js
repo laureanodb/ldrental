@@ -70,6 +70,22 @@ export function movimientoStockForm(repuestoId, tipo) {
   '<div class="row"><button class="btn grow" onclick="guardarMovimientoStock(\'' + r.id + '\',\'' + tipo + '\')">Guardar</button><button class="btn sec" onclick="repuestoForm(\'' + r.id + '\')">Cancelar</button></div>';
   openModal(h);
 }
+async function aplicarMovimiento(r, mov, costoUnitario) {
+  const stockActual = (+r.stockActual || 0) + (mov.tipo === 'entrada' ? mov.cantidad : -mov.cantidad);
+  const o = Object.assign({}, r, { stockActual, costoUnitario: costoUnitario != null ? costoUnitario : r.costoUnitario, movimientos: (r.movimientos || []).concat([mov]) });
+  if (!(await save('repuestos', o))) return null;
+  return stockActual;
+}
+export async function registrarSalidaStock(repuestoId, cantidad, fecha, carId, nota) {
+  const r = repuestoById(repuestoId);
+  if (!r || !cantidad || cantidad <= 0) return false;
+  const mov = { id: uid(), tipo: 'salida', cantidad, fecha: fecha || iso(today()), nota };
+  if (carId) mov.carId = carId;
+  const stockActual = await aplicarMovimiento(r, mov);
+  if (stockActual == null) return false;
+  if (stockActual < 0) toast('Atención: "' + r.nombre + '" quedó con stock negativo, revisá la carga');
+  return true;
+}
 export async function guardarMovimientoStock(repuestoId, tipo) {
   const r = repuestoById(repuestoId);
   if (!r) return;
@@ -77,10 +93,8 @@ export async function guardarMovimientoStock(repuestoId, tipo) {
   if (!cantidad || cantidad <= 0) { toast('Poné la cantidad'); return; }
   const fecha = val('mv_fecha') || iso(today());
   const nota = val('mv_nota');
-  const stockActual = (+r.stockActual || 0) + (tipo === 'entrada' ? cantidad : -cantidad);
   const mov = { id: uid(), tipo, cantidad, fecha, nota };
-  let costoUnitario = r.costoUnitario;
-  let generarGasto = null;
+  let costoUnitario, generarGasto = null;
   if (tipo === 'entrada') {
     costoUnitario = +val('mv_costo') || r.costoUnitario || 0;
     mov.costoUnitario = costoUnitario;
@@ -89,10 +103,10 @@ export async function guardarMovimientoStock(repuestoId, tipo) {
     }
   } else {
     const carId = val('mv_car'); if (carId) mov.carId = carId;
-    if (stockActual < 0) toast('Atención: el stock quedó en negativo, revisá la carga');
   }
-  const o = Object.assign({}, r, { stockActual, costoUnitario, movimientos: (r.movimientos || []).concat([mov]) });
-  if (!(await save('repuestos', o))) return;
+  const stockActual = await aplicarMovimiento(r, mov, costoUnitario);
+  if (stockActual == null) return;
+  if (tipo === 'salida' && stockActual < 0) toast('Atención: el stock quedó en negativo, revisá la carga');
   if (generarGasto) await save('gastos', generarGasto);
   closeModal(); toast('Movimiento registrado'); repuestoForm(r.id);
 }

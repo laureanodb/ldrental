@@ -1,7 +1,7 @@
 import { S } from '../state.js';
 import { $, val, uid, iso, today, esc, fdate, money, moneyUSD, parse, days } from '../utils.js';
-import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS, MOTIVOS_REEMPLAZO, TIPOS_SINIESTRO, SINIESTRO_ESTADOS, ASEGURADORAS, TRANSMISIONES, COBERTURAS_SEGURO, ELEMENTOS_SEGURIDAD, CUMPLIMIENTO_NORMATIVO_ITEMS, RECLAMO_SEGURO_ESTADOS } from '../constants.js';
-import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas, estadoGeneralAuto, mejorPeorMesAuto, lineaDeTiempoAuto, contratoVencimiento, vs, gastosFijosMensuales, historialGastosFijos, comparacionGastoFijo, desgloseCobradoPorChofer } from '../calc.js';
+import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS, MOTIVOS_REEMPLAZO, TIPOS_SINIESTRO, SINIESTRO_ESTADOS, ASEGURADORAS, TRANSMISIONES, COBERTURAS_SEGURO, ELEMENTOS_SEGURIDAD, CUMPLIMIENTO_NORMATIVO_ITEMS, RECLAMO_SEGURO_ESTADOS, STOCK_UNIDADES } from '../constants.js';
+import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas, estadoGeneralAuto, mejorPeorMesAuto, lineaDeTiempoAuto, contratoVencimiento, vs, gastosFijosMensuales, historialGastosFijos, comparacionGastoFijo, desgloseCobradoPorChofer, movimientosSalidaPorAuto, gastosRepuestosPorAuto } from '../calc.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -11,6 +11,7 @@ import { inflacionAcumulada } from '../inflacion.js';
 import { settings, featureOculta } from '../settings.js';
 
 const gastoCatLabel = k => (GASTO_CATS.find(x => x[0] === k) || [0, 'Gasto'])[1];
+const unidadLabel = k => (STOCK_UNIDADES.find(x => x[0] === k) || [0, 'Unidad'])[1];
 
 export function actualizarHistorialChoferes(ex, newChoferId) {
   const prevChoferId = ex ? ex.choferId : '';
@@ -283,6 +284,14 @@ export function carForm(id) {
         gastos += '<details style="margin-bottom:8px"><summary class="small muted" style="cursor:pointer">Historial de cambios en los montos (' + gfh.length + ')</summary>' +
         gfh.map(x => '<div class="row between small" style="padding:2px 0"><span>' + (x.campo === 'seguro' ? 'Seguro' : 'Patente') + ': ' + money(x.anterior) + ' → ' + money(x.nuevo) + '</span><span class="muted">' + fdate(x.fecha) + '</span></div>').join('') + '</details>';
       }
+    }
+
+    /* ---- Repuestos consumidos ---- */
+    const RC = movimientosSalidaPorAuto(c.id);
+    if (RC.length) {
+      gastos += '<div class="sec-t row between">Repuestos consumidos<span class="small muted">' + money(gastosRepuestosPorAuto(c.id)) + ' en total</span></div><details style="margin-bottom:8px">' +
+      '<summary class="small muted" style="cursor:pointer">Ver movimientos (' + RC.length + ')</summary>' +
+      RC.map(x => '<div class="row between small" style="padding:2px 0"><span>' + esc(x.r.nombre) + ' · ' + x.m.cantidad + ' ' + esc(unidadLabel(x.r.unidad)) + '</span><span class="muted">' + fdate(x.m.fecha) + '</span></div>').join('') + '</details>';
     }
 
     /* ---- Gastos (incluye multas y siniestros) ---- */

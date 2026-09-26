@@ -1,11 +1,14 @@
 import { $, val, uid, iso, today, esc } from '../utils.js';
 import { S } from '../state.js';
-import { MANTENIMIENTO_CHECKLIST } from '../constants.js';
+import { MANTENIMIENTO_CHECKLIST, STOCK_UNIDADES } from '../constants.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
-import { carById, proveedoresActivos } from '../calc.js';
+import { carById, proveedoresActivos, repuestosActivos } from '../calc.js';
 import { carForm, actualizarKm, marcarEnTaller } from './car.js';
 import { renderFiles } from '../files.js';
+import { registrarSalidaStock } from './repuesto.js';
+
+const unidadLabel = k => (STOCK_UNIDADES.find(x => x[0] === k) || [0, 'Unidad'])[1];
 
 function proveedoresParaSelect(actualId) {
   const L = proveedoresActivos();
@@ -43,6 +46,7 @@ export function mantenimientoForm(carId, editId, presetItem) {
   '<label class="f"><span>Garantía <small>km</small></span><input id="m_garKm" inputmode="numeric" value="' + esc(ex ? ex.garantiaKm || '' : '') + '"></label></div>' +
   (c.tipo !== 'taller' ? '<label class="chk"><input type="checkbox" id="m_taller"><span>El auto queda parado en el taller</span></label>' : '') +
   '<label class="chk"><input type="checkbox" id="m_sinFactura"' + (ex && ex.sinFactura ? ' checked' : '') + '><span>Sin factura</span></label>' +
+  (!ex && repuestosActivos().length ? '<div class="sec-t">Repuestos usados <small>opcional, descuenta del stock</small></div><div id="mnt_repuestos"></div><button type="button" class="btn sec sm" style="margin-bottom:14px" onclick="addRepuestoMantRow()">+ Agregar repuesto</button>' : '') +
   '<label class="f"><span>Notas</span><textarea id="m_notas">' + esc(ex ? ex.notas : '') + '</textarea></label>' +
   '<div class="sec-t">Archivos</div><div id="files"></div><div id="fstatus" class="small" style="margin:-4px 0 12px;overflow-wrap:anywhere"></div>' +
   '<div class="row"><button class="btn grow" onclick="saveMantenimiento(' + (ex ? "'" + ex.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="' + (carId ? "carForm('" + c.id + "')" : 'closeModal()') + '">Cancelar</button></div>';
@@ -55,6 +59,11 @@ export function onMantItem() {
   const sel = $('#m_item'); if (!sel) return;
   const box = $('#m_custom'); if (box) box.style.display = sel.value === '__custom__' ? '' : 'none';
 }
+function repuestoRowMant() {
+  return '<div class="two mnt-rep"><select class="mnt-rep-id">' + repuestosActivos().map(r => '<option value="' + r.id + '">' + esc(r.nombre) + ' (' + (r.stockActual || 0) + ' ' + esc(unidadLabel(r.unidad)) + ')</option>').join('') + '</select>' +
+  '<div class="row"><input class="mnt-rep-cant grow" inputmode="decimal" placeholder="Cantidad" value="1"><button type="button" class="btn danger sm" onclick="this.closest(\'.mnt-rep\').remove()">✕</button></div></div>';
+}
+export function addRepuestoMantRow() { const el = $('#mnt_repuestos'); if (el) el.insertAdjacentHTML('beforeend', repuestoRowMant()); }
 export async function saveMantenimiento(editId) {
   const carId = val('m_carid');
   const c = carById(carId);
@@ -87,7 +96,15 @@ export async function saveMantenimiento(editId) {
   if (km) await actualizarKm(carId, km);
   const marcarTaller = document.getElementById('m_taller');
   if (marcarTaller && marcarTaller.checked) await marcarEnTaller(carId);
-  if (!editId) { toast('Mantenimiento registrado. Podés adjuntar la factura o una foto.'); mantenimientoForm(carId, o.id); }
+  if (!editId) {
+    const filasRepuesto = [...document.querySelectorAll('.mnt-rep')];
+    for (const fila of filasRepuesto) {
+      const repId = fila.querySelector('.mnt-rep-id').value;
+      const cant = +fila.querySelector('.mnt-rep-cant').value;
+      if (repId && cant > 0) await registrarSalidaStock(repId, cant, fecha, carId, 'Usado en mantenimiento: ' + (label || itemKey));
+    }
+    toast('Mantenimiento registrado. Podés adjuntar la factura o una foto.'); mantenimientoForm(carId, o.id);
+  }
   else { closeModal(); toast('Mantenimiento guardado'); carForm(carId); }
 }
 export async function delMantenimiento(id) {
