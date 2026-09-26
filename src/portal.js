@@ -148,11 +148,6 @@ function renderPortal(app, j) {
   '<label class="f"><span>Domicilio nuevo</span><input id="ad_domicilio"></label>' +
   '<button class="btn sec block" id="ad_btn">Enviar</button>' +
   '<div class="small muted" id="ad_status" style="margin-top:6px"></div></div>';
-  h += '<div class="sec-t">¿Cómo te está yendo con nosotros?</div><div class="card">' +
-  '<div class="row" style="gap:6px;margin-bottom:8px">' + [1, 2, 3, 4, 5].map(n => '<button type="button" class="btn sec sm" data-rating="' + n + '">' + n + ' ★</button>').join('') + '</div>' +
-  '<label class="f"><span>Comentario <small>opcional</small></span><textarea id="en_comentario"></textarea></label>' +
-  '<button class="btn sec block" id="en_btn">Enviar</button>' +
-  '<div class="small muted" id="en_status" style="margin-top:6px"></div></div>';
   const wrap = app.querySelector('.login');
   wrap.insertAdjacentHTML('beforeend', h);
   wrap.querySelectorAll('[data-recibo]').forEach(btn => {
@@ -173,16 +168,6 @@ function renderPortal(app, j) {
     const tel = wrap.querySelector('#ad_tel').value.trim(), domicilio = wrap.querySelector('#ad_domicilio').value.trim();
     if (!tel && !domicilio) { wrap.querySelector('#ad_status').textContent = 'Completá al menos un dato'; return; }
     enviarAccionPortal({ accion: 'actualizar_datos', tel, domicilio }, wrap.querySelector('#ad_status'), adBtn);
-  });
-  let ratingSel = 0;
-  wrap.querySelectorAll('[data-rating]').forEach(b => b.addEventListener('click', () => {
-    ratingSel = +b.dataset.rating;
-    wrap.querySelectorAll('[data-rating]').forEach(x => x.classList.toggle('on', x === b));
-  }));
-  const enBtn = wrap.querySelector('#en_btn');
-  if (enBtn) enBtn.addEventListener('click', () => {
-    if (!ratingSel) { wrap.querySelector('#en_status').textContent = 'Elegí una calificación'; return; }
-    enviarAccionPortal({ accion: 'encuesta', rating: ratingSel, comentario: wrap.querySelector('#en_comentario').value }, wrap.querySelector('#en_status'), enBtn);
   });
   const phBtn = wrap.querySelector('#ph_btn');
   if (phBtn) phBtn.addEventListener('click', async () => {
