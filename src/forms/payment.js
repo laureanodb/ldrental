@@ -19,10 +19,16 @@ export function payForm(carId) {
   '<label class="f"><span>Método de pago</span><select id="p_metodo">' + METODOS_PAGO.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label></div>' +
   '<label class="chk"><input type="checkbox" id="p_parcial"><span>Es un pago parcial</span></label>' +
   '<label class="chk"><input type="checkbox" id="p_acuenta"><span>El monto no coincide con el semanal (a cuenta, adelanto de varias semanas, etc.)</span></label>' +
+  '<label class="chk"><input type="checkbox" id="p_generaradelanto"><span>Si sobra plata después de cubrir la deuda, generar semana adelantada con el resto</span></label>' +
   '<label class="f"><span>Km actual <small>opcional</small></span><input id="p_km" inputmode="numeric" placeholder="' + esc(c.km || '') + '"></label>' +
   '<label class="f"><span>Nota</span><input id="p_nota"></label>' +
   '<div class="row"><button class="btn grow" onclick="savePay(this)">Guardar cobro</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
   openModal(h); onPayCar();
+}
+export function payFormACuenta(carId) {
+  payForm(carId);
+  const el = document.getElementById('p_acuenta');
+  if (el) el.checked = true;
 }
 export function onPayCar() {
   const c = carById($('#p_car').value); if (!c) return;
@@ -51,9 +57,32 @@ export async function savePay(btn) {
     return;
   }
   payAnomaloArmed = null;
-  const o = { id: uid(), carId: c.id, choferId: c.choferId, fecha: val('p_fecha'), monto, tipo: val('p_tipo'), metodo: val('p_metodo'), parcial, aCuenta, nota: val('p_nota'), depositado: false };
+  const tipo = val('p_tipo');
+  const generarAdelanto = document.getElementById('p_generaradelanto').checked;
+  let montoPago = monto, excedente = 0;
+  if (generarAdelanto && c.choferId && (tipo === 'alquiler' || tipo === 'cuota')) {
+    const debtActual = calc(c).debt;
+    excedente = Math.max(0, monto - debtActual);
+    if (excedente > 0) montoPago = monto - excedente;
+  }
+  const o = { id: uid(), carId: c.id, choferId: c.choferId, fecha: val('p_fecha'), monto: montoPago, tipo, metodo: val('p_metodo'), parcial, aCuenta, nota: val('p_nota'), depositado: false };
   const km = val('p_km');
-  if (await save('payments', o)) { if (km) await actualizarKm(c.id, km); closeModal(); toast('Cobro registrado'); }
+  if (!(await save('payments', o))) return;
+  if (excedente > 0) {
+    await save('depositos', { id: uid(), driverId: c.choferId, fecha: val('p_fecha'), monto: excedente, tipo: 'semana_adelantada', nota: 'Generado desde un cobro' });
+  }
+  if (km) await actualizarKm(c.id, km);
+  const mon2 = c.tipo === 'financiado' ? moneyUSD : money;
+  const msgOk = excedente > 0 ? 'Cobro registrado y ' + mon2(excedente) + ' quedaron como semana adelantada' : 'Cobro registrado';
+  const d = S.drivers.find(x => x.id === c.choferId);
+  if (d && d.tel) {
+    const wa = 'https://wa.me/' + d.tel.replace(/\D/g, '') + '?text=' + encodeURIComponent('Hola ' + (d.nombre || '').split(' ')[0] + ', te confirmamos que registramos tu pago de ' + mon2(montoPago) + ' del ' + val('p_fecha') + '. ¡Gracias!');
+    openModal('<h3>Cobro registrado</h3><div class="small muted" style="margin-bottom:14px">' + esc(msgOk) + '.</div>' +
+    '<div class="row"><a class="btn grow" target="_blank" rel="noopener" href="' + wa + '">Avisar por WhatsApp</a><button class="btn sec" onclick="closeModal()">Cerrar</button></div>');
+  } else {
+    closeModal();
+    toast(msgOk);
+  }
 }
 export async function delPay(id) { if (await remove('payments', id)) toast('Cobro borrado'); }
 export async function toggleDepositado(id) {

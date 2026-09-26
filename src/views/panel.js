@@ -1,6 +1,6 @@
 import { S, ui } from '../state.js';
 import { money, moneyUSD, today, esc, num1 } from '../utils.js';
-import { isContract, calc, urgent, driverName, plate, activeCars, cobradoDelMes, cobradoDelMesUSD, cobradoDelMesPorMetodo, financiacionesProximas, financiacionesCompletadasSinTransferir, resumenEstadoFlota, badge } from '../calc.js';
+import { isContract, calc, urgent, driverName, plate, activeCars, cobradoDelMes, cobradoDelMesUSD, cobradoDelMesPorMetodo, financiacionesProximas, financiacionesCompletadasSinTransferir, resumenEstadoFlota, badge, gastosFijosFlotaMensual, semanaAdelantadaDisponible } from '../calc.js';
 import { METODOS_PAGO, TIPOS } from '../constants.js';
 import { settings } from '../settings.js';
 import { alertRow } from './shared.js';
@@ -29,8 +29,9 @@ export function viewPanel() {
   }
   const morosos = infos.filter(x => x.i.debt > 0 && x.c.tipo !== 'financiado').sort((a, b) => b.i.debt - a.i.debt).slice(0, 5);
   let h = '<h1>Panel</h1><p class="sub">' + saludo(t0, morosos.length, urg.length) + '</p>';
-  h += '<div class="row" style="margin-bottom:12px"><button class="btn grow" onclick="payForm()">Cobro rápido</button><button class="btn sec" onclick="gastoGeneralForm()">Gasto rápido</button><button class="btn sec" onclick="searchView()">Buscar</button></div>';
+  h += '<div class="row" style="margin-bottom:12px"><button class="btn grow" onclick="payForm()">Cobro rápido</button><button class="btn sec" onclick="payFormACuenta()">A cuenta</button><button class="btn sec" onclick="gastoGeneralForm()">Gasto rápido</button><button class="btn sec" onclick="searchView()">Buscar</button></div>';
   h += notaInternaCard();
+  h += seccionSemanaAdelantada(act);
   h += seccionSugerenciasHoy(morosos, urg);
   const ef = resumenEstadoFlota();
   if (ef.total) {
@@ -50,6 +51,7 @@ export function viewPanel() {
     autosCalle: '<div class="kpi"><div class="n">' + act.length + ' de ' + flota.length + '</div><div class="l">Autos en la calle</div></div>',
     vencUrgentes: '<div class="kpi ' + (urg.length ? 'warn' : '') + ' tap" onclick="go(\'venc\')"><div class="n">' + urg.length + '</div><div class="l">Vencimientos urgentes</div></div>',
     autosDisponibles: '<div class="kpi tap" onclick="ui.filtroAutoTipo=\'disponible\';go(\'autos\')"><div class="n">' + disponibles + '</div><div class="l">Autos disponibles</div></div>',
+    gastosFijos: '<div class="kpi"><div class="n">' + money(gastosFijosFlotaMensual()) + '</div><div class="l">Gastos fijos mensuales</div></div>',
   };
   const activos = (settings.panelKpis && settings.panelKpis.length) ? settings.panelKpis : Object.keys(kpis);
   h += '<div class="grid">' + activos.filter(k => kpis[k]).map(k => kpis[k]).join('') + '</div>';
@@ -88,6 +90,19 @@ function saludo(t0, cantMorosos, cantUrg) {
   if (cantUrg) pend.push(cantUrg + ' vencimiento' + (cantUrg === 1 ? '' : 's') + ' urgente' + (cantUrg === 1 ? '' : 's'));
   if (!pend.length) return momento + ' · ' + fecha + (finde ? ' · disfrutá, no hay nada urgente' : ' · todo al día');
   return momento + ' · ' + fecha + ' · ' + (finde ? 'para cuando quieras: ' : 'hoy tenés ') + pend.join(' y ');
+}
+function seccionSemanaAdelantada(act) {
+  const vistos = new Set();
+  const filas = [];
+  act.forEach(c => {
+    if (!c.choferId || vistos.has(c.choferId)) return;
+    vistos.add(c.choferId);
+    const saldo = semanaAdelantadaDisponible(c.choferId);
+    if (saldo > 0) filas.push({ choferId: c.choferId, saldo, moneda: c.tipo === 'financiado' ? 'USD' : 'ARS' });
+  });
+  if (!filas.length) return '';
+  return '<div class="card" style="margin-bottom:12px"><div class="small muted" style="margin-bottom:6px">Choferes con semana adelantada activa — no haría falta cobrarles esta semana</div>' +
+  filas.map(f => '<div class="row between small" style="padding:2px 0"><span>' + esc(driverName(f.choferId)) + '</span><b>' + (f.moneda === 'USD' ? moneyUSD(f.saldo) : money(f.saldo)) + '</b></div>').join('') + '</div>';
 }
 function seccionSugerenciasHoy(morosos, urg) {
   const sugerencias = [];

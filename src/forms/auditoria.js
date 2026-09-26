@@ -3,7 +3,7 @@ import { sb } from '../state.js';
 import { openModal, toast } from '../modal.js';
 import { isAdmin } from '../roles.js';
 
-const TABLA_LABEL = { cars: 'Autos', drivers: 'Choferes', payments: 'Cobros', gastos: 'Gastos', proveedores: 'Proveedores', sanciones: 'Sanciones', prospectos: 'Prospectos', inspecciones: 'Inspecciones', mantenimientos: 'Mantenimiento', multas: 'Multas', depositos: 'Depósitos', profiles: 'Usuarios' };
+const TABLA_LABEL = { cars: 'Autos', drivers: 'Choferes', payments: 'Cobros', gastos: 'Gastos', proveedores: 'Proveedores', sanciones: 'Sanciones', prospectos: 'Prospectos', inspecciones: 'Inspecciones', mantenimientos: 'Mantenimiento', multas: 'Multas', depositos: 'Depósitos y semana adelantada', profiles: 'Usuarios' };
 const ACCION_LABEL = { guardado: 'Guardado', eliminado: 'Eliminado' };
 const accionLabel = a => ACCION_LABEL[a] || (a && a.indexOf('restauracion_masiva') === 0 ? 'Restauración masiva' : a);
 const accionCls = a => a === 'eliminado' ? 'bad' : a === 'guardado' ? 'ok' : 'mute';

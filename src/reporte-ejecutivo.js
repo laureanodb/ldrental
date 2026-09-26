@@ -2,7 +2,7 @@ import { S } from './state.js';
 import { money, moneyUSD, fdate, today } from './utils.js';
 import { settings } from './settings.js';
 import { toast } from './modal.js';
-import { resumenGeneral, resumenAnual, rankingRoiAutos, porcentajePerdidaGanancia, alertasTendencia, proyeccionRentabilidadTendencia, saludChoferes } from './calc.js';
+import { resumenGeneral, resumenAnual, rankingRoiAutos, porcentajePerdidaGanancia, alertasTendencia, proyeccionRentabilidadTendencia, saludChoferes, activeCars } from './calc.js';
 import { saldoAutoseguro } from './autoseguro.js';
 
 export async function descargarReporteEjecutivo() {
@@ -48,6 +48,12 @@ export async function descargarReporteEjecutivo() {
     titulo('Flota en ganancia vs. pérdida');
     linea('En ganancia', pg.ganancia + ' de ' + pg.total + ' (' + pg.pctGanancia + '%)');
     if (pg.perdida) linea('En pérdida', pg.perdida + ' de ' + pg.total);
+  }
+
+  const totalesAuto = activeCars().map(c => ({ c, total: S.payments.filter(p => p.carId === c.id).reduce((a, p) => a + (+p.monto || 0), 0) })).filter(x => x.total > 0).sort((a, b) => b.total - a.total).slice(0, 10);
+  if (totalesAuto.length) {
+    titulo('Total histórico cobrado por auto (todos los choferes)');
+    totalesAuto.forEach(x => linea(x.c.patente || 'Auto', money(x.total)));
   }
 
   const roi = rankingRoiAutos().slice(0, 5);

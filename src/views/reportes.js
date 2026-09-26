@@ -1,6 +1,6 @@
 import { S, ui } from '../state.js';
 import { esc, money, moneyUSD, today, fdate, iso } from '../utils.js';
-import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, costoTotalAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, planRenovacionFlota, badge, tendenciaNps, flujoCajaSemanal, flujoCajaSemanalUSD, utilizacionFlota, mejorPeorMesAuto, indiceSaludFlota, segmentoMasRentable } from '../calc.js';
+import { plate, rentabilidadAuto, driverTotalPagado, driverName, activeCars, isContract, calc, cobradoDelMes, cobradoDelMesUSD, diasEnTaller, gastoMantenimientoAuto, costoTotalAuto, gastosPorCategoria, rankingMultasChoferes, resumenAnual, siniestrosDeAuto, rankingSiniestrosChoferes, comparativaChoferes, comparativaAutos, puntoEquilibrio, rankingMensualChoferes, rankingRoiAutos, porcentajePerdidaGanancia, saludChoferes, alertasTendencia, proyeccionRentabilidadTendencia, rentabilidadPorChofer, mapaCalorGastos, planRenovacionFlota, badge, tendenciaNps, flujoCajaSemanal, flujoCajaSemanalUSD, utilizacionFlota, mejorPeorMesAuto, indiceSaludFlota, segmentoMasRentable, gastosFijosMensuales, gastosFijosFlotaMensual, totalDepositosFlota, totalSemanaAdelantadaFlota, flujoCajaReal } from '../calc.js';
 import { canVerFinanzas } from '../roles.js';
 import { GASTO_CATS, CANALES_PROSPECTO, MOTIVOS_REEMPLAZO } from '../constants.js';
 import { saldoAutoseguro } from '../autoseguro.js';
@@ -81,6 +81,7 @@ function seccionRentabilidad() {
     const eq = puntoEquilibrio(r.c);
     return '<div class="card"><div class="row between"><div>' + plate(r.c.patente) + '</div><b style="color:' + (r.neta >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(r.neta) + '</b></div>' +
     '<div class="row between small muted" style="margin-top:4px"><span>Cobrado ' + money(r.cobrado) + '</span><span>Gastos ' + money(r.gastos) + '</span></div>' +
+    (r.gastosFijos ? '<div class="row between small muted"><span>Sin gastos fijos (seguro/patente)</span><span>' + money(r.netaSinFijos) + '</span></div>' : '') +
     (r.costoCompra ? '<div class="small muted" style="margin-top:2px">Costo de compra: ' + money(r.costoCompra) + (r.cobrado >= r.costoCompra ? ' · ya recuperado' : ' · recuperado ' + Math.round(r.cobrado / r.costoCompra * 100) + '%') + '</div>' : '') +
     (eq && !eq.recuperado && eq.semanas != null ? '<div class="small muted">Punto de equilibrio: faltan ' + eq.semanas + ' semana' + (eq.semanas === 1 ? '' : 's') + '</div>' : '') +
     (diasEnTaller(r.c) ? '<div class="small muted">' + diasEnTaller(r.c) + ' días parado en taller</div>' : '') +
@@ -89,6 +90,41 @@ function seccionRentabilidad() {
   return h;
 }
 
+function seccionGastosFijos() {
+  if (!canVerFinanzas()) return '';
+  const rows = activeCars().map(c => Object.assign({ c }, gastosFijosMensuales(c))).filter(x => x.total > 0).sort((a, b) => b.total - a.total);
+  if (!rows.length) return '';
+  const totalFlota = gastosFijosFlotaMensual();
+  return '<h2>Gastos fijos mensuales (seguro y patente)</h2>' +
+  '<div class="card row between" style="margin-bottom:10px"><span class="muted">Total de la flota</span><b>' + money(totalFlota) + '/mes</b></div>' +
+  rows.map(r => '<div class="card row between small"><span>' + plate(r.c.patente) + '</span><span>' + money(r.total) + '/mes</span></div>').join('');
+}
+function seccionPasivosChofer() {
+  if (!canVerFinanzas()) return '';
+  const deposito = totalDepositosFlota();
+  const adelanto = totalSemanaAdelantadaFlota();
+  if (!deposito && !adelanto) return '';
+  const max = Math.max(deposito, adelanto, 1);
+  return '<h2>Depósitos y semana adelantada</h2><div class="small muted" style="margin:0 2px 8px">Plata que la empresa tiene en su poder o ya cobró por adelantado.</div>' +
+  '<div class="card">' +
+  '<div class="row between small"><span class="muted">Depósitos de garantía (pasivo)</span><b>' + money(deposito) + '</b></div>' +
+  '<div style="height:8px;background:var(--track,#e6e1d6);border-radius:99px;overflow:hidden;margin:4px 0 10px"><div style="height:100%;width:' + Math.round(deposito / max * 100) + '%;background:var(--teal)"></div></div>' +
+  '<div class="row between small"><span class="muted">Semana adelantada disponible</span><b>' + money(adelanto) + '</b></div>' +
+  '<div style="height:8px;background:var(--track,#e6e1d6);border-radius:99px;overflow:hidden;margin:4px 0 0"><div style="height:100%;width:' + Math.round(adelanto / max * 100) + '%;background:var(--ok)"></div></div>' +
+  '</div>';
+}
+function seccionComparacionTipos() {
+  if (!canVerFinanzas()) return '';
+  const alquiler = activeCars().filter(c => c.tipo === 'alquiler').map(c => rentabilidadAuto(c));
+  const financiado = activeCars().filter(c => c.tipo === 'financiado').map(c => rentabilidadAuto(c));
+  if (!alquiler.length && !financiado.length) return '';
+  const promAlquiler = alquiler.length ? alquiler.reduce((a, r) => a + r.neta, 0) / alquiler.length : null;
+  const promFinanciadoUSD = financiado.length ? financiado.reduce((a, r) => a + r.cobrado, 0) / financiado.length : null;
+  return '<h2>Alquiler vs. financiado</h2><div class="card">' +
+  (promAlquiler != null ? '<div class="row between"><span class="muted">Alquiler · rentabilidad neta promedio (' + alquiler.length + ' auto' + (alquiler.length === 1 ? '' : 's') + ')</span><b style="color:' + (promAlquiler >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(promAlquiler) + '</b></div>' : '') +
+  (promFinanciadoUSD != null ? '<div class="row between" style="margin-top:4px"><span class="muted">Financiado · cobrado promedio (' + financiado.length + ' auto' + (financiado.length === 1 ? '' : 's') + ')</span><b>' + moneyUSD(promFinanciadoUSD) + '</b></div>' : '') +
+  '<div class="small muted" style="margin-top:8px">No son directamente comparables (distinta moneda y estructura), pero sirve para ver el peso de cada segmento en la flota.</div></div>';
+}
 function seccionRentabilidadChofer() {
   if (!canVerFinanzas()) return '';
   const rows = rentabilidadPorChofer();
@@ -151,6 +187,15 @@ function seccionGastosPorCategoria() {
   '<div style="background:var(--soft);border-radius:6px;height:8px;overflow:hidden"><div style="width:' + Math.round(x.total / max * 100) + '%;height:100%;background:var(--info)"></div></div></div>').join('');
 }
 
+function seccionGastosPorCategoriaReciente() {
+  if (!canVerFinanzas()) return '';
+  const cat = gastosPorCategoria(3);
+  const rows = GASTO_CATS.map(x => ({ l: x[1], total: cat[x[0]] || 0 })).filter(x => x.total > 0).sort((a, b) => b.total - a.total);
+  if (!rows.length) return '';
+  const max = Math.max(...rows.map(x => x.total));
+  return '<h2>Gastos por categoría (últimos 3 meses)</h2>' + rows.map(x => '<div class="card"><div class="row between small" style="margin-bottom:4px"><span>' + esc(x.l) + '</span><b>' + money(x.total) + '</b></div>' +
+  '<div style="background:var(--soft);border-radius:6px;height:8px;overflow:hidden"><div style="width:' + Math.round(x.total / max * 100) + '%;height:100%;background:var(--info)"></div></div></div>').join('');
+}
 function seccionProspectosPorCanal() {
   const P = S.drivers.filter(d => d.prospecto);
   if (!P.length) return '';
@@ -286,6 +331,20 @@ function barritas(rows, key, neto) {
     return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:' + h + 'px;background:' + color + ';border-radius:4px 4px 0 0"></div><div class="small muted">S' + x.semana + '</div></div>';
   }).join('') + '</div>';
 }
+function seccionFlujoCajaReal() {
+  if (!canVerFinanzas()) return '';
+  const F = flujoCajaReal(6);
+  if (!F.some(x => x.cobrado || x.gastos)) return '';
+  const max = Math.max(...F.map(x => Math.max(x.cobrado, x.gastos, 1)));
+  const totalNeto = F.reduce((a, x) => a + x.neto, 0);
+  return '<h2>Flujo de caja real (últimos 6 meses)</h2><div class="small muted" style="margin:0 2px 8px">Lo que efectivamente entró (cobros) y salió (gastos), mes a mes, según lo cargado en la app.</div><div class="card">' +
+  '<div class="row" style="align-items:flex-end;gap:6px;height:70px">' + F.map(x => {
+    const hc = Math.max(2, Math.round(x.cobrado / max * 60)), hg = Math.max(2, Math.round(x.gastos / max * 60));
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div class="row" style="gap:2px;align-items:flex-end;height:60px"><div style="width:8px;height:' + hc + 'px;background:var(--ok);border-radius:3px 3px 0 0"></div><div style="width:8px;height:' + hg + 'px;background:var(--bad);border-radius:3px 3px 0 0"></div></div><div class="small muted">' + x.label + '</div></div>';
+  }).join('') + '</div>' +
+  '<div class="row between small" style="margin-top:8px"><span class="muted">Verde: cobrado · Rojo: gastos</span></div>' +
+  '<div class="row between" style="margin-top:6px"><span class="muted">Neto acumulado</span><b style="color:' + (totalNeto >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(totalNeto) + '</b></div></div>';
+}
 function seccionFlujoCaja() {
   if (!canVerFinanzas()) return '';
   const carId = ui.flujoCajaAutoId || '';
@@ -366,6 +425,7 @@ function seccionProyeccionRentabilidad() {
   const p = proyeccionRentabilidadTendencia();
   if (!p.promedioMensual) return '';
   return '<h2>Proyección de rentabilidad según tendencia</h2><div class="card"><div class="small muted" style="margin-bottom:4px">Según el promedio neto (cobrado − gastos) de los últimos 3 meses.</div>' +
+  '<div class="row between"><span class="muted">A 3 meses</span><b style="color:' + (p.proyeccion3 >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(p.proyeccion3) + '</b></div>' +
   '<div class="row between"><span class="muted">A 6 meses</span><b style="color:' + (p.proyeccion6 >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(p.proyeccion6) + '</b></div>' +
   '<div class="row between"><span class="muted">A 12 meses</span><b style="color:' + (p.proyeccion12 >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(p.proyeccion12) + '</b></div></div>';
 }
@@ -429,6 +489,7 @@ export function viewReportes() {
   if (canVerFinanzas()) h += '<div class="row" style="margin-bottom:14px"><button class="btn sec grow" onclick="descargarReporteEjecutivo()">Descargar reporte ejecutivo (PDF)</button></div>';
   h += seccionIndiceSalud();
   h += seccionAlertasTendencia();
+  h += seccionFlujoCajaReal();
   h += seccionFlujoCaja();
   h += seccionRangoPersonalizado();
   h += seccionComparacionMensual();
@@ -437,6 +498,9 @@ export function viewReportes() {
   h += seccionProyeccion();
   h += seccionProyeccionRentabilidad();
   h += seccionRentabilidad();
+  h += seccionGastosFijos();
+  h += seccionPasivosChofer();
+  h += seccionComparacionTipos();
   h += seccionRentabilidadChofer();
   h += seccionPerdidaGanancia();
   h += seccionRoiAutos();
@@ -447,6 +511,7 @@ export function viewReportes() {
   h += seccionComparativaChoferes();
   h += seccionTablaComparativaChoferes();
   h += seccionGastosPorCategoria();
+  h += seccionGastosPorCategoriaReciente();
   h += seccionReclamosSeguro();
   h += seccionMapaCalorGastos();
   h += seccionCostoTotalAuto();

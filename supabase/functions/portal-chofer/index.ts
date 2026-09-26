@@ -62,6 +62,7 @@ Deno.serve(async (req) => {
       const { data: driverRow } = await sb.from('drivers').select('id,data').eq('id', driverId).maybeSingle();
       if (!driverRow || !driverRow.data || driverRow.data.portalToken !== token) return json({ ok: false, error: 'Link inválido' }, 403);
       const d = Object.assign({ id: driverRow.id }, driverRow.data);
+      if (d.portalDesactivado) return json({ ok: false, error: 'El acceso al portal está desactivado temporalmente' }, 403);
       const accion = String(body.accion || '');
       if (accion === 'service') {
         const patente = String(body.patente || '').trim().slice(0, 20);
@@ -103,6 +104,22 @@ Deno.serve(async (req) => {
         const upd = await sb.from('cars').update({ data: Object.assign({}, c, { files }) }).eq('id', carId);
         if (upd.error) return json({ ok: false, error: 'No se pudo guardar: ' + upd.error.message }, 500);
         await avisarPush(sb, 'Foto subida por ' + (d.nombre || 'un chofer'), c.patente ? 'Auto ' + c.patente : 'Foto nueva en un auto');
+      } else if (accion === 'comprobante') {
+        const carId = String(body.carId || '');
+        const dataUrl = String(body.imagen || '');
+        const m = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
+        if (!m) return json({ ok: false, error: 'Comprobante inválido' }, 400);
+        const contentType = m[1];
+        const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0));
+        if (bytes.byteLength > MAX_FOTO_BYTES) return json({ ok: false, error: 'El archivo es muy pesado' }, 400);
+        const ext = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
+        const path = new Date().getFullYear() + '/comprobante-' + crypto.randomUUID() + '.' + ext;
+        const up = await sb.storage.from(BUCKET).upload(path, bytes, { contentType, upsert: false });
+        if (up.error) return json({ ok: false, error: 'No se pudo subir: ' + up.error.message }, 500);
+        const comprobantes = (driverRow.data.comprobantesPortal || []).concat([{ id: path, carId, type: contentType, size: bytes.byteLength, fecha: new Date().toISOString().slice(0, 10) }]);
+        const upd = await sb.from('drivers').update({ data: Object.assign({}, driverRow.data, { comprobantesPortal: comprobantes }) }).eq('id', driverId);
+        if (upd.error) return json({ ok: false, error: 'No se pudo guardar: ' + upd.error.message }, 500);
+        await avisarPush(sb, 'Comprobante subido por ' + (d.nombre || 'un chofer'), 'Revisalo en la ficha del chofer');
       } else {
         return json({ ok: false, error: 'Acción inválida' }, 400);
       }
@@ -123,16 +140,22 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: 'Link inválido' }, 403);
     }
     const d = Object.assign({ id: driverRow.id }, driverRow.data);
+    if (d.portalDesactivado) return json({ ok: false, error: 'El acceso al portal está desactivado temporalmente' }, 403);
 
-    const [{ data: carsRaw }, { data: paymentsRaw }, { data: multasRaw }, { data: settingsRow }] = await Promise.all([
+    const [{ data: carsRaw }, { data: paymentsRaw }, { data: multasRaw }, { data: settingsRow }, { data: depositosRaw }] = await Promise.all([
       sb.from('cars').select('id,data'),
       sb.from('payments').select('id,data'),
       sb.from('multas').select('id,data'),
       sb.from('app_settings').select('data').eq('id', 'main').maybeSingle(),
+      sb.from('depositos').select('id,data'),
     ]);
     const cars = (carsRaw || []).map((r: any) => Object.assign({ id: r.id }, r.data))
       .filter((c: any) => c.choferId === driverId && !c.vendido && (c.tipo === 'alquiler' || c.tipo === 'financiado'));
     const payments = (paymentsRaw || []).map((r: any) => Object.assign({ id: r.id }, r.data)).filter((p: any) => p.choferId === driverId);
+    const depositos = (depositosRaw || []).map((r: any) => Object.assign({ id: r.id }, r.data)).filter((x: any) => x.driverId === driverId);
+    const esGarantia = (x: any) => !x.tipo || x.tipo === 'cuota' || x.tipo === 'garantia';
+    const saldoDeposito = depositos.filter(esGarantia).reduce((a: number, x: any) => a + (+x.monto || 0), 0);
+    const saldoSemanaAdelantadaTotal = depositos.filter((x: any) => x.tipo === 'semana_adelantada').reduce((a: number, x: any) => a + (+x.monto || 0), 0);
     const multas = (multasRaw || []).map((r: any) => Object.assign({ id: r.id }, r.data))
       .filter((m: any) => m.choferId === driverId && (m.estado === 'pendiente' || m.estado === 'vencida'))
       .sort((a: any, b: any) => String(a.fecha).localeCompare(String(b.fecha)))
@@ -140,10 +163,11 @@ Deno.serve(async (req) => {
     const cfg = (settingsRow && settingsRow.data) || {};
 
     const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    let adelantoRestante = saldoSemanaAdelantadaTotal;
 
     const autos = cars.map((c: any) => {
       const moneda = c.tipo === 'financiado' ? 'USD' : 'ARS';
-      let debt = 0, proximo: string | null = null, cuotaActual = 0, saldo: number | null = null;
+      let debt = 0, proximo: string | null = null, cuotaActual = 0, saldo: number | null = null, adelantoAplicado = 0;
       if (c.inicio && c.monto) {
         const dias = diasEntre(c.inicio, hoy);
         if (dias >= 0) {
@@ -154,7 +178,10 @@ Deno.serve(async (req) => {
           const paid = payments.filter((p: any) => p.carId === c.id && p.tipo === kind && p.fecha >= c.inicio)
             .reduce((a: number, p: any) => a + (+p.monto || 0), 0);
           const ajustes = (c.ajustesDeuda || []).reduce((a: number, x: any) => a + (+x.monto || 0), 0);
-          debt = Math.max(0, weeks * c.monto - paid - ajustes);
+          const debtSinAdelanto = Math.max(0, weeks * c.monto - paid - ajustes);
+          adelantoAplicado = Math.min(adelantoRestante, debtSinAdelanto);
+          adelantoRestante -= adelantoAplicado;
+          debt = Math.max(0, debtSinAdelanto - adelantoAplicado);
           const prox = new Date(c.inicio + 'T00:00:00'); prox.setDate(prox.getDate() + weeks * 7);
           proximo = prox.toISOString().slice(0, 10);
           if (c.tipo === 'financiado') {
@@ -164,10 +191,10 @@ Deno.serve(async (req) => {
           }
         }
       }
-      return { id: c.id, patente: c.patente || '', marca: c.marca || '', modelo: c.modelo || '', vtv: c.vtv || '', seguro: c.seguro || '', tipo: c.tipo, monto: +c.monto || 0, moneda, debt, proximo, cuotas: +c.cuotas || 0, cuotaActual, saldo };
+      return { id: c.id, patente: c.patente || '', marca: c.marca || '', modelo: c.modelo || '', vtv: c.vtv || '', seguro: c.seguro || '', tipo: c.tipo, monto: +c.monto || 0, moneda, debt, proximo, cuotas: +c.cuotas || 0, cuotaActual, saldo, adelantoAplicado };
     });
 
-    const pagos = payments.filter((p: any) => p.fecha).sort((a: any, b: any) => b.fecha.localeCompare(a.fecha)).slice(0, 20)
+    const pagos = payments.filter((p: any) => p.fecha).sort((a: any, b: any) => b.fecha.localeCompare(a.fecha)).slice(0, 100)
       .map((p: any) => {
         const c = cars.find((x: any) => x.id === p.carId);
         return { fecha: p.fecha, monto: +p.monto || 0, tipo: p.tipo, metodoLabel: METODOS[p.metodo] || '', patente: c ? c.patente : '' };
@@ -175,6 +202,8 @@ Deno.serve(async (req) => {
 
     return json({
       ok: true, nombre: d.nombre || '', autos, pagos, multas,
+      deposito: saldoDeposito, depositoObjetivo: +d.depositoObjetivo || 0,
+      semanaAdelantada: Math.max(0, adelantoRestante),
       companyName: cfg.companyName || '', companyLogo: cfg.companyLogo || '', companyPhone: cfg.companyPhone || '',
       telefonoEmergencia: cfg.telefonoEmergencia || '', protocoloEmergencia: cfg.protocoloEmergencia || '', anuncios: cfg.anuncios || [],
     });

@@ -1,7 +1,7 @@
 import { S } from '../state.js';
 import { $, val, uid, iso, today, esc, fdate, money, moneyUSD, parse, days } from '../utils.js';
 import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS, MOTIVOS_REEMPLAZO, TIPOS_SINIESTRO, SINIESTRO_ESTADOS, ASEGURADORAS, TRANSMISIONES, COBERTURAS_SEGURO, ELEMENTOS_SEGURIDAD, CUMPLIMIENTO_NORMATIVO_ITEMS, RECLAMO_SEGURO_ESTADOS } from '../constants.js';
-import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas, estadoGeneralAuto, mejorPeorMesAuto, lineaDeTiempoAuto, contratoVencimiento, vs } from '../calc.js';
+import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas, estadoGeneralAuto, mejorPeorMesAuto, lineaDeTiempoAuto, contratoVencimiento, vs, gastosFijosMensuales, historialGastosFijos, comparacionGastoFijo, desgloseCobradoPorChofer } from '../calc.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -120,9 +120,10 @@ export function carForm(id) {
   })() +
   '<div class="two"><label class="f"><span>Cobertura</span><select id="c_coberturaSeguro"><option value="">Sin especificar</option>' + COBERTURAS_SEGURO.map(x => '<option value="' + x[0] + '"' + (c.coberturaSeguro === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
   '<label class="f"><span>Franquicia</span><input id="c_franquiciaSeguro" inputmode="decimal" value="' + esc(c.franquiciaSeguro || '') + '"></label></div>' +
-  '<div class="small muted" style="margin:-4px 0 8px">Si cargás un monto mensual, la app genera el gasto automáticamente cada mes (dejalo en 0 para no generarlo).</div>' +
-  '<div class="two"><label class="f"><span>Seguro: monto mensual</span><input id="c_seguroMensual" inputmode="decimal" value="' + esc(c.seguroMensual || '') + '"></label>' +
-  '<label class="f"><span>Patente: monto mensual</span><input id="c_patenteMensual" inputmode="decimal" value="' + esc(c.patenteMensual || '') + '"></label></div>' +
+  '<div class="small muted" style="margin:-4px 0 8px">Si cargás un monto mensual, la app genera el gasto automáticamente cada mes (dejalo en 0 para no generarlo).' + (!isAdmin() ? ' Solo un administrador puede editar estos montos.' : '') + '</div>' +
+  '<div class="two"><label class="f"><span>Seguro: monto mensual</span><input id="c_seguroMensual" inputmode="decimal" value="' + esc(c.seguroMensual || '') + '"' + (isAdmin() ? '' : ' disabled') + '></label>' +
+  '<label class="f"><span>Patente: monto mensual</span><input id="c_patenteMensual" inputmode="decimal" value="' + esc(c.patenteMensual || '') + '"' + (isAdmin() ? '' : ' disabled') + '></label></div>' +
+  '<label class="f"><span>Mantenimiento preventivo: estimado mensual <small>no genera gasto, solo para la rentabilidad</small></span><input id="c_mantenimientoMensualEstimado" inputmode="decimal" value="' + esc(c.mantenimientoMensualEstimado || '') + '"' + (isAdmin() ? '' : ' disabled') + '></label>' +
   '<div class="sec-t">Ubicación y GPS</div>' +
   '<div class="two"><label class="f"><span>Dónde duerme de noche</span><input id="c_dondeDuerme" value="' + esc(c.dondeDuerme) + '"></label>' +
   '<label class="f"><span>Link de Google Maps <small>opcional</small></span><input id="c_dondeDuermeMaps" type="url" value="' + esc(c.dondeDuermeMaps) + '"></label></div>' +
@@ -261,6 +262,28 @@ export function carForm(id) {
     const MR = MH.filter(m => m.marca || m.especificacion);
     if (MR.length) mant += '<div class="sec-t">Historial de repuestos</div>' + MR.map(m => '<div class="row between small" style="padding:4px 0"><span>' + esc(m.label || m.item) + ': ' + esc([m.marca, m.especificacion].filter(Boolean).join(' · ')) + '</span><span class="muted">' + fdate(m.fecha) + '</span></div>').join('');
 
+    /* ---- Gastos fijos mensuales (seguro + patente) ---- */
+    const GF = gastosFijosMensuales(c);
+    if (GF.total || canVerFinanzas()) {
+      gastos += '<div class="sec-t">Gastos fijos mensuales</div><div class="card">' +
+      '<div class="row between small"><span class="muted">Seguro</span><span>' + (GF.seguro ? money(GF.seguro) + '/mes' : 'Sin cargar') + '</span></div>' +
+      '<div class="row between small"><span class="muted">Patente</span><span>' + (GF.patente ? money(GF.patente) + '/mes' : 'Sin cargar') + '</span></div>' +
+      (GF.mantenimientoEstimado ? '<div class="row between small"><span class="muted">Mantenimiento preventivo (estimado)</span><span>' + money(GF.mantenimientoEstimado) + '/mes</span></div>' : '') +
+      '<div class="row between" style="margin-top:4px"><b>Total</b><b>' + money(GF.total) + '/mes</b></div>' +
+      (canVerFinanzas() ? comparacionGastoFijo(c).filter(x => x.distinto).map(x => '<div class="small muted" style="margin-top:6px;color:var(--warn)">' + (x.categoria === 'seguro' ? 'Seguro' : 'Patente') + ': el monto cargado difiere ' + x.difPct + '% de lo que realmente se pagó en los últimos meses (' + money(x.promedioReal) + ' en promedio).</div>').join('') : '') +
+      '</div>';
+      const HGF = historialGastosFijos(c);
+      if (HGF.length) {
+        gastos += '<details style="margin-bottom:8px"><summary class="small muted" style="cursor:pointer">Historial de seguro y patente pagados (' + HGF.length + ')</summary>' +
+        HGF.map(g => '<div class="row between small" style="padding:2px 0"><span>' + esc(gastoCatLabel(g.categoria)) + '</span><span class="muted">' + money(g.costo) + ' · ' + fdate(g.fecha) + '</span></div>').join('') + '</details>';
+      }
+      const gfh = (c.gastoFijoHistorial || []).slice().reverse();
+      if (gfh.length) {
+        gastos += '<details style="margin-bottom:8px"><summary class="small muted" style="cursor:pointer">Historial de cambios en los montos (' + gfh.length + ')</summary>' +
+        gfh.map(x => '<div class="row between small" style="padding:2px 0"><span>' + (x.campo === 'seguro' ? 'Seguro' : 'Patente') + ': ' + money(x.anterior) + ' → ' + money(x.nuevo) + '</span><span class="muted">' + fdate(x.fecha) + '</span></div>').join('') + '</details>';
+      }
+    }
+
     /* ---- Gastos (incluye multas y siniestros) ---- */
     const G = S.gastos.filter(g => g.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     const totalGastos = G.reduce((a, g) => a + (+g.costo || 0), 0);
@@ -306,9 +329,19 @@ export function carForm(id) {
     hist += '<button class="btn sec block" style="margin-bottom:20px" onclick="traspasoForm(\'' + c.id + '\')">Traspaso (cambiar chofer con checklist)</button>';
     const H = (c.historialChoferes || []).slice().sort((a, b) => b.desde.localeCompare(a.desde));
     if (H.length) {
-      const totalHistorico = S.payments.filter(p => p.carId === c.id).reduce((a, p) => a + (+p.monto || 0), 0);
-      hist += '<div class="sec-t row between">Historial de choferes<span class="small muted">Total cobrado en este auto: ' + (c.tipo === 'financiado' ? moneyUSD(totalHistorico) : money(totalHistorico)) + '</span></div>' +
+      const totalHistorico = isAdmin() ? S.payments.filter(p => p.carId === c.id).reduce((a, p) => a + (+p.monto || 0), 0) : null;
+      hist += '<div class="sec-t row between">Historial de choferes' + (totalHistorico != null ? '<span class="small muted">Total cobrado en este auto: ' + (c.tipo === 'financiado' ? moneyUSD(totalHistorico) : money(totalHistorico)) + '</span>' : '') + '</div>' +
       H.map(x => '<div class="row between small" style="padding:4px 0"><span>' + esc(driverName(x.choferId) || 'Chofer eliminado') + '</span><span class="muted">' + fdate(x.desde) + ' – ' + (x.hasta ? fdate(x.hasta) : 'actual') + '</span></div>').join('');
+      if (isAdmin() && c.tipo !== 'financiado') {
+        const desglose = desgloseCobradoPorChofer(c);
+        if (desglose.length > 1) {
+          const maxCobrado = Math.max(...desglose.map(x => x.cobrado), 1);
+          hist += '<div class="small muted" style="margin:8px 0 4px">Cobrado y rentabilidad por chofer</div>' +
+          desglose.map(x => '<div style="margin-bottom:8px"><div class="row between small"><span>' + esc(driverName(x.choferId) || 'Chofer eliminado') + '</span><b>' + money(x.cobrado) + '</b></div>' +
+          '<div style="background:var(--soft);border-radius:6px;height:6px;overflow:hidden;margin:3px 0"><div style="width:' + Math.round(x.cobrado / maxCobrado * 100) + '%;height:100%;background:var(--teal)"></div></div>' +
+          '<div class="small muted">Rentabilidad neta: <b style="color:' + (x.neta >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(x.neta) + '</b></div></div>').join('');
+        }
+      }
     }
     const HM = (c.montoHistorial || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
     if (HM.length) {
@@ -389,6 +422,15 @@ export async function saveCar(btn, id) {
     const prev = ex ? (ex[v[0]] || '') : '';
     if (nv && nv !== prev && nv < hoy) avisos.push(v[1] + ' ya está vencido');
   });
+  const nuevoSeguro = +val('c_seguroMensual') || 0, nuevaPatente = +val('c_patenteMensual') || 0;
+  if (isAdmin()) {
+    const otrosSeguro = S.cars.filter(x => x.id !== id && +x.seguroMensual > 0).map(x => +x.seguroMensual);
+    const otrasPatente = S.cars.filter(x => x.id !== id && +x.patenteMensual > 0).map(x => +x.patenteMensual);
+    const promSeguro = otrosSeguro.length ? otrosSeguro.reduce((a, x) => a + x, 0) / otrosSeguro.length : null;
+    const promPatente = otrasPatente.length ? otrasPatente.reduce((a, x) => a + x, 0) / otrasPatente.length : null;
+    if (nuevoSeguro && promSeguro && nuevoSeguro > promSeguro * 5) avisos.push('el seguro mensual parece muy alto comparado con el resto de la flota (¿ceros de más?)');
+    if (nuevaPatente && promPatente && nuevaPatente > promPatente * 5) avisos.push('la patente mensual parece muy alta comparada con el resto de la flota (¿ceros de más?)');
+  }
   if (avisos.length && saveCarAvisoArmed !== btn) {
     saveCarAvisoArmed = btn;
     toast('Atención: ' + avisos.join('; ') + '. Tocá "Guardar" de nuevo para confirmar.');
@@ -399,6 +441,9 @@ export async function saveCar(btn, id) {
   const kmNuevo = +val('c_km') || 0;
   const kmViejo = ex ? (+ex.km || 0) : null;
   const kmHistorial = (ex && ex.kmHistorial) || [];
+  let gastoFijoHistorial = (ex && ex.gastoFijoHistorial) || [];
+  if (ex && +ex.seguroMensual !== nuevoSeguro) gastoFijoHistorial = gastoFijoHistorial.concat([{ fecha: hoy, campo: 'seguro', anterior: +ex.seguroMensual || 0, nuevo: nuevoSeguro }]);
+  if (ex && +ex.patenteMensual !== nuevaPatente) gastoFijoHistorial = gastoFijoHistorial.concat([{ fecha: hoy, campo: 'patente', anterior: +ex.patenteMensual || 0, nuevo: nuevaPatente }]);
   const o = {
     id: id || uid(), patente, marca: val('c_marca'), modelo: val('c_modelo'), anio: val('c_anio'), tipo,
     choferId, monto: con ? (+val('c_monto') || 0) : 0, inicio: con ? val('c_inicio') : '',
@@ -409,7 +454,7 @@ export async function saveCar(btn, id) {
     numeroFlota: val('c_numflota'), combustible: val('c_combustible'), km: val('c_km'), costoCompra: +val('c_costocompra') || 0,
     valorMercado: +val('c_valormercado') || 0,
     polizaNumero: val('c_poliza'), aseguradora: val('c_aseguradora') === 'Otro' ? val('c_aseguradoraOtro') : val('c_aseguradora'),
-    seguroMensual: +val('c_seguroMensual') || 0, patenteMensual: +val('c_patenteMensual') || 0,
+    seguroMensual: nuevoSeguro, patenteMensual: nuevaPatente, mantenimientoMensualEstimado: +val('c_mantenimientoMensualEstimado') || 0, gastoFijoHistorial,
     dondeDuerme: val('c_dondeDuerme'), dondeDuermeMaps: val('c_dondeDuermeMaps'),
     gpsTipo: val('c_gpsTipo'), gpsAlerta: document.getElementById('c_gpsAlerta').checked,
     form08: document.getElementById('c_form08').checked,

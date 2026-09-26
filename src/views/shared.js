@@ -1,6 +1,6 @@
 import { S, ui } from '../state.js';
 import { esc, val, fdate, iso, today } from '../utils.js';
-import { badge, usoDeDatos } from '../calc.js';
+import { badge, usoDeDatos, saludDeDatos } from '../calc.js';
 import { settings, saveSettings } from '../settings.js';
 import { PANEL_KPIS, FEATURES_TOGGLEABLES } from '../constants.js';
 import { snooze } from '../snooze.js';
@@ -13,6 +13,13 @@ import { canVerFinanzas } from '../roles.js';
 import { biometricSoportado, biometricRegistrado } from '../biometric.js';
 import { modoConsultaActivo, modoConsultaHasta, activarModoConsulta, desactivarModoConsulta } from '../consulta.js';
 
+export function saludDatosCard() {
+  if (!isAdmin()) return '';
+  const items = saludDeDatos();
+  if (!items.length) return '<div class="card"><b>Salud de los datos</b><div class="small muted" style="margin-top:6px">Todo en orden. Los totales de cobros y gastos se calculan siempre en vivo a partir de lo cargado, así que no pueden desincronizarse.</div></div>';
+  return '<div class="card"><b>Salud de los datos</b><div class="small muted" style="margin:4px 0 8px">' + items.length + ' cosa' + (items.length === 1 ? '' : 's') + ' para revisar. Los totales de cobros y gastos siempre se calculan en vivo, no pueden desincronizarse.</div>' +
+  items.map(x => '<div class="row between small tap" style="padding:4px 0" onclick="' + (x.tipo === 'car' ? "carForm('" + x.id + "')" : x.tipo === 'driver' ? "driverForm('" + x.id + "')" : '') + '"><span>' + esc(x.texto) + '</span>' + (x.tipo !== 'sistema' ? '<span class="muted">›</span>' : '') + '</div>').join('') + '</div>';
+}
 function biometricCard() {
   if (!biometricSoportado()) return '';
   const on = biometricRegistrado();

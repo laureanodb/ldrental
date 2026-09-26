@@ -1,12 +1,13 @@
 import { $, esc, val, uid, money, moneyUSD, fdate, iso, today } from '../utils.js';
 import { S } from '../state.js';
 import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS, CANALES_PROSPECTO, METODOS_PAGO, COMUNICACION_TIPOS } from '../constants.js';
-import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, saldoSemanaAdelantada, semanaAdelantadaDeChofer, semanaAdelantadaDisponible, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer, estadoGeneralChofer, promedioIngresos3MesesChofer, encuestasDeChofer, promedioNpsChofer, desafiosCumplidos } from '../calc.js';
+import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, saldoSemanaAdelantada, semanaAdelantadaDeChofer, semanaAdelantadaDisponible, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer, estadoGeneralChofer, promedioIngresos3MesesChofer, encuestasDeChofer, promedioNpsChofer, desafiosCumplidos, vs } from '../calc.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
 import { canDelete, canVerFinanzas } from '../roles.js';
 import { seccionAdelantos } from './adelanto.js';
+import { gruposDuplicadosLedger } from './deposito.js';
 import { settings, featureOculta } from '../settings.js';
 
 function telRow(t) {
@@ -56,10 +57,12 @@ export function driverForm(id) {
   if (ex) {
     const portalUrl = d.portalToken ? location.origin + location.pathname + '#/portal/' + d.id + '/' + d.portalToken : '';
     h += '<div class="card" style="margin-bottom:10px"><div class="small muted" style="margin-bottom:6px">Portal del chofer <small>link de solo lectura, sin login</small></div>' +
+    (d.portalDesactivado ? '<div class="row between" style="margin-bottom:8px"><span class="small" style="color:var(--bad)">Acceso desactivado</span><button class="btn sec sm" onclick="togglePortalDesactivado(\'' + d.id + '\')">Reactivar</button></div>' : '') +
     (portalUrl ? '<input readonly value="' + esc(portalUrl) + '" onclick="this.select()" style="margin-bottom:8px">' +
       '<div class="row"><button class="btn sec sm" onclick="copiarLinkPortal(\'' + esc(portalUrl) + '\')">Copiar</button>' +
       '<a class="btn sec sm" target="_blank" href="https://wa.me/?text=' + encodeURIComponent('Hola ' + (d.nombre || '').split(' ')[0] + ', acá podés ver tu estado de cuenta: ' + portalUrl) + '">WhatsApp</a>' +
-      '<button class="btn sec sm" onclick="regenerarLinkPortal(\'' + d.id + '\')">Regenerar</button></div>'
+      '<button class="btn sec sm" onclick="regenerarLinkPortal(\'' + d.id + '\')">Regenerar</button></div>' +
+      (!d.portalDesactivado ? '<button class="btn sec sm block" style="margin-top:6px" onclick="togglePortalDesactivado(\'' + d.id + '\')">Desactivar acceso temporalmente</button>' : '')
       : '<button class="btn sec block" onclick="regenerarLinkPortal(\'' + d.id + '\')">Generar link del portal</button>') +
     '</div>';
   }
@@ -120,21 +123,30 @@ export function driverForm(id) {
   }
   financiacion += (ex ? (() => { const s = sugerirAptoFinanciar(d.id); return '<div class="small muted" style="margin-bottom:8px">Sugerido según puntualidad, antigüedad y sanciones: <b style="color:' + (s.cumple ? 'var(--ok)' : 'var(--muted)') + '">' + (s.cumple ? 'Calificaría' : 'Todavía no calificaría') + '</b></div>'; })() : '') +
   '<label class="chk"><input type="checkbox" id="d_apto"' + (d.aptoFinanciar ? ' checked' : '') + '><span>Apto para financiar un auto (decisión final)</span></label>' +
-  '<label class="f"><span>Objetivo del depósito de garantía</span><input id="d_depositoObjetivo" inputmode="decimal" value="' + esc(d.depositoObjetivo || '') + '"></label>' +
+  '<div class="two"><label class="f"><span>Objetivo del depósito de garantía</span><input id="d_depositoObjetivo" inputmode="decimal" value="' + esc(d.depositoObjetivo || '') + '"></label>' +
+  '<label class="f"><span>Fecha objetivo <small>opcional</small></span><input id="d_depositoFechaObjetivo" type="date" value="' + esc(d.depositoFechaObjetivo) + '"></label></div>' +
   '<div class="sec-t">Garante / aval</div>' +
   '<div class="two"><label class="f"><span>Nombre</span><input id="d_garanteNombre" value="' + esc(d.garanteNombre) + '"></label>' +
   '<label class="f"><span>Teléfono</span><input id="d_garanteTel" type="tel" value="' + esc(d.garanteTel) + '"></label></div>';
   if (ex) {
     const DEP = depositosDeChofer(d.id);
     const saldoDep = saldoDeposito(d.id);
-    financiacion += '<div class="sec-t row between">Depósito de garantía<span class="small muted">' + money(saldoDep) + (d.depositoObjetivo ? ' de ' + money(d.depositoObjetivo) : '') + '</span></div>';
-    if (DEP.length) financiacion += DEP.map(x => '<div class="card row"><div class="grow"><div>' + (x.monto >= 0 ? '+' + money(x.monto) : '-' + money(-x.monto)) + ' <span class="small muted">' + fdate(x.fecha) + '</span></div>' + (x.nota ? '<div class="small muted">' + esc(x.nota) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delDeposito(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
-    financiacion += '<button class="btn sec block" style="margin:8px 0 20px" onclick="depositoForm(\'' + d.id + '\')">+ Registrar pago de depósito</button>';
     const SEM = semanaAdelantadaDeChofer(d.id);
     const saldoSem = saldoSemanaAdelantada(d.id);
+    if (saldoDep || saldoSem) {
+      financiacion += '<div class="card row between" style="margin-bottom:4px"><span class="muted">Depósito + semana adelantada</span><b>' + money(saldoDep + saldoSem) + '</b></div>';
+    }
+    const medioLabel = m => m === 'cuenta' ? 'en cuenta' : m === 'transferencia' ? 'transferencia' : m === 'efectivo' ? 'efectivo' : '';
+    const objVs = d.depositoFechaObjetivo && saldoDep < (+d.depositoObjetivo || 0) ? vs(d.depositoFechaObjetivo) : null;
+    financiacion += '<div class="sec-t row between">Depósito de garantía<span class="small muted">' + money(saldoDep) + (d.depositoObjetivo ? ' de ' + money(d.depositoObjetivo) : '') + '</span></div>' +
+    (objVs ? '<div class="small muted" style="margin-bottom:6px">Objetivo para ' + fdate(d.depositoFechaObjetivo) + ' · ' + objVs.t + '</div>' : '');
+    if (DEP.length) financiacion += DEP.map(x => '<div class="card row"><div class="grow"><div>' + (x.monto >= 0 ? '+' + money(x.monto) : '-' + money(-x.monto)) + ' <span class="small muted">' + fdate(x.fecha) + (medioLabel(x.medio) ? ' · ' + medioLabel(x.medio) : '') + '</span></div>' + (x.nota ? '<div class="small muted">' + esc(x.nota) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delDeposito(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    if (canDelete() && gruposDuplicadosLedger(d.id, 'garantia').length) financiacion += '<div class="card row between small" style="background:#fff8c4;border-color:#e8d47a;margin-bottom:8px"><span>Hay movimientos que parecen duplicados</span><button class="btn sec sm" onclick="fusionarDuplicadosLedger(\'' + d.id + '\',\'garantia\')">Fusionar</button></div>';
+    financiacion += '<button class="btn sec block" style="margin:8px 0 20px" onclick="depositoForm(\'' + d.id + '\')">+ Registrar movimiento de depósito</button>';
     financiacion += '<div class="sec-t row between">Semana adelantada<span class="small muted">' + money(saldoSem) + '</span></div>' +
     '<div class="small muted" style="margin-bottom:8px">Plata pagada de más que se descuenta sola de las próximas semanas de deuda.</div>';
-    if (SEM.length) financiacion += SEM.map(x => '<div class="card row"><div class="grow"><div>' + (x.monto >= 0 ? '+' + money(x.monto) : '-' + money(-x.monto)) + ' <span class="small muted">' + fdate(x.fecha) + '</span></div>' + (x.nota ? '<div class="small muted">' + esc(x.nota) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delSemanaAdelantada(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    if (SEM.length) financiacion += SEM.map(x => '<div class="card row"><div class="grow"><div>' + (x.monto >= 0 ? '+' + money(x.monto) : '-' + money(-x.monto)) + ' <span class="small muted">' + fdate(x.fecha) + (medioLabel(x.medio) ? ' · ' + medioLabel(x.medio) : '') + '</span></div>' + (x.nota ? '<div class="small muted">' + esc(x.nota) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmarBorrarSemanaAdelantada(\'' + x.id + '\')">Borrar</button>' : '') + '</div>').join('');
+    if (canDelete() && gruposDuplicadosLedger(d.id, 'semana_adelantada').length) financiacion += '<div class="card row between small" style="background:#fff8c4;border-color:#e8d47a;margin-bottom:8px"><span>Hay movimientos que parecen duplicados</span><button class="btn sec sm" onclick="fusionarDuplicadosLedger(\'' + d.id + '\',\'semana_adelantada\')">Fusionar</button></div>';
     financiacion += '<button class="btn sec block" style="margin:8px 0 20px" onclick="semanaAdelantadaForm(\'' + d.id + '\')">+ Registrar semana adelantada</button>';
     if (canVerFinanzas()) financiacion += '<button class="btn sec block" style="margin-bottom:20px" onclick="estadoCuentaPDF(\'' + d.id + '\')">Estado de cuenta del mes (PDF)</button>';
     if (!featureOculta('adelantos')) financiacion += seccionAdelantos(d);
@@ -224,7 +236,7 @@ export async function saveDriver(id) {
     domicilioMaps: val('d_domMaps'), nacionalidad: val('d_nacionalidad'), estadoCivil: val('d_estadoCivil'),
     referenciaNombre: val('d_refNombre'), referenciaTel: val('d_refTel'), nivelEstudios: val('d_estudios'),
     otrosIngresos: val('d_otrosIngresos'), ocupacionAnterior: val('d_ocupacion'), experienciaChofer: val('d_experiencia'),
-    aptoFinanciar: document.getElementById('d_apto').checked, depositoObjetivo: +val('d_depositoObjetivo') || 0,
+    aptoFinanciar: document.getElementById('d_apto').checked, depositoObjetivo: +val('d_depositoObjetivo') || 0, depositoFechaObjetivo: val('d_depositoFechaObjetivo'),
     garanteNombre: val('d_garanteNombre'), garanteTel: val('d_garanteTel'),
     contactoEmergencia: { nombre: val('d_emerg_nombre'), tel: val('d_emerg_tel') },
     otrosTelefonos, inactivo: (ex || {}).inactivo || false, favorito: (ex || {}).favorito || false, prospecto: document.getElementById('d_prospecto').checked,
@@ -251,6 +263,11 @@ export async function regenerarLinkPortal(id) {
   const token = uid() + uid();
   if (!(await save('drivers', Object.assign({}, d, { portalToken: token })))) return;
   toast('Link generado'); driverForm(id);
+}
+export async function togglePortalDesactivado(id) {
+  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  if (!(await save('drivers', Object.assign({}, d, { portalDesactivado: !d.portalDesactivado })))) return;
+  toast(d.portalDesactivado ? 'Portal reactivado' : 'Portal desactivado'); driverForm(id);
 }
 export async function copiarLinkPortal(url) {
   try {

@@ -81,6 +81,12 @@ function renderPortal(app, j) {
     (protocolo ? '<div class="small" style="white-space:pre-wrap;margin-top:10px">' + esc(protocolo) + '</div>' : '') +
     '</div>';
   }
+  if (j.deposito || j.semanaAdelantada) {
+    h += '<div class="sec-t">Tu cuenta con nosotros</div><div class="card" style="margin-bottom:14px">' +
+    (j.deposito ? '<div class="row between small"><span class="muted">Depósito de garantía</span><b>' + money(j.deposito) + (j.depositoObjetivo ? ' de ' + money(j.depositoObjetivo) : '') + '</b></div>' : '') +
+    (j.semanaAdelantada ? '<div class="row between small"><span class="muted">Semana adelantada</span><b style="color:var(--ok)">' + money(j.semanaAdelantada) + '</b></div>' : '') +
+    '</div>';
+  }
   const multas = j.multas || [];
   if (multas.length) {
     const totalMultas = multas.reduce((a, m) => a + (+m.monto || 0), 0);
@@ -96,7 +102,8 @@ function renderPortal(app, j) {
       const diasProx = a.proximo ? days(today(), parse(a.proximo)) : null;
       const proxTexto = diasProx == null ? '' : diasProx < 0 ? 'Vencido hace ' + (-diasProx) + ' d' : diasProx === 0 ? 'Hoy' : 'En ' + diasProx + ' d';
       const proxColor = diasProx == null ? '' : diasProx <= 0 ? 'var(--bad)' : diasProx <= 3 ? 'var(--warn)' : 'var(--ok)';
-      h += '<div class="sec-t">' + esc(a.patente || 'Auto') + (a.marca || a.modelo ? ' <span class="small muted">' + esc([a.marca, a.modelo].filter(Boolean).join(' ')) + '</span>' : '') + '</div>' +
+      const semaforo = a.debt > 0 ? { t: 'Atrasado', c: 'var(--bad)' } : a.adelantoAplicado > 0 ? { t: 'Adelantado', c: 'var(--ok)' } : { t: 'Al día', c: 'var(--ok)' };
+      h += '<div class="sec-t row between">' + esc(a.patente || 'Auto') + (a.marca || a.modelo ? ' <span class="small muted">' + esc([a.marca, a.modelo].filter(Boolean).join(' ')) + '</span>' : '') + '<span class="small" style="color:' + semaforo.c + ';font-weight:600">● ' + semaforo.t + '</span></div>' +
       '<div class="card">' +
       '<div class="row between"><span class="muted">Deuda actual</span><b style="color:' + (a.debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + mon(a.debt) + '</b></div>' +
       (a.proximo ? '<div class="row between"><span class="muted">Próximo pago</span><span><b>' + fdate(a.proximo) + '</b><span class="small" style="color:' + proxColor + ';margin-left:6px">' + proxTexto + '</span></span></div>' : '') +
@@ -130,6 +137,11 @@ function renderPortal(app, j) {
     '<label class="btn sec block filebtn">Elegir foto<input id="ph_file" type="file" accept="image/*" capture="environment"></label>' +
     '<button class="btn sec block" id="ph_btn" style="margin-top:8px">Subir</button>' +
     '<div class="small muted" id="ph_status" style="margin-top:6px"></div></div>';
+    h += '<div class="sec-t">Subir comprobante de pago</div><div class="card">' +
+    '<label class="f"><span>Auto <small>opcional</small></span><select id="cp_car"><option value="">Sin especificar</option>' + autos.map(a => '<option value="' + esc(a.id) + '">' + esc(a.patente) + '</option>').join('') + '</select></label>' +
+    '<label class="btn sec block filebtn">Elegir imagen del comprobante<input id="cp_file" type="file" accept="image/*"></label>' +
+    '<button class="btn sec block" id="cp_btn" style="margin-top:8px">Subir</button>' +
+    '<div class="small muted" id="cp_status" style="margin-top:6px"></div></div>';
   }
   h += '<div class="sec-t">Actualizar mis datos</div><div class="card">' +
   '<label class="f"><span>Teléfono nuevo</span><input id="ad_tel" type="tel"></label>' +
@@ -182,6 +194,18 @@ function renderPortal(app, j) {
     let imagen;
     try { imagen = await comprimirImagen(f); } catch (e) { statusEl.textContent = 'No se pudo procesar la foto'; return; }
     await enviarAccionPortal({ accion: 'foto', carId: wrap.querySelector('#ph_car').value, imagen }, statusEl, phBtn);
+    inp.value = '';
+  });
+  const cpBtn = wrap.querySelector('#cp_btn');
+  if (cpBtn) cpBtn.addEventListener('click', async () => {
+    const inp = wrap.querySelector('#cp_file');
+    const statusEl = wrap.querySelector('#cp_status');
+    const f = inp.files && inp.files[0];
+    if (!f) { statusEl.textContent = 'Elegí una imagen primero'; return; }
+    statusEl.textContent = 'Preparando…';
+    let imagen;
+    try { imagen = await comprimirImagen(f); } catch (e) { statusEl.textContent = 'No se pudo procesar la imagen'; return; }
+    await enviarAccionPortal({ accion: 'comprobante', carId: wrap.querySelector('#cp_car').value, imagen }, statusEl, cpBtn);
     inp.value = '';
   });
 }

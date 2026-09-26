@@ -93,4 +93,5 @@ export const PANEL_KPIS = [
   ['cobrado', 'Cobrado este mes'], ['esperado', 'Esperado por semana'], ['deuda', 'Deuda de choferes'],
   ['saldoFin', 'Falta cobrar de financiados'], ['autosCalle', 'Autos en la calle'],
   ['vencUrgentes', 'Vencimientos urgentes'], ['autosDisponibles', 'Autos disponibles'],
+  ['gastosFijos', 'Gastos fijos mensuales (seguro/patente)'],
 ];
