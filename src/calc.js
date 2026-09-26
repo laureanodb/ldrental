@@ -482,6 +482,10 @@ export function alerts() {
     const sinStock = (+r.stockActual || 0) <= 0;
     out.push({ who: r.nombre, sub: 'Stock bajo', kind: 'repuesto', id: r.id, key, d: sinStock ? -1 : 15, cls: sinStock ? 'bad' : 'warn', t: (r.stockActual || 0) + ' ' + (r.unidad || 'unidad') + (r.stockActual === 1 ? '' : 's') + ' (mínimo: ' + (r.stockMinimo || 0) + ')' });
   });
+  repuestosStockQuieto().forEach(x => {
+    const key = 'repuesto:' + x.r.id + ':quieto'; if (isSnoozed(key)) return;
+    out.push({ who: x.r.nombre, sub: 'Stock quieto', kind: 'repuesto', id: x.r.id, key, d: 30, cls: 'soft', t: x.dias + ' días sin moverse' });
+  });
   activeDrivers().forEach(d => {
     if (d.prospecto) return;
     const cars = S.cars.filter(c => c.choferId === d.id && isContract(c) && c.inicio);
@@ -678,6 +682,37 @@ export function gastosRepuestosPorAuto(carId) {
 }
 export function rankingGastoRepuestosPorAuto() {
   return activeCars().map(c => ({ c, gasto: gastosRepuestosPorAuto(c.id) })).filter(x => x.gasto > 0).sort((a, b) => b.gasto - a.gasto);
+}
+export function fechaReferenciaStock(r) {
+  const movs = (r.movimientos || []).slice().sort((a, b) => a.fecha.localeCompare(b.fecha));
+  return movs.length ? movs[movs.length - 1].fecha : (r.creadoFecha || null);
+}
+export function repuestosStockQuieto(diasUmbral) {
+  const umbral = diasUmbral || 90;
+  const hoy = today();
+  return repuestosActivos().filter(r => (+r.stockActual || 0) > 0).map(r => {
+    const fref = fechaReferenciaStock(r);
+    if (!fref) return null;
+    const d = days(parse(fref), hoy);
+    return d >= umbral ? { r, dias: d } : null;
+  }).filter(Boolean).sort((a, b) => b.dias - a.dias);
+}
+export function preciosPorProveedor(repuestoId) {
+  const r = repuestoById(repuestoId);
+  if (!r) return [];
+  const grupos = {};
+  (r.movimientos || []).forEach(m => {
+    if (m.tipo !== 'entrada' || !m.proveedorId || !m.costoUnitario) return;
+    if (!grupos[m.proveedorId]) grupos[m.proveedorId] = { proveedorId: m.proveedorId, precios: [], ultimaFecha: m.fecha };
+    grupos[m.proveedorId].precios.push(+m.costoUnitario);
+    if (m.fecha > grupos[m.proveedorId].ultimaFecha) grupos[m.proveedorId].ultimaFecha = m.fecha;
+  });
+  return Object.values(grupos).map(g => ({
+    proveedorId: g.proveedorId,
+    proveedorNombre: (S.proveedores.find(p => p.id === g.proveedorId) || {}).nombre || 'Proveedor',
+    precioPromedio: g.precios.reduce((a, b) => a + b, 0) / g.precios.length,
+    ultimaFecha: g.ultimaFecha,
+  })).sort((a, b) => a.precioPromedio - b.precioPromedio);
 }
 export function listaDeCompra() {
   const grupos = {};

@@ -2,7 +2,7 @@ import { S } from './state.js';
 import { money, moneyUSD, fdate, today } from './utils.js';
 import { settings } from './settings.js';
 import { toast } from './modal.js';
-import { resumenGeneral, resumenAnual, rankingRoiAutos, porcentajePerdidaGanancia, alertasTendencia, proyeccionRentabilidadTendencia, saludChoferes, activeCars } from './calc.js';
+import { resumenGeneral, resumenAnual, rankingRoiAutos, porcentajePerdidaGanancia, alertasTendencia, proyeccionRentabilidadTendencia, saludChoferes, activeCars, valorStock, repuestosBajoStock } from './calc.js';
 import { saldoAutoseguro } from './autoseguro.js';
 
 export async function descargarReporteEjecutivo() {
@@ -76,6 +76,13 @@ export async function descargarReporteEjecutivo() {
 
   titulo('Fondo de autoseguro');
   linea('Saldo actual', money(saldoAutoseguro()));
+
+  const bajos = repuestosBajoStock();
+  if (valorStock() || bajos.length) {
+    titulo('Stock de repuestos');
+    linea('Valor del stock', money(valorStock()));
+    linea('Ítems bajo el mínimo', bajos.length);
+  }
 
   doc.save('reporte-ejecutivo-' + today().toISOString().slice(0, 10) + '.pdf');
   toast('Reporte descargado');

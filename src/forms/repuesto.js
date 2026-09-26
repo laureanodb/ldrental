@@ -1,9 +1,9 @@
-import { val, uid, iso, today, esc } from '../utils.js';
+import { val, uid, iso, today, esc, money, fdate } from '../utils.js';
 import { S } from '../state.js';
 import { STOCK_CATEGORIAS, STOCK_UNIDADES } from '../constants.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
-import { repuestoById, proveedoresActivos } from '../calc.js';
+import { repuestoById, proveedoresActivos, preciosPorProveedor } from '../calc.js';
 import { canDelete } from '../roles.js';
 
 const unidadLabel = k => (STOCK_UNIDADES.find(x => x[0] === k) || [0, 'Unidad'])[1];
@@ -24,9 +24,15 @@ export function repuestoForm(editId) {
   (ex ? '<label class="chk"><input type="checkbox" id="rp_inactivo"' + (ex.inactivo ? ' checked' : '') + '><span>Inactivo (no se cuenta en el stock ni avisa)</span></label>' : '') +
   '<div class="row"><button class="btn grow" onclick="saveRepuesto(' + (ex ? "'" + ex.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>' +
   (ex ? '<div class="row" style="margin-top:10px"><button class="btn sec grow" onclick="movimientoStockForm(\'' + ex.id + '\',\'entrada\')">+ Entrada (compra)</button><button class="btn sec grow" onclick="movimientoStockForm(\'' + ex.id + '\',\'salida\')">- Salida (uso)</button></div>' : '') +
+  (ex ? comparacionPrecios(ex.id) : '') +
   (ex ? historialMovimientos(ex) : '') +
   (ex && canDelete() ? '<div style="margin-top:14px"><button class="btn danger block" onclick="confirmDel(this,()=>delRepuesto(\'' + ex.id + '\'))">Eliminar repuesto</button></div>' : '');
   openModal(h);
+}
+function comparacionPrecios(repuestoId) {
+  const precios = preciosPorProveedor(repuestoId);
+  if (precios.length < 2) return '';
+  return '<div class="sec-t">Comparación de precios por proveedor</div>' + precios.map(p => '<div class="card row between small"><span>' + esc(p.proveedorNombre) + '</span><span>' + money(p.precioPromedio) + ' <span class="muted">· ' + fdate(p.ultimaFecha) + '</span></span></div>').join('');
 }
 function historialMovimientos(r) {
   const movs = (r.movimientos || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id.localeCompare(a.id));
@@ -48,6 +54,7 @@ export async function saveRepuesto(editId) {
     stockMinimo: +val('rp_min') || 0, costoUnitario: +val('rp_costo') || 0,
     proveedorId: val('rp_proveedor'), notas: val('rp_notas'),
     movimientos: ex ? (ex.movimientos || []) : [],
+    creadoFecha: ex ? ex.creadoFecha : iso(today()),
     inactivo: editId ? document.getElementById('rp_inactivo').checked : false,
   };
   if (await save('repuestos', o)) { closeModal(); toast(ex ? 'Repuesto guardado' : 'Repuesto creado. Registrale un stock inicial con "Entrada" si hace falta ajustarlo.'); }
@@ -64,6 +71,7 @@ export function movimientoStockForm(repuestoId, tipo) {
   '<div class="two"><label class="f"><span>Cantidad</span><input id="mv_cantidad" inputmode="decimal"></label>' +
   '<label class="f"><span>Fecha</span><input id="mv_fecha" type="date" value="' + iso(today()) + '"></label></div>' +
   (tipo === 'entrada' ? '<label class="f"><span>Costo unitario</span><input id="mv_costo" inputmode="decimal" value="' + esc(r.costoUnitario || '') + '"></label>' +
+    '<label class="f"><span>Proveedor <small>opcional, para comparar precios</small></span><select id="mv_proveedor"><option value="">Sin especificar</option>' + proveedoresActivos().map(p => '<option value="' + p.id + '"' + (r.proveedorId === p.id ? ' selected' : '') + '>' + esc(p.nombre) + '</option>').join('') + '</select></label>' +
     '<label class="chk"><input type="checkbox" id="mv_gengasto" checked><span>Generar gasto general por esta compra</span></label>' :
     '<label class="f"><span>Auto <small>opcional, para qué auto se usó</small></span><select id="mv_car"><option value="">Sin especificar</option>' + cars.map(c => '<option value="' + c.id + '">' + esc(c.patente) + '</option>').join('') + '</select></label>') +
   '<label class="f"><span>Nota <small>opcional</small></span><input id="mv_nota"></label>' +
@@ -98,6 +106,7 @@ export async function guardarMovimientoStock(repuestoId, tipo) {
   if (tipo === 'entrada') {
     costoUnitario = +val('mv_costo') || r.costoUnitario || 0;
     mov.costoUnitario = costoUnitario;
+    const proveedorId = val('mv_proveedor'); if (proveedorId) mov.proveedorId = proveedorId;
     if (document.getElementById('mv_gengasto').checked && costoUnitario) {
       generarGasto = { id: uid(), carId: '', categoria: 'repuestos', fecha, costo: cantidad * costoUnitario, descripcion: 'Compra: ' + r.nombre + ' (' + cantidad + ' ' + unidadLabel(r.unidad) + (cantidad === 1 ? '' : 's') + ')', generadoAuto: true };
     }
