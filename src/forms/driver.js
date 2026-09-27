@@ -7,6 +7,7 @@ import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
 import { canDelete, canVerFinanzas } from '../roles.js';
 import { seccionAdelantos } from './adelanto.js';
+import { valorSemanalRow } from './car.js';
 import { gruposDuplicadosLedger } from './deposito.js';
 import { settings, featureOculta } from '../settings.js';
 
@@ -50,7 +51,8 @@ export function driverForm(id) {
     h += '<div class="card" style="margin-bottom:10px">' + (autoAsignado ?
       '<div class="row between"><div><div class="small muted">Auto asignado</div><b>' + esc(autoAsignado.patente) + '</b></div>' +
       '<div class="row"><button class="btn sec sm" onclick="carForm(\'' + autoAsignado.id + '\')">Ver</button><button class="btn sec sm" onclick="asignarAutoForm(\'' + d.id + '\')">Cambiar</button>' +
-      (autoAsignado.tipo === 'alquiler' ? '<button class="btn danger sm" onclick="confirmDel(this,()=>quitarAutoDeChofer(\'' + d.id + '\',\'' + autoAsignado.id + '\'))">Quitar</button>' : '') + '</div></div>'
+      (autoAsignado.tipo === 'alquiler' ? '<button class="btn danger sm" onclick="confirmDel(this,()=>quitarAutoDeChofer(\'' + d.id + '\',\'' + autoAsignado.id + '\'))">Quitar</button>' : '') + '</div></div>' +
+      valorSemanalRow(autoAsignado, d.id)
       : '<div class="row between"><span class="muted">Sin auto asignado</span><button class="btn sm" onclick="asignarAutoForm(\'' + d.id + '\')">Asignar auto</button></div>') +
     '</div>';
   }

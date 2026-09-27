@@ -1,5 +1,5 @@
 import { S } from '../state.js';
-import { val, iso, today, esc } from '../utils.js';
+import { val, iso, today, esc, money } from '../utils.js';
 import { save } from '../data.js';
 import { carById, driverName } from '../calc.js';
 import { openModal, toast } from '../modal.js';
@@ -10,7 +10,7 @@ function campos(prefix, tipo, c) {
   return '<label class="f"><span>Tipo</span><select id="' + prefix + '_tipo" onchange="onAsignacionTipo(\'' + prefix + '\')"><option value="alquiler"' + (tipo === 'alquiler' ? ' selected' : '') + '>Alquiler</option><option value="financiado"' + (tipo === 'financiado' ? ' selected' : '') + '>Financiado</option></select></label>' +
   '<div id="' + prefix + '_finbox" class="two" style="display:' + (tipo === 'financiado' ? '' : 'none') + '"><label class="f"><span>Total a pagar (USD)</span><input id="' + prefix + '_total" inputmode="decimal" value="' + esc((c && c.total) || '') + '" oninput="calcularCuotaAsignacion(\'' + prefix + '\')"></label>' +
   '<label class="f"><span>Cantidad de cuotas</span><input id="' + prefix + '_cuotas" inputmode="numeric" value="' + esc((c && c.cuotas) || '') + '" oninput="calcularCuotaAsignacion(\'' + prefix + '\')"></label></div>' +
-  '<label class="f"><span id="' + prefix + '_lblmonto">' + (tipo === 'financiado' ? 'Cuota semanal (USD)' : 'Alquiler semanal') + '</span><input id="' + prefix + '_monto" inputmode="decimal" value="' + esc((c && c.monto) || '') + '" oninput="this.dataset.touched=1"></label>' +
+  '<label class="f"><span id="' + prefix + '_lblmonto">' + (tipo === 'financiado' ? 'Cuota semanal (USD)' : 'Alquiler semanal') + '</span><input id="' + prefix + '_monto" inputmode="decimal" value="' + esc((c && (c.monto || (tipo === 'alquiler' ? c.valorSemanal : ''))) || '') + '" oninput="this.dataset.touched=1"></label>' +
   '<label class="f"><span>Fecha de inicio</span><input id="' + prefix + '_inicio" type="date" value="' + esc((c && c.inicio) || iso(today())) + '"></label>';
 }
 export function onAsignacionTipo(prefix) {
@@ -25,7 +25,9 @@ export function calcularCuotaAsignacion(prefix) {
 }
 
 async function liberarAuto(c) {
-  return save('cars', Object.assign({}, c, { choferId: '', tipo: 'disponible', historialChoferes: actualizarHistorialChoferes(c, '') }));
+  // El último alquiler queda como valor semanal de referencia del auto.
+  const valorSemanal = c.tipo === 'alquiler' ? (+c.monto || +c.valorSemanal || 0) : (+c.valorSemanal || 0);
+  return save('cars', Object.assign({}, c, { choferId: '', tipo: 'disponible', valorSemanal, historialChoferes: actualizarHistorialChoferes(c, '') }));
 }
 
 export function asignarChoferForm(carId) {
@@ -54,6 +56,7 @@ export async function guardarAsignacionChofer(carId) {
     cuotas: tipo === 'financiado' ? (+val('ac_cuotas') || 0) : (c.cuotas || 0),
     historialChoferes: actualizarHistorialChoferes(c, choferId),
     montoHistorial: actualizarHistorialMonto(c, monto),
+    valorSemanal: tipo === 'alquiler' ? monto : (+c.valorSemanal || 0),
   });
   if (await save('cars', o)) { toast('Chofer asignado: ' + driverName(choferId)); carForm(carId); }
 }
@@ -68,10 +71,16 @@ export function asignarAutoForm(driverId) {
   const disponibles = S.cars.filter(c => c.tipo === 'disponible' && !c.vendido).sort((a, b) => String(a.patente).localeCompare(String(b.patente)));
   if (!disponibles.length) { toast('No hay autos disponibles para asignar'); return; }
   const h = '<h3>Asignar auto — ' + esc(d.nombre) + '</h3>' +
-  '<label class="f"><span>Auto</span><select id="aa_auto"><option value="">Elegir auto</option>' + disponibles.map(c => '<option value="' + c.id + '">' + esc(c.patente) + '</option>').join('') + '</select></label>' +
+  '<label class="f"><span>Auto</span><select id="aa_auto" onchange="onAsignarAutoElegido()"><option value="">Elegir auto</option>' + disponibles.map(c => '<option value="' + c.id + '">' + esc(c.patente) + (+c.valorSemanal ? ' · ' + money(c.valorSemanal) + '/semana' : '') + '</option>').join('') + '</select></label>' +
   campos('aa', 'alquiler', null) +
   '<div class="row" style="margin-top:14px"><button class="btn grow" onclick="guardarAsignacionAuto(\'' + d.id + '\')">Asignar</button><button class="btn sec" onclick="driverForm(\'' + d.id + '\')">Cancelar</button></div>';
   openModal(h);
+}
+export function onAsignarAutoElegido() {
+  const c = S.cars.find(x => x.id === val('aa_auto'));
+  const m = document.getElementById('aa_monto');
+  if (!c || !m || m.dataset.touched || val('aa_tipo') !== 'alquiler') return;
+  m.value = +c.valorSemanal || '';
 }
 export async function guardarAsignacionAuto(driverId) {
   const carId = val('aa_auto');
@@ -88,6 +97,7 @@ export async function guardarAsignacionAuto(driverId) {
     cuotas: tipo === 'financiado' ? (+val('aa_cuotas') || 0) : 0,
     historialChoferes: actualizarHistorialChoferes(c, driverId),
     montoHistorial: actualizarHistorialMonto(c, monto),
+    valorSemanal: tipo === 'alquiler' ? monto : (+c.valorSemanal || 0),
   });
   if (await save('cars', o)) { toast('Auto asignado: ' + (c.patente || '')); driverForm(driverId); }
 }

@@ -28,6 +28,62 @@ export function actualizarHistorialMonto(ex, monto) {
   if (!monto || monto === prevMonto) return historial;
   return historial.concat([{ fecha: iso(today()), monto }]);
 }
+
+/* Valor semanal del alquiler: en autos alquilados es el monto del contrato;
+   en el resto es la tarifa de referencia (valorSemanal) que se propone al asignar. */
+export function valorSemanalRow(c, volver) {
+  const fin = c.tipo === 'financiado', alq = c.tipo === 'alquiler';
+  const v = (alq || fin) ? +c.monto || 0 : +c.valorSemanal || 0;
+  const label = fin ? 'Cuota semanal' : alq ? 'Alquiler semanal' : 'Valor semanal de alquiler';
+  return '<div class="row between" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line)"><div><div class="small muted">' + label + '</div>' +
+    '<b>' + (v ? (fin ? moneyUSD(v) : money(v)) : '<span class="muted">Sin cargar</span>') + '</b></div>' +
+    (fin ? '' : '<button class="btn sec sm" onclick="valorSemanalForm(\'' + c.id + '\',\'' + volver + '\')">' + (v ? 'Editar' : 'Cargar') + '</button>') + '</div>';
+}
+function semanasCorridas(c) {
+  if (c.tipo !== 'alquiler' || !c.inicio || !c.monto) return 0;
+  const d = days(parse(c.inicio), today());
+  return d < 0 ? 0 : Math.floor(d / 7) + 1;
+}
+export function valorSemanalForm(carId, volver) {
+  const c = S.cars.find(x => x.id === carId); if (!c) return;
+  const alq = c.tipo === 'alquiler';
+  const semanas = semanasCorridas(c);
+  openModal('<h3>Valor semanal — ' + esc(c.patente) + '</h3>' +
+    '<label class="f"><span>Alquiler semanal ($)</span><input id="vs_monto" inputmode="decimal" value="' + esc((alq ? c.monto : c.valorSemanal) || '') + '"></label>' +
+    '<div class="small muted" style="margin:-4px 0 12px">' + (alq
+      ? 'Es lo que paga ' + esc(driverName(c.choferId)) + ' por semana.'
+      : 'Es el precio de referencia del auto. Cuando se lo asignes a un chofer, se propone solo como monto del alquiler.') + '</div>' +
+    (semanas ? '<label class="chk"><input type="checkbox" id="vs_desdeAhora" checked><span>Aplicar desde la semana que viene (las ' + semanas + ' semanas ya corridas quedan con el valor anterior)</span></label>' +
+      '<div class="small muted" style="margin:-4px 0 12px">Destildalo solo si estás corrigiendo un monto mal cargado desde el principio.</div>' : '') +
+    '<div class="row" style="margin-top:14px"><button class="btn grow" onclick="guardarValorSemanal(\'' + c.id + '\',\'' + volver + '\')">Guardar</button>' +
+    '<button class="btn sec" onclick="volverDeValorSemanal(\'' + c.id + '\',\'' + volver + '\')">Cancelar</button></div>');
+}
+export function volverDeValorSemanal(carId, volver) {
+  if (volver === 'auto') carForm(carId); else window.driverForm(volver);
+}
+export async function guardarValorSemanal(carId, volver) {
+  const c = S.cars.find(x => x.id === carId); if (!c) return;
+  const nuevo = +val('vs_monto') || 0;
+  if (!nuevo) { toast('Cargá el valor semanal'); return; }
+  let o;
+  if (c.tipo === 'alquiler') {
+    const anterior = +c.monto || 0;
+    const semanas = semanasCorridas(c);
+    const chk = document.getElementById('vs_desdeAhora');
+    const ajustesDeuda = (c.ajustesDeuda || []).slice();
+    // La deuda se calcula como semanas × monto actual; para no reescribir las semanas
+    // ya corridas, se compensa la diferencia con un ajuste de deuda.
+    if (chk && chk.checked && semanas && nuevo !== anterior) {
+      ajustesDeuda.push({ id: uid(), fecha: iso(today()), monto: semanas * (nuevo - anterior), motivo: 'Cambio de alquiler semanal de ' + money(anterior) + ' a ' + money(nuevo) + ': las ' + semanas + ' semanas ya corridas quedan al valor anterior' });
+    }
+    o = Object.assign({}, c, { monto: nuevo, valorSemanal: nuevo, ajustesDeuda, montoHistorial: actualizarHistorialMonto(c, nuevo) });
+  } else {
+    o = Object.assign({}, c, { valorSemanal: nuevo });
+  }
+  if (!(await save('cars', o))) return;
+  toast('Valor semanal guardado');
+  volverDeValorSemanal(carId, volver);
+}
 function actualizarHistorialTaller(ex, newTipo) {
   const prevTipo = ex ? ex.tipo : '';
   let historial = (ex && ex.historialTaller) || [];
@@ -76,6 +132,7 @@ export function carForm(id) {
       '<div class="row"><button class="btn sec sm" onclick="asignarChoferForm(\'' + c.id + '\')">Cambiar</button>' +
       (c.tipo === 'alquiler' ? '<button class="btn danger sm" onclick="confirmDel(this,()=>quitarChofer(\'' + c.id + '\'))">Quitar</button>' : '') + '</div></div>'
       : '<div class="row between"><span class="muted">Sin chofer asignado</span><button class="btn sm" onclick="asignarChoferForm(\'' + c.id + '\')">Asignar chofer</button></div>') +
+    valorSemanalRow(c, 'auto') +
     '</div>';
   }
 
@@ -225,7 +282,7 @@ export function carForm(id) {
   '<div id="finbox" class="two"><label class="f"><span id="lbltotal">Total a pagar en cuotas</span><input id="c_total" inputmode="decimal" value="' + esc(c.total || '') + '" oninput="autoCuota()"></label>' +
   '<label class="f"><span>Cantidad de cuotas</span><input id="c_cuotas" inputmode="numeric" value="' + esc(c.cuotas || '') + '" oninput="autoCuota()"></label>' +
   '<label class="f"><span>Anticipo pagado <small>opcional</small></span><input id="c_anticipo" inputmode="decimal" value="' + esc(c.anticipo || '') + '"></label></div>' +
-  '<div class="two"><label class="f"><span id="lblmonto">Monto semanal</span><input id="c_monto" inputmode="decimal" value="' + esc(c.monto || '') + '" oninput="this.dataset.touched=1"></label>' +
+  '<div class="two"><label class="f"><span id="lblmonto">Monto semanal</span><input id="c_monto" inputmode="decimal" value="' + esc(c.monto || '') + '" data-vs="' + esc(c.valorSemanal || '') + '" oninput="this.dataset.touched=1"></label>' +
   '<label class="f"><span>Inicio del contrato</span><input id="c_inicio" type="date" value="' + esc(c.inicio) + '"></label></div>' +
   (ex && isContract(c) && c.tipo !== 'financiado' && c.inicio && c.monto ? '<button type="button" class="btn sec sm" style="margin:-4px 0 12px" onclick="sugerirAjusteInflacion(\'' + c.id + '\')">Sugerir ajuste por inflación</button>' : '') +
   '<div class="small muted" style="margin:-4px 0 12px">Si cambia el chofer o pasa de alquiler a financiación, poné la fecha nueva de inicio. La deuda se cuenta desde ahí.</div></div>';
@@ -405,6 +462,8 @@ export function onTipo(el, init) {
   $('#lblmonto').textContent = t === 'financiado' ? 'Cuota semanal (en dólares)' : 'Alquiler semanal';
   const lblTotal = $('#lbltotal'); if (lblTotal) lblTotal.textContent = 'Total a pagar en cuotas (en dólares)';
   if (!init && con && el.value !== el.dataset.orig) $('#c_inicio').value = iso(today());
+  const m = $('#c_monto');
+  if (!init && t === 'alquiler' && !m.value && m.dataset.vs) m.value = m.dataset.vs;
 }
 export function autoCuota() {
   const m = $('#c_monto'); if (m.dataset.touched) return;
@@ -502,6 +561,7 @@ export async function saveCar(btn, id) {
     mantenimientoPlan: (ex && ex.mantenimientoPlan) || planMantenimientoDefault(kmNuevo, iso(today())),
     kmHistorial: (kmNuevo && kmNuevo !== kmViejo) ? kmHistorial.concat([{ fecha: iso(today()), km: kmNuevo }]) : kmHistorial,
     montoHistorial: actualizarHistorialMonto(ex, con ? (+val('c_monto') || 0) : 0),
+    valorSemanal: tipo === 'alquiler' ? (+val('c_monto') || 0) : ((ex && ex.valorSemanal) || (ex && ex.tipo === 'alquiler' ? +ex.monto || 0 : 0)),
   };
   VENC.forEach(v => { o[v[0]] = val('v_' + v[0]); });
   o.vencHistorial = actualizarHistorialVenc(ex, o);

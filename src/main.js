@@ -5,9 +5,9 @@ import { init } from './session.js';
 import { go, render, renderList } from './nav.js';
 import { doLogin, logout } from './session.js';
 import { activarBiometria, desactivarBiometria, loginConBiometria } from './biometric.js';
-import { asignarChoferForm, guardarAsignacionChofer, quitarChofer, asignarAutoForm, guardarAsignacionAuto, quitarAutoDeChofer, onAsignacionTipo, calcularCuotaAsignacion } from './forms/asignacion.js';
+import { asignarChoferForm, guardarAsignacionChofer, quitarChofer, asignarAutoForm, guardarAsignacionAuto, quitarAutoDeChofer, onAsignacionTipo, calcularCuotaAsignacion, onAsignarAutoElegido } from './forms/asignacion.js';
 import { altaRapidaAutoForm, onAltaRapidaAutoTipo, guardarAltaRapidaAuto, altaRapidaChoferForm, guardarAltaRapidaChofer } from './forms/alta-rapida.js';
-import { carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento } from './forms/car.js';
+import { valorSemanalForm, guardarValorSemanal, volverDeValorSemanal, carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento } from './forms/car.js';
 import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
 import { calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, escenarioFlotaForm, calcularEscenarioFlota } from './forms/calculadora.js';
 import { compararAutosForm, renderComparacionAutos } from './forms/comparar.js';
@@ -67,7 +67,8 @@ import { syncDriveUI } from './google-drive.js';
 Object.assign(window, {
   ui, go, render, renderList, sincronizarAhora: flushQueue,
   doLogin, logout, activarBiometria, desactivarBiometria, loginConBiometria,
-  asignarChoferForm, guardarAsignacionChofer, quitarChofer, asignarAutoForm, guardarAsignacionAuto, quitarAutoDeChofer, onAsignacionTipo, calcularCuotaAsignacion,
+  asignarChoferForm, guardarAsignacionChofer, quitarChofer, asignarAutoForm, guardarAsignacionAuto, quitarAutoDeChofer, onAsignacionTipo, calcularCuotaAsignacion, onAsignarAutoElegido,
+  valorSemanalForm, guardarValorSemanal, volverDeValorSemanal,
   altaRapidaAutoForm, onAltaRapidaAutoTipo, guardarAltaRapidaAuto, altaRapidaChoferForm, guardarAltaRapidaChofer,
   carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento,
   recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio,
