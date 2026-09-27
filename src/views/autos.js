@@ -14,13 +14,14 @@ export function viewAutos() {
   '<option value="monto"' + (ui.ordenAutos === 'monto' ? ' selected' : '') + '>Monto semanal (mayor primero)</option></select></label>' +
   '<div id="list"></div>';
 }
+const valorSem = c => isContract(c) ? +c.monto || 0 : +c.valorSemanal || 0;
 export function listAutos() {
   const q = ui.qCars.trim().toLowerCase();
   const qPatente = q.replace(/[\s-]/g, '');
   const L = S.cars.filter(c => (ui.showVendidos || !c.vendido) && (!ui.filtroAutoTipo || c.tipo === ui.filtroAutoTipo) &&
     (!q || [c.patente, c.marca, c.modelo, driverName(c.choferId), (c.tags || []).join(' ')].join(' ').toLowerCase().includes(q) ||
     (qPatente && String(c.patente || '').toLowerCase().replace(/[\s-]/g, '').includes(qPatente))))
-    .sort((a, b) => (Boolean(b.favorito) - Boolean(a.favorito)) || (ui.ordenAutos === 'deuda' ? calc(b).debt - calc(a).debt : ui.ordenAutos === 'monto' ? (+b.monto || 0) - (+a.monto || 0) : String(a.patente).localeCompare(String(b.patente))));
+    .sort((a, b) => (Boolean(b.favorito) - Boolean(a.favorito)) || (ui.ordenAutos === 'deuda' ? calc(b).debt - calc(a).debt : ui.ordenAutos === 'monto' ? valorSem(b) - valorSem(a) : String(a.patente).localeCompare(String(b.patente))));
   if (!L.length) return '<div class="card empty">' + (S.cars.length ? 'Ningún auto coincide con la búsqueda.' : '<b>Todavía no cargaste autos</b>Tocá "Agregar" para empezar.') + '</div>';
   const limite = ui.autosLimite || 30;
   const visibles = L.slice(0, limite);
@@ -49,7 +50,7 @@ export function listAutos() {
     const dotColor = { ok: 'var(--ok)', soft: 'var(--ok)', warn: 'var(--warn)', bad: 'var(--bad)' }[estGen];
     return '<div class="card tap" onclick="carForm(\'' + c.id + '\')"><div class="row between"><div>' + (dotColor ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + dotColor + ';margin-right:6px" title="Estado general"></span>' : '') + '<span class="tap" style="margin-right:4px" onclick="event.stopPropagation();toggleFavoritoAuto(\'' + c.id + '\')">' + (c.favorito ? '★' : '☆') + '</span>' + plate(c.patente) + '</div>' + tipoBadge(c.tipo) + '</div>' +
     '<div class="small muted" style="margin-top:6px">' + esc([c.marca, c.modelo, c.anio].filter(Boolean).join(' ')) + '</div>' +
-    '<div class="row between" style="margin-top:4px"><div>' + (c.choferId ? esc(driverName(c.choferId)) : '<span class="muted">Sin chofer</span>') + '</div><div class="small muted">' + (isContract(c) ? mon(c.monto) + ' por semana' : '') + '</div></div>' +
+    '<div class="row between" style="margin-top:4px"><div>' + (c.choferId ? esc(driverName(c.choferId)) : '<span class="muted">Sin chofer</span>') + '</div><div class="small muted">' + (isContract(c) ? mon(c.monto) + ' por semana' : +c.valorSemanal ? money(c.valorSemanal) + ' por semana' : '') + '</div></div>' +
     (b ? '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">' + b + '</div>' : '') + '</div>';
   }).join('') + (restantes > 0 ? '<button class="btn sec block" style="margin-top:8px" onclick="ui.autosLimite=(ui.autosLimite||30)+30;renderList()">Cargar más (quedan ' + restantes + ')</button>' : '');
 }
