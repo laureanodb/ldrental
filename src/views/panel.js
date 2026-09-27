@@ -86,7 +86,8 @@ export function viewPanel() {
   return h;
 }
 function saludo(t0, cantMorosos, cantUrg) {
-  const hora = t0.getHours();
+  // t0 es today(), que viene a las 00:00; la hora real sale de un Date nuevo.
+  const hora = new Date().getHours();
   const finde = t0.getDay() === 0 || t0.getDay() === 6;
   const momento = hora < 6 ? 'Buenas noches' : hora < 12 ? 'Buen día' : hora < 20 ? 'Buenas tardes' : 'Buenas noches';
   const fecha = t0.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
