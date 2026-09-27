@@ -5,6 +5,7 @@ import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, es
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
+import { hydrateThumbs } from '../storage.js';
 import { canDelete, canVerFinanzas } from '../roles.js';
 import { seccionAdelantos } from './adelanto.js';
 import { valorSemanalRow } from './car.js';
@@ -111,6 +112,7 @@ export function driverForm(id) {
 
   /* ---- Financiación ---- */
   let financiacion = '';
+  if (ex) financiacion += seccionComprobantesPortal(d);
   if (ex) {
     const cars = S.cars.filter(c => c.choferId === d.id); const debt = driverDebt(d.id); const score = driverScore(d.id);
     const mon = cars.some(c => c.tipo === 'financiado') ? moneyUSD : money;
@@ -216,7 +218,7 @@ export function driverForm(id) {
   } else {
     h += datos + financiacion + saveCancelRow;
   }
-  openModal(h); renderFiles('drivers', ex ? ex.id : null);
+  openModal(h); renderFiles('drivers', ex ? ex.id : null); hydrateThumbs(document.getElementById('modal'));
 }
 export async function saveDriver(id) {
   const nombre = val('d_nombre');
@@ -232,7 +234,9 @@ export async function saveDriver(id) {
     etiqueta: row.querySelector('.d-tel-etq').value.trim(), tel: row.querySelector('.d-tel-num').value.trim()
   })).filter(t => t.tel);
   const ex = S.drivers.find(x => x.id === id);
-  const o = {
+  // Se parte del registro guardado para no perder lo que no está en el formulario
+  // (link del portal, comprobantes, comunicaciones, adelantos, etc.).
+  const o = Object.assign({}, ex || {}, {
     id: id || uid(), nombre, dni: val('d_dni'), licVenc: val('d_lic'), tipoLicencia: val('d_tipoLicencia'), antecedentesVenc: val('d_antecedentesVenc'), tel: val('d_tel'), domicilio: val('d_dom'), notas: val('d_notas'), docs,
     fechaNacimiento: val('d_nac'), rating: val('d_rating'),
     domicilioMaps: val('d_domMaps'), nacionalidad: val('d_nacionalidad'), estadoCivil: val('d_estadoCivil'),
@@ -246,8 +250,30 @@ export async function saveDriver(id) {
     canalOrigen: val('d_canalOrigen'), canalOrigenOtro: val('d_canalOrigenOtro'),
     fotoPerfil: val('d_fotoPerfilData'),
     files: (ex || {}).files || []
-  };
+  });
   if (await save('drivers', o)) { closeModal(); toast('Chofer guardado'); }
+}
+function seccionComprobantesPortal(d) {
+  const L = (d.comprobantesPortal || []).slice().sort((a, b) => (Boolean(a.revisado) - Boolean(b.revisado)) || String(b.fecha || '').localeCompare(a.fecha || ''));
+  if (!L.length) return '';
+  const pend = L.filter(x => !x.revisado).length;
+  return '<div class="sec-t">Comprobantes subidos desde el portal' + (pend ? ' ' + badge('warn', pend + ' sin revisar') : '') + '</div>' + L.map(x => {
+    const car = S.cars.find(c => c.id === x.carId);
+    const pago = x.pagoId ? S.payments.find(p => p.id === x.pagoId) : null;
+    const ver = 'viewFile(\'' + esc(x.id) + '\',\'comprobante\')';
+    return '<div class="card"><div class="row"><img class="fthumb tap" alt="Comprobante" data-path="' + esc(x.id) + '" onclick="' + ver + '">' +
+      '<div class="grow tap" onclick="' + ver + '"><div>' + (x.revisado ? badge('ok', pago ? 'Cobro registrado' : 'Revisado') : badge('warn', 'Sin revisar')) + '</div>' +
+      '<div class="small muted">Subido el ' + fdate(x.fecha) + (car ? ' · ' + esc(car.patente) : '') + (pago ? ' · ' + (pago.tipo === 'cuota' ? moneyUSD(pago.monto) : money(pago.monto)) + ' del ' + fdate(pago.fecha) : '') + '</div></div></div>' +
+      '<div class="row" style="margin-top:8px">' + (x.revisado
+        ? '<button class="btn sec sm" onclick="marcarComprobantePortal(\'' + d.id + '\',\'' + esc(x.id) + '\',false)">Volver a sin revisar</button>'
+        : '<button class="btn sm grow" onclick="cobrarComprobantePortal(\'' + d.id + '\',\'' + esc(x.id) + '\')">Registrar cobro</button><button class="btn sec sm" onclick="marcarComprobantePortal(\'' + d.id + '\',\'' + esc(x.id) + '\',true)">Marcar revisado</button>') +
+      '</div></div>';
+  }).join('');
+}
+export async function marcarComprobantePortal(id, compId, revisado) {
+  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const comprobantesPortal = (d.comprobantesPortal || []).map(x => x.id === compId ? Object.assign({}, x, { revisado }) : x);
+  if (await save('drivers', Object.assign({}, d, { comprobantesPortal }))) { toast(revisado ? 'Comprobante marcado como revisado' : 'Comprobante sin revisar'); driverForm(id); setTabChofer('financiacion'); }
 }
 export async function agregarComunicacion(id) {
   const d = S.drivers.find(x => x.id === id); if (!d) return;

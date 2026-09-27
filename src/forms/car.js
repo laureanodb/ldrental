@@ -513,7 +513,9 @@ export async function saveCar(btn, id) {
   let gastoFijoHistorial = (ex && ex.gastoFijoHistorial) || [];
   if (ex && +ex.seguroMensual !== nuevoSeguro) gastoFijoHistorial = gastoFijoHistorial.concat([{ fecha: hoy, campo: 'seguro', anterior: +ex.seguroMensual || 0, nuevo: nuevoSeguro }]);
   if (ex && +ex.patenteMensual !== nuevaPatente) gastoFijoHistorial = gastoFijoHistorial.concat([{ fecha: hoy, campo: 'patente', anterior: +ex.patenteMensual || 0, nuevo: nuevaPatente }]);
-  const o = {
+  // Se parte del registro guardado para no perder lo que no está en el formulario
+  // (historial de contratos, socios, reemplazos, etc.).
+  const o = Object.assign({}, ex || {}, {
     id: id || uid(), patente, marca: val('c_marca'), modelo: val('c_modelo'), anio: val('c_anio'), tipo,
     choferId, monto: con ? (+val('c_monto') || 0) : 0, inicio: con ? val('c_inicio') : '',
     total: tipo === 'financiado' ? (+val('c_total') || 0) : 0, cuotas: tipo === 'financiado' ? (+val('c_cuotas') || 0) : 0,
@@ -562,7 +564,7 @@ export async function saveCar(btn, id) {
     kmHistorial: (kmNuevo && kmNuevo !== kmViejo) ? kmHistorial.concat([{ fecha: iso(today()), km: kmNuevo }]) : kmHistorial,
     montoHistorial: actualizarHistorialMonto(ex, con ? (+val('c_monto') || 0) : 0),
     valorSemanal: tipo === 'alquiler' ? (+val('c_monto') || 0) : ((ex && ex.valorSemanal) || (ex && ex.tipo === 'alquiler' ? +ex.monto || 0 : 0)),
-  };
+  });
   VENC.forEach(v => { o[v[0]] = val('v_' + v[0]); });
   o.vencHistorial = actualizarHistorialVenc(ex, o);
   if (con) {

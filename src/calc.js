@@ -364,6 +364,9 @@ export function totalSemanaAdelantadaFlota() {
 export function semanaAdelantadaDeChofer(driverId) {
   return depositosDeChofer(driverId, 'semana_adelantada');
 }
+export function comprobantesPortalPendientes(d) {
+  return ((d && d.comprobantesPortal) || []).filter(x => !x.revisado);
+}
 export function multasPendientesChofer(driverId) {
   return S.multas.filter(m => m.choferId === driverId && (m.estado === 'pendiente' || m.estado === 'vencida')).reduce((a, m) => a + (+m.monto || 0), 0);
 }
@@ -458,6 +461,12 @@ export function alerts() {
     if (saldo >= objetivo || saldo < objetivo * 0.9) return;
     const key = 'driver:' + d.id + ':depositocasi'; if (isSnoozed(key)) return;
     out.push({ who: d.nombre, sub: 'Depósito casi completo', kind: 'driver', id: d.id, key, d: 20, cls: 'soft', t: 'Falta ' + money(objetivo - saldo) + ' para el objetivo' });
+  });
+  activeDrivers().forEach(d => {
+    const n = comprobantesPortalPendientes(d).length;
+    if (!n) return;
+    const key = 'driver:' + d.id + ':comprobantes'; if (isSnoozed(key)) return;
+    out.push({ who: d.nombre, sub: 'Comprobante subido desde el portal', kind: 'driver', id: d.id, key, d: 0, cls: 'warn', t: n + ' sin revisar' });
   });
   activeDrivers().forEach(d => {
     const pend = multasPendientesChofer(d.id);

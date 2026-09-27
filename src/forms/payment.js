@@ -1,16 +1,20 @@
 import { S } from '../state.js';
-import { $, val, uid, iso, today, esc, money, moneyUSD, num1 } from '../utils.js';
+import { $, val, uid, iso, today, esc, money, moneyUSD, num1, fdate } from '../utils.js';
 import { isContract, calc, carById, driverName, metodoPreferidoChofer, montoSugeridoCobro } from '../calc.js';
 import { METODOS_PAGO } from '../constants.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { actualizarKm } from './car.js';
 
-export function payForm(carId) {
+// Comprobante subido por el chofer desde el portal que se adjunta al próximo cobro guardado.
+let comprobantePortal = null;
+export function payForm(carId, comprobante) {
   const cars = S.cars.filter(c => isContract(c) && c.choferId);
   if (!cars.length) { toast('Primero cargá un auto alquilado o financiado con chofer'); return; }
+  comprobantePortal = comprobante || null;
   const c = cars.find(x => x.id === carId) || cars[0];
   const h = '<h3>Registrar cobro</h3>' +
+  (comprobante ? '<div class="card small" style="margin-bottom:10px">📎 Se adjunta el comprobante que subió ' + esc(driverName(comprobante.driverId) || 'el chofer') + ' el ' + fdate(comprobante.fecha) + '.</div>' : '') +
   '<label class="f"><span>Auto</span><select id="p_car" onchange="onPayCar()">' + cars.map(x => '<option value="' + x.id + '"' + (x.id === c.id ? ' selected' : '') + '>' + esc(x.patente) + ' · ' + esc(driverName(x.choferId)) + '</option>').join('') + '</select></label>' +
   '<div class="small muted" id="p_info" style="margin:-4px 0 12px"></div>' +
   '<div class="two"><label class="f"><span id="p_lblmonto">Monto</span><input id="p_monto" inputmode="decimal"></label>' +
@@ -66,8 +70,15 @@ export async function savePay(btn) {
     if (excedente > 0) montoPago = monto - excedente;
   }
   const o = { id: uid(), carId: c.id, choferId: c.choferId, fecha: val('p_fecha'), monto: montoPago, tipo, metodo: val('p_metodo'), parcial, aCuenta, nota: val('p_nota'), depositado: false };
+  const comp = comprobantePortal;
+  if (comp) o.files = [{ id: comp.id, name: 'comprobante-portal-' + comp.fecha + '.' + (String(comp.type || '').split('/')[1] || 'jpg'), cat: 'comprobante', type: comp.type, size: comp.size, fecha: comp.fecha }];
   const km = val('p_km');
   if (!(await save('payments', o))) return;
+  comprobantePortal = null;
+  if (comp) {
+    const dr = S.drivers.find(x => x.id === comp.driverId);
+    if (dr) await save('drivers', Object.assign({}, dr, { comprobantesPortal: (dr.comprobantesPortal || []).map(x => x.id === comp.id ? Object.assign({}, x, { revisado: true, pagoId: o.id }) : x) }));
+  }
   if (excedente > 0) {
     await save('depositos', { id: uid(), driverId: c.choferId, fecha: val('p_fecha'), monto: excedente, tipo: 'semana_adelantada', nota: 'Generado desde un cobro' });
   }
@@ -83,6 +94,13 @@ export async function savePay(btn) {
     closeModal();
     toast(msgOk);
   }
+}
+export function cobrarComprobantePortal(driverId, compId) {
+  const d = S.drivers.find(x => x.id === driverId);
+  const comp = d && (d.comprobantesPortal || []).find(x => x.id === compId);
+  if (!comp) { toast('No se encontró el comprobante'); return; }
+  const carId = comp.carId || (S.cars.find(c => c.choferId === driverId && isContract(c)) || {}).id;
+  payForm(carId, Object.assign({ driverId }, comp));
 }
 export async function delPay(id) { if (await remove('payments', id)) toast('Cobro borrado'); }
 export async function toggleDepositado(id) {
