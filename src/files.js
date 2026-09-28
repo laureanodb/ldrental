@@ -163,8 +163,10 @@ function guessType(f) {
   return { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', pdf: 'application/pdf', heic: 'image/heic' }[e] || '';
 }
 export function fstat(m, bad) {
-  const el = document.getElementById('fstatus');
-  if (el) { el.textContent = m; el.style.color = bad ? 'var(--bad)' : 'var(--muted)'; }
+  ['fstatus', 'segStatus'].forEach(k => {
+    const el = document.getElementById(k);
+    if (el) { el.textContent = m; el.style.color = bad ? 'var(--bad)' : 'var(--muted)'; }
+  });
   if (bad) toast(m);
 }
 async function getAssets() { return as; }
@@ -176,13 +178,13 @@ export async function onPaste(ev, col, id) {
   }
   ev.preventDefault(); fstat('No había ninguna imagen copiada. Copiá la foto y volvé a pegar.', 1);
 }
-export async function attach(col, id, inputId, blobIn) {
+export async function attach(col, id, inputId, blobIn, catIn) {
   const inp = document.getElementById(inputId || 'fileIn');
   const f = blobIn || (inp && inp.files && inp.files[0]);
   if (!f) { fstat('No se eligió ningún archivo.', 1); return; }
   try {
     if (!(await getAssets())) { fstat('Adjuntar no está disponible en esta vista. ' + await diag(), 1); return; }
-    const cat = val('f_cat'); const ft = guessType(f);
+    const cat = catIn || val('f_cat'); const ft = guessType(f);
     if (inp) inp.value = '';
     fstat('Archivo elegido: ' + (f.name || 'imagen') + ' (' + Math.round(f.size / 1024) + ' KB). Preparando…');
     let blob = f;
@@ -202,7 +204,7 @@ export async function attach(col, id, inputId, blobIn) {
     if (tick) patch.docs = { [cat]: true };
     if (!(await patchDoc(col, id, patch))) { try { await as.delete(r.id); } catch (x) {} fstat('El archivo se subió pero no se pudo guardar en la ficha. Probá de nuevo.', 1); return; }
     if (tick) { const cb = document.getElementById('dc_' + cat); if (cb) cb.checked = true; }
-    renderFiles(col, id); fstat('Listo: archivo adjuntado.');
+    renderFiles(col, id); if (col === 'cars' && window.renderSeguroDocs) window.renderSeguroDocs(id); fstat('Listo: archivo adjuntado.');
   } catch (e) {
     fstat('Error al adjuntar: ' + ((e && (e.code || e.message)) || 'desconocido'), 1);
   }
@@ -212,5 +214,5 @@ export async function delFile(col, id, fid) {
   const f = (e.files || []).find(x => x.id === fid);
   if (!(await patchDoc(col, id, { files: (e.files || []).filter(x => x.id !== fid) }))) return;
   if (f && !f.link && as) { try { await as.delete(fid); } catch (x) {} }
-  renderFiles(col, id); toast('Archivo quitado');
+  renderFiles(col, id); if (col === 'cars' && window.renderSeguroDocs) window.renderSeguroDocs(id); toast('Archivo quitado');
 }

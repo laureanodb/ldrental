@@ -4,7 +4,7 @@ import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS, MOTIVOS_REEMPLAZO
 import { seguroPaga, seguroPendiente, seguroPendienteDesde, isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas, estadoGeneralAuto, mejorPeorMesAuto, lineaDeTiempoAuto, contratoVencimiento, vs, gastosFijosMensuales, historialGastosFijos, comparacionGastoFijo, desgloseCobradoPorChofer, movimientosSalidaPorAuto, gastosRepuestosPorAuto } from '../calc.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
-import { renderFiles, purgeFiles } from '../files.js';
+import { renderFiles, purgeFiles, attach } from '../files.js';
 import { canDelete, isAdmin, canVerFinanzas } from '../roles.js';
 import { seccionSocios } from './socios.js';
 import { inflacionAcumulada } from '../inflacion.js';
@@ -58,6 +58,31 @@ function tarjetaSeguroRecupera(c) {
       (pend > 0 ? '<button class="btn block" style="margin-top:8px" onclick="payFormSeguro(\'' + c.id + '\')">Registrar pago de seguro</button>' : '') : '<div class="small muted" style="margin-top:6px">El auto no tiene chofer: el seguro queda como costo tuyo.</div>') +
     '</div>';
 }
+// Documentos del seguro: siempre se muestra el más reciente de cada tipo y los anteriores quedan guardados.
+const DOCS_SEGURO = [['seguroCredencial', 'Credencial de circulación'], ['seguro', 'Póliza'], ['seguroCertificado', 'Certificado de cobertura']];
+function seguroDocsHtml(c) {
+  const abrir = (f, nombre) => f.link ? "window.open('" + esc(f.link) + "','_blank')" : "viewFile('" + esc(f.id) + "','" + esc(f.name || nombre) + "')";
+  return DOCS_SEGURO.map(([k, label]) => {
+    const L = (c.files || []).filter(f => f.cat === k).sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
+    const vig = L[0];
+    return '<div class="card"><div class="row between"><b>' + label + '</b>' + (vig ? badge('ok', 'Cargada') : badge('warn', 'Sin cargar')) + '</div>' +
+      '<div class="small muted" style="margin:4px 0 8px;overflow-wrap:anywhere">' + (vig ? esc(vig.name || label) + ' · subida el ' + fdate(vig.fecha) : 'Todavía no la subiste.') + '</div>' +
+      '<div class="row">' + (vig ? '<button class="btn sm grow" onclick="' + abrir(vig, label) + '">Ver / descargar</button>' : '') +
+      '<label class="btn sec sm filebtn' + (vig ? '' : ' grow') + '">' + (vig ? 'Subir nueva' : 'Subir foto o PDF') +
+      '<input id="segIn_' + k + '" type="file" accept="image/*,application/pdf" onchange="subirDocSeguro(\'' + c.id + '\',\'' + k + '\')"></label></div>' +
+      (L.length > 1 ? '<details style="margin-top:8px"><summary class="small muted" style="cursor:pointer">Anteriores (' + (L.length - 1) + ')</summary>' +
+        L.slice(1).map(f => '<div class="row between small" style="padding:3px 0"><span>' + fdate(f.fecha) + '</span><a class="tap" style="text-decoration:underline" onclick="' + abrir(f, label) + '">Ver / descargar</a></div>').join('') + '</details>' : '') +
+      '</div>';
+  }).join('');
+}
+export function renderSeguroDocs(carId) {
+  const el = document.getElementById('segDocs');
+  const c = S.cars.find(x => x.id === carId);
+  if (el && c) el.innerHTML = seguroDocsHtml(c);
+}
+export async function subirDocSeguro(carId, cat) {
+  await attach('cars', carId, 'segIn_' + cat, null, cat);
+}
 export function corregirSeguroForm(gastoId) {
   const g = S.gastos.find(x => x.id === gastoId); if (!g) return;
   const c = S.cars.find(x => x.id === g.carId);
@@ -74,7 +99,7 @@ export async function guardarCorreccionSeguro(gastoId) {
   if (!(await save('gastos', Object.assign({}, g, { costo: monto })))) return;
   const c = S.cars.find(x => x.id === g.carId);
   if (c && document.getElementById('cs_default').checked) await save('cars', Object.assign({}, c, { seguroMensual: monto }));
-  toast('Seguro corregido'); carForm(g.carId); setTabAuto('contrato');
+  toast('Seguro corregido'); carForm(g.carId); setTabAuto('seguro');
 }
 export function valorSemanalRow(c, volver) {
   const fin = c.tipo === 'financiado', alq = c.tipo === 'alquiler';
@@ -202,32 +227,13 @@ export function carForm(id) {
   '<label class="f"><span>Costo de compra</span><input id="c_costocompra" inputmode="decimal" value="' + esc(c.costoCompra || '') + '"></label></div>' +
   '<label class="f"><span>Valor de mercado actual</span><input id="c_valormercado" inputmode="decimal" value="' + esc(c.valorMercado || '') + '"></label>' +
   '<label class="f"><span>Estado</span><select id="c_tipo" data-orig="' + esc(ex ? c.tipo : '') + '" onchange="onTipo(this)">' + Object.keys(TIPOS).map(k => '<option value="' + k + '"' + (c.tipo === k ? ' selected' : '') + '>' + TIPOS[k] + '</option>').join('') + '</select></label>' +
-  '<div class="sec-t">Vencimientos</div><div class="two">' + VENC.map(v => '<label class="f"><span>' + v[1] + '</span><input id="v_' + v[0] + '" type="date" value="' + esc(c[v[0]]) + '"></label>').join('') + '</div>' +
+  '<div class="sec-t">Vencimientos</div><div class="two">' + VENC.filter(v => v[0] !== 'seguro').map(v => '<label class="f"><span>' + v[1] + '</span><input id="v_' + v[0] + '" type="date" value="' + esc(c[v[0]]) + '"></label>').join('') + '</div>' +
   '<label class="chk"><input type="checkbox" id="c_form08"' + (c.form08 ? ' checked' : '') + '><span>08</span></label>' +
   '<label class="chk"><input type="checkbox" id="c_gncInstaladoEmpresa" onchange="document.getElementById(\'gncInstaladorBox\').style.display=this.checked?\'\':\'none\'"' + (c.gncInstaladoEmpresa ? ' checked' : '') + '><span>El GNC lo instaló la empresa</span></label>' +
   '<div id="gncInstaladorBox" class="two" style="display:' + (c.gncInstaladoEmpresa ? '' : 'none') + '"><label class="f"><span>Instalador</span><input id="c_gncInstalador" value="' + esc(c.gncInstalador) + '"></label>' +
   '<label class="f"><span>Fecha de instalación</span><input id="c_gncFechaInstalacion" type="date" value="' + esc(c.gncFechaInstalacion) + '"></label></div>' +
-  '<div class="two"><label class="f"><span>N° de póliza</span><input id="c_poliza" value="' + esc(c.polizaNumero) + '"></label>' +
-  (() => {
-    const fija = c.aseguradora && ASEGURADORAS.slice(0, -1).includes(c.aseguradora);
-    const esOtro = c.aseguradora && !fija;
-    return '<label class="f"><span>Aseguradora</span><select id="c_aseguradora" onchange="document.getElementById(\'aseguradoraOtroBox\').style.display=this.value===\'Otro\'?\'\':\'none\'">' +
-    '<option value=""' + (!c.aseguradora ? ' selected' : '') + '>Sin especificar</option>' +
-    ASEGURADORAS.map(a => '<option value="' + a + '"' + ((fija && c.aseguradora === a) || (esOtro && a === 'Otro') ? ' selected' : '') + '>' + a + '</option>').join('') +
-    '</select></label>';
-  })() + '</div>' +
-  (() => {
-    const fija = c.aseguradora && ASEGURADORAS.slice(0, -1).includes(c.aseguradora);
-    const esOtro = c.aseguradora && !fija;
-    return '<div id="aseguradoraOtroBox" style="display:' + (esOtro ? '' : 'none') + '"><label class="f"><span>Nombre de la aseguradora</span><input id="c_aseguradoraOtro" value="' + esc(esOtro ? c.aseguradora : '') + '"></label></div>';
-  })() +
-  '<div class="two"><label class="f"><span>Cobertura</span><select id="c_coberturaSeguro"><option value="">Sin especificar</option>' + COBERTURAS_SEGURO.map(x => '<option value="' + x[0] + '"' + (c.coberturaSeguro === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
-  '<label class="f"><span>Franquicia</span><input id="c_franquiciaSeguro" inputmode="decimal" value="' + esc(c.franquiciaSeguro || '') + '"></label></div>' +
-  '<label class="f"><span>¿Quién paga el seguro?</span><select id="c_seguroPaga" onchange="document.getElementById(\'seguroPagaAyuda\').textContent=ayudaSeguroPaga(this.value)"' + (isAdmin() ? '' : ' disabled') + '>' +
-    SEGURO_PAGA.map(x => '<option value="' + x[0] + '"' + (seguroPaga(c) === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
-  '<div id="seguroPagaAyuda" class="small muted" style="margin:-4px 0 8px">' + esc(ayudaSeguroPaga(seguroPaga(c))) + '</div>' +
-  '<div class="small muted" style="margin:-4px 0 8px">Si cargás un monto mensual, la app genera el gasto automáticamente cada mes (dejalo en 0 para no generarlo).' + (!isAdmin() ? ' Solo un administrador puede editar estos montos.' : '') + '</div>' +
-  '<div class="two"><label class="f"><span>Seguro: monto mensual</span><input id="c_seguroMensual" inputmode="decimal" value="' + esc(c.seguroMensual || '') + '"' + (isAdmin() ? '' : ' disabled') + '></label>' +
+  '<div class="small muted" style="margin:-4px 0 8px">Si cargás un monto mensual de patente, la app genera el gasto automáticamente cada mes (dejalo en 0 para no generarlo).' + (!isAdmin() ? ' Solo un administrador puede editar estos montos.' : '') + '</div>' +
+  '<div class="two">' +
   '<label class="f"><span>Patente: monto mensual</span><input id="c_patenteMensual" inputmode="decimal" value="' + esc(c.patenteMensual || '') + '"' + (isAdmin() ? '' : ' disabled') + '></label></div>' +
   '<label class="f"><span>Mantenimiento preventivo: estimado mensual <small>no genera gasto, solo para la rentabilidad</small></span><input id="c_mantenimientoMensualEstimado" inputmode="decimal" value="' + esc(c.mantenimientoMensualEstimado || '') + '"' + (isAdmin() ? '' : ' disabled') + '></label>' +
   '<div class="sec-t">Ubicación y GPS</div>' +
@@ -279,6 +285,33 @@ export function carForm(id) {
   '<div class="sec-t">Archivos</div><div id="files"></div><div id="fstatus" class="small" style="margin:-4px 0 12px;overflow-wrap:anywhere"></div>' +
   '<label class="f"><span>Notas</span><textarea id="c_notas">' + esc(c.notas) + '</textarea></label>';
 
+  /* ---- Seguro ---- */
+  let seguroTab = '<div class="sec-t">Datos del seguro</div>' +
+  '<div class="two"><label class="f"><span>N° de póliza</span><input id="c_poliza" value="' + esc(c.polizaNumero) + '"></label>' +
+  (() => {
+    const fija = c.aseguradora && ASEGURADORAS.slice(0, -1).includes(c.aseguradora);
+    const esOtro = c.aseguradora && !fija;
+    return '<label class="f"><span>Aseguradora</span><select id="c_aseguradora" onchange="document.getElementById(\'aseguradoraOtroBox\').style.display=this.value===\'Otro\'?\'\':\'none\'">' +
+    '<option value=""' + (!c.aseguradora ? ' selected' : '') + '>Sin especificar</option>' +
+    ASEGURADORAS.map(a => '<option value="' + a + '"' + ((fija && c.aseguradora === a) || (esOtro && a === 'Otro') ? ' selected' : '') + '>' + a + '</option>').join('') +
+    '</select></label>';
+  })() + '</div>' +
+  (() => {
+    const fija = c.aseguradora && ASEGURADORAS.slice(0, -1).includes(c.aseguradora);
+    const esOtro = c.aseguradora && !fija;
+    return '<div id="aseguradoraOtroBox" style="display:' + (esOtro ? '' : 'none') + '"><label class="f"><span>Nombre de la aseguradora</span><input id="c_aseguradoraOtro" value="' + esc(esOtro ? c.aseguradora : '') + '"></label></div>';
+  })() +
+  '<div class="two"><label class="f"><span>Cobertura</span><select id="c_coberturaSeguro"><option value="">Sin especificar</option>' + COBERTURAS_SEGURO.map(x => '<option value="' + x[0] + '"' + (c.coberturaSeguro === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
+  '<label class="f"><span>Franquicia</span><input id="c_franquiciaSeguro" inputmode="decimal" value="' + esc(c.franquiciaSeguro || '') + '"></label></div>' +
+  '<label class="f"><span>¿Quién paga el seguro?</span><select id="c_seguroPaga" onchange="document.getElementById(\'seguroPagaAyuda\').textContent=ayudaSeguroPaga(this.value)"' + (isAdmin() ? '' : ' disabled') + '>' +
+    SEGURO_PAGA.map(x => '<option value="' + x[0] + '"' + (seguroPaga(c) === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
+  '<div id="seguroPagaAyuda" class="small muted" style="margin:-4px 0 8px">' + esc(ayudaSeguroPaga(seguroPaga(c))) + '</div>' +
+  '<div class="two"><label class="f"><span>Vencimiento de la póliza</span><input id="v_seguro" type="date" value="' + esc(c.seguro) + '"></label>' +
+  '<label class="f"><span>Seguro: monto mensual</span><input id="c_seguroMensual" inputmode="decimal" value="' + esc(c.seguroMensual || '') + '"' + (isAdmin() ? '' : ' disabled') + '></label>' + '</div>' +
+  '<div class="small muted" style="margin:-4px 0 8px">Con el monto mensual cargado, la app genera el gasto del seguro cada mes (salvo que lo pague el chofer).</div>';
+  if (ex && seguroPaga(c) === 'recupera') seguroTab += tarjetaSeguroRecupera(c);
+  seguroTab += '<div class="sec-t">Documentos del seguro</div>' + (ex ? '<div id="segDocs">' + seguroDocsHtml(c) + '</div><div id="segStatus" class="small" style="margin:-4px 0 12px;overflow-wrap:anywhere"></div>' : '<div class="small muted" style="margin-bottom:12px">Guardá el auto y después subís la credencial, la póliza y el certificado.</div>');
+
   /* ---- Contrato ---- */
   let contrato = '';
   if (ex && isContract(c)) {
@@ -326,7 +359,6 @@ export function carForm(id) {
       '<div class="row between small" style="margin-top:2px"><span class="muted">Peor: ' + esc(mesLabel(mp.peor[0])) + '</span><b style="color:var(--bad)">' + money(mp.peor[1]) + '</b></div></div>';
     }
   }
-  if (ex && seguroPaga(c) === 'recupera') contrato = tarjetaSeguroRecupera(c) + contrato;
   contrato += '<div id="contrato"><label class="f"><span>Chofer</span><select id="c_chofer"><option value="">Elegir chofer</option>' + S.drivers.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre))).map(d => '<option value="' + d.id + '"' + (c.choferId === d.id ? ' selected' : '') + '>' + esc(d.nombre) + '</option>').join('') + '</select></label>' +
   '<div id="finbox" class="two"><label class="f"><span id="lbltotal">Total a pagar en cuotas</span><input id="c_total" inputmode="decimal" value="' + esc(c.total || '') + '" oninput="autoCuota()"></label>' +
   '<label class="f"><span>Cantidad de cuotas</span><input id="c_cuotas" inputmode="numeric" value="' + esc(c.cuotas || '') + '" oninput="autoCuota()"></label>' +
@@ -487,6 +519,7 @@ export function carForm(id) {
     h += '<div class="tabs" data-scope="auto">' +
       '<button class="tab on" data-tab="datos" onclick="setTabAuto(\'datos\')">Datos</button>' +
       '<button class="tab" data-tab="contrato" onclick="setTabAuto(\'contrato\')">Contrato</button>' +
+      '<button class="tab" data-tab="seguro" onclick="setTabAuto(\'seguro\')">Seguro</button>' +
       '<button class="tab" data-tab="mant" onclick="setTabAuto(\'mant\')">Mantenimiento</button>' +
       '<button class="tab" data-tab="gastos" onclick="setTabAuto(\'gastos\')">Gastos</button>' +
       '<button class="tab" data-tab="hist" onclick="setTabAuto(\'hist\')">Historial</button>' +
@@ -494,12 +527,13 @@ export function carForm(id) {
     h += saveCancelRow;
     h += tabpanel('datos', true, datos);
     h += tabpanel('contrato', false, contrato);
+    h += tabpanel('seguro', false, seguroTab);
     h += tabpanel('mant', false, mant);
     h += tabpanel('gastos', false, gastos);
     h += tabpanel('hist', false, hist);
     h += accionesRow;
   } else {
-    h += datos + contrato + saveCancelRow;
+    h += datos + seguroTab + contrato + saveCancelRow;
   }
   openModal(h); onTipo($('#c_tipo'), true); renderFiles('cars', ex ? ex.id : null);
 }

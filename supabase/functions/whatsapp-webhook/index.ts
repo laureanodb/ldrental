@@ -144,6 +144,8 @@ const MANT_ITEMS: [string, string, string[]][] = [
 const DOC_CATS: [string, string, string[]][] = [
   ['cedula', 'Cédula', ['cedula', 'tarjeta verde']],
   ['titulo', 'Título', ['titulo', 'boleto']],
+  ['seguroCredencial', 'Credencial de circulación del seguro', ['credencial', 'tarjeta de circulacion']],
+  ['seguroCertificado', 'Certificado de cobertura', ['certificado', 'cobertura']],
   ['seguro', 'Póliza de seguro', ['seguro', 'poliza']],
   ['vtv', 'VTV', ['vtv']],
   ['patente', 'Comprobante de patente', ['patente', 'impuesto']],
@@ -653,7 +655,7 @@ function ayudaCargar(u: Usuario): string {
   }
   L.push('', '📷 *Fotos:* mandá una foto con la patente escrita abajo y queda en la bitácora del auto.');
   if (puede(u, 'cobrar')) L.push('   Con "comprobante AB123CD" se guarda en el último cobro de ese auto, y con "cobré 100000 AB123CD" se registra el cobro con la foto.');
-  L.push('   Con "seguro AB123CD", "vtv AB123CD" o "cédula AB123CD" se guarda como ese documento.');
+  L.push('   Con "poliza AB123CD", "credencial AB123CD", "certificado AB123CD", "vtv AB123CD" o "cédula AB123CD" se guarda como ese documento.');
   L.push('📄 *Pedir un documento:* doc AB123CD');
   return L.join('\n');
 }
@@ -1491,7 +1493,7 @@ Comandos (PATENTE = patente del catálogo; NOMBRE = nombre del chofer como figur
 - service | service PATENTE
 - gastos mes | gastos PATENTE | rentabilidad PATENTE | ranking rentabilidad
 - stock | lista de compra
-- doc PATENTE | doc PATENTE CATEGORIA   (CATEGORIA: cedula, titulo, seguro, vtv, patente, contrato, manual, fotos)
+- doc PATENTE | doc PATENTE CATEGORIA   (CATEGORIA: cedula, titulo, poliza, credencial, certificado, vtv, patente, contrato, manual, fotos)
 - buscar TEXTO   (marca, modelo, color o número de flota)
 - cobre MONTO PATENTE [efectivo|transferencia|mp] [FECHA]   (registra un cobro; agregá "a cuenta" o "parcial" si corresponde)
 - cobre seguro MONTO PATENTE   (el chofer pagó el seguro del auto, que se cobra aparte en pesos)
