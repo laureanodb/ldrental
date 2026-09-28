@@ -1,6 +1,6 @@
 import { S } from '../state.js';
 import { $, val, uid, iso, today, esc, money, moneyUSD, num1, fdate } from '../utils.js';
-import { isContract, calc, carById, driverName, metodoPreferidoChofer, montoSugeridoCobro } from '../calc.js';
+import { isContract, calc, carById, driverName, metodoPreferidoChofer, montoSugeridoCobro, seguroPendiente } from '../calc.js';
 import { METODOS_PAGO } from '../constants.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
@@ -19,7 +19,7 @@ export function payForm(carId, comprobante) {
   '<div class="small muted" id="p_info" style="margin:-4px 0 12px"></div>' +
   '<div class="two"><label class="f"><span id="p_lblmonto">Monto</span><input id="p_monto" inputmode="decimal"></label>' +
   '<label class="f"><span>Fecha</span><input id="p_fecha" type="date" value="' + iso(today()) + '"></label></div>' +
-  '<div class="two"><label class="f"><span>Tipo</span><select id="p_tipo"><option value="alquiler">Alquiler</option><option value="cuota">Cuota de financiación</option><option value="otro">Otro (anticipo, seña, etc.)</option></select></label>' +
+  '<div class="two"><label class="f"><span>Tipo</span><select id="p_tipo" onchange="onPayTipo()"><option value="alquiler">Alquiler</option><option value="cuota">Cuota de financiación</option><option value="seguro">Seguro (en pesos)</option><option value="otro">Otro (anticipo, seña, etc.)</option></select></label>' +
   '<label class="f"><span>Método de pago</span><select id="p_metodo">' + METODOS_PAGO.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label></div>' +
   '<label class="chk"><input type="checkbox" id="p_parcial"><span>Es un pago parcial</span></label>' +
   '<label class="chk"><input type="checkbox" id="p_acuenta"><span>El monto no coincide con el semanal (a cuenta, adelanto de varias semanas, etc.)</span></label>' +
@@ -28,6 +28,18 @@ export function payForm(carId, comprobante) {
   '<label class="f"><span>Nota</span><input id="p_nota"></label>' +
   '<div class="row"><button class="btn grow" onclick="savePay(this)">Guardar cobro</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
   openModal(h); onPayCar();
+}
+export function payFormSeguro(carId) {
+  payForm(carId);
+  const c = carById(carId); if (!c) return;
+  $('#p_tipo').value = 'seguro'; onPayTipo();
+  $('#p_monto').value = c.choferId ? (seguroPendiente(c.choferId) || '') : '';
+}
+export function onPayTipo() {
+  const c = carById($('#p_car').value); if (!c) return;
+  const t = $('#p_tipo').value;
+  $('#p_lblmonto').textContent = t === 'cuota' ? 'Monto (en dólares)' : t === 'seguro' ? 'Monto del seguro (en pesos)' : 'Monto';
+  if (t === 'seguro') $('#p_info').textContent = 'Seguro pendiente de ' + (driverName(c.choferId) || 'el chofer') + ': ' + money(c.choferId ? seguroPendiente(c.choferId) : 0) + '.';
 }
 export function payFormACuenta(carId) {
   payForm(carId);
@@ -54,7 +66,7 @@ export async function savePay(btn) {
   const parcial = document.getElementById('p_parcial').checked;
   const aCuenta = document.getElementById('p_acuenta').checked;
   const esperado = +c.monto || 0;
-  if (!parcial && !aCuenta && esperado && (monto > esperado * 1.5 || monto < esperado * 0.5) && payAnomaloArmed !== btn) {
+  if (val('p_tipo') !== 'seguro' && !parcial && !aCuenta && esperado && (monto > esperado * 1.5 || monto < esperado * 0.5) && payAnomaloArmed !== btn) {
     payAnomaloArmed = btn;
     const mon = c.tipo === 'financiado' ? moneyUSD : money;
     toast('Este monto (' + mon(monto) + ') es muy distinto al habitual (' + mon(esperado) + '). Tocá "Guardar cobro" de nuevo para confirmar.');

@@ -1,7 +1,7 @@
 import { $, esc, val, uid, money, moneyUSD, fdate, iso, today } from '../utils.js';
 import { S } from '../state.js';
 import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS, CANALES_PROSPECTO, METODOS_PAGO, COMUNICACION_TIPOS } from '../constants.js';
-import { plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, saldoSemanaAdelantada, semanaAdelantadaDeChofer, semanaAdelantadaDisponible, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer, estadoGeneralChofer, promedioIngresos3MesesChofer, encuestasDeChofer, promedioNpsChofer, desafiosCumplidos, vs } from '../calc.js';
+import { seguroPendiente, seguroPendienteDesde, plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, saldoSemanaAdelantada, semanaAdelantadaDeChofer, semanaAdelantadaDisponible, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer, estadoGeneralChofer, promedioIngresos3MesesChofer, encuestasDeChofer, promedioNpsChofer, desafiosCumplidos, vs } from '../calc.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -118,6 +118,14 @@ export function driverForm(id) {
     const mon = cars.some(c => c.tipo === 'financiado') ? moneyUSD : money;
     financiacion += '<div class="card"><div class="row between"><span class="muted">Autos</span><span>' + (cars.length ? cars.map(c => plate(c.patente)).join(' ') : 'Ninguno') + '</span></div>' +
     '<div class="row between"><span class="muted">Deuda</span><b style="color:' + (debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + mon(debt) + '</b></div>' +
+    (() => {
+      const pend = seguroPendiente(d.id), auto = cars.find(c => c.seguroPaga === 'recupera');
+      if (!pend && !auto) return '';
+      const desde = seguroPendienteDesde(d.id);
+      return '<div class="row between"><span class="muted">Seguro a pagar</span><b style="color:' + (pend > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(pend) + '</b></div>' +
+        (desde ? '<div class="small muted" style="margin:-2px 0 4px">Sin pagar desde el ' + fdate(desde) + '</div>' : '') +
+        (pend > 0 && auto ? '<button class="btn sec sm block" style="margin:4px 0 6px" onclick="payFormSeguro(\'' + auto.id + '\')">Registrar pago de seguro</button>' : '');
+    })() +
     (score != null ? '<div class="row between"><span class="muted">Puntualidad</span><b>' + score + '%</b></div>' : '') +
     (() => { const pr = promedioIngresos3MesesChofer(d.id); return (pr.promedio || pr.promedioUSD) ? '<div class="row between"><span class="muted">Promedio mensual (3 meses)</span><b>' + (pr.promedio ? money(pr.promedio) : '') + (pr.promedioUSD ? (pr.promedio ? ' + ' : '') + moneyUSD(pr.promedioUSD) : '') + '</b></div>' : ''; })() +
     (!d.prospecto && driverEnRiesgo(d.id) ? '<div class="row between"><span class="muted">Riesgo</span>' + badge('bad', 'En riesgo por atrasos') + '</div>' : '') +

@@ -150,8 +150,8 @@ export function tableroSemanal() {
   const desde = new Date(hoy); desde.setDate(desde.getDate() - 7);
   const desdeIso = iso(desde), hastaIso = iso(hoy);
   return activeCars().filter(c => c.choferId && isContract(c)).map(c => {
-    const cobrado = S.payments.filter(p => p.carId === c.id && p.fecha >= desdeIso && p.fecha <= hastaIso).reduce((a, p) => a + (+p.monto || 0), 0);
-    const gasto = S.gastos.filter(g => g.carId === c.id && g.fecha >= desdeIso && g.fecha <= hastaIso).reduce((a, g) => a + (+g.costo || 0), 0) +
+    const cobrado = S.payments.filter(p => p.carId === c.id && p.tipo !== 'seguro' && p.fecha >= desdeIso && p.fecha <= hastaIso).reduce((a, p) => a + (+p.monto || 0), 0);
+    const gasto = S.gastos.filter(g => g.carId === c.id && !esSeguroRecuperable(g) && g.fecha >= desdeIso && g.fecha <= hastaIso).reduce((a, g) => a + (+g.costo || 0), 0) +
       S.mantenimientos.filter(m => m.carId === c.id && m.fecha >= desdeIso && m.fecha <= hastaIso).reduce((a, m) => a + (+m.costo || 0), 0);
     return { c, cobrado, gasto, neto: cobrado - gasto, deuda: calc(c).debt };
   });
@@ -336,8 +336,9 @@ export function semanaAdelantadaDisponible(driverId) {
 export function saludDeDatos() {
   const items = [];
   activeCars().forEach(c => {
-    if (!(+c.seguroMensual > 0) || !(+c.patenteMensual > 0)) {
-      items.push({ tipo: 'car', id: c.id, texto: (c.patente || 'Auto') + ': falta el monto mensual de ' + (!(+c.seguroMensual > 0) && !(+c.patenteMensual > 0) ? 'seguro y patente' : !(+c.seguroMensual > 0) ? 'seguro' : 'patente') });
+    const faltaSeg = seguroPaga(c) !== 'chofer' && !(+c.seguroMensual > 0);
+    if (faltaSeg || !(+c.patenteMensual > 0)) {
+      items.push({ tipo: 'car', id: c.id, texto: (c.patente || 'Auto') + ': falta el monto mensual de ' + (faltaSeg && !(+c.patenteMensual > 0) ? 'seguro y patente' : faltaSeg ? 'seguro' : 'patente') });
     }
   });
   const huerfanos = S.payments.filter(p => p.carId && !S.cars.some(c => c.id === p.carId)).length;
@@ -463,6 +464,13 @@ export function alerts() {
     out.push({ who: d.nombre, sub: 'Depósito casi completo', kind: 'driver', id: d.id, key, d: 20, cls: 'soft', t: 'Falta ' + money(objetivo - saldo) + ' para el objetivo' });
   });
   activeDrivers().forEach(d => {
+    const pend = seguroPendiente(d.id); if (!pend) return;
+    const desde = seguroPendienteDesde(d.id); if (!desde) return;
+    const dias = days(parse(desde), today()); if (dias < 7) return;
+    const key = 'driver:' + d.id + ':seguro'; if (isSnoozed(key)) return;
+    out.push({ who: d.nombre, sub: 'Seguro sin pagar', kind: 'driver', id: d.id, key, d: 0, cls: dias >= 30 ? 'bad' : 'warn', t: money(pend) + ' desde el ' + fdate(desde) });
+  });
+  activeDrivers().forEach(d => {
     const n = comprobantesPortalPendientes(d).length;
     if (!n) return;
     const key = 'driver:' + d.id + ':comprobantes'; if (isSnoozed(key)) return;
@@ -567,7 +575,7 @@ export function alerts() {
     out.push({ who: c.patente || 'Auto sin patente', sub: 'Sin cobro cargado esta semana', kind: 'car', id: c.id, key, d: 0, cls: diasSinCobro >= 14 ? 'bad' : 'warn', t: 'Hace ' + diasSinCobro + ' días que no se carga un cobro' });
   });
   activeCars().forEach(c => {
-    const faltaSeguro = !(+c.seguroMensual > 0), faltaPatente = !(+c.patenteMensual > 0);
+    const faltaSeguro = seguroPaga(c) !== 'chofer' && !(+c.seguroMensual > 0), faltaPatente = !(+c.patenteMensual > 0);
     if (!faltaSeguro && !faltaPatente) return;
     const key = 'car:' + c.id + ':gastofijo'; if (isSnoozed(key)) return;
     const t = faltaSeguro && faltaPatente ? 'Falta el monto mensual de seguro y de patente' : faltaSeguro ? 'Falta el monto mensual de seguro' : 'Falta el monto mensual de patente';
@@ -604,6 +612,26 @@ export function diasSinCobrosGlobal() {
 export const urgent = () => alerts().filter(a => a.d <= settings.avisoWarn);
 export const driverName = id => { const d = S.drivers.find(x => x.id === id); return d ? d.nombre : ''; };
 export const carById = id => S.cars.find(x => x.id === id);
+/* Seguro: quién lo paga ('empresa' = costo propio, 'recupera' = lo paga la empresa y se lo cobra
+   al chofer en pesos, 'chofer' = el chofer lo paga por su cuenta). */
+export const seguroPaga = c => (c && c.seguroPaga) || 'empresa';
+export const esSeguroRecuperable = g => g.categoria === 'seguro' && Boolean(g.recuperaDe);
+export function seguroCargado(driverId) {
+  return S.gastos.filter(g => esSeguroRecuperable(g) && g.recuperaDe === driverId).reduce((a, g) => a + (+g.costo || 0), 0);
+}
+export function seguroPagado(driverId) {
+  return S.payments.filter(p => p.tipo === 'seguro' && p.choferId === driverId).reduce((a, p) => a + (+p.monto || 0), 0);
+}
+export function seguroPendiente(driverId) {
+  return Math.max(0, seguroCargado(driverId) - seguroPagado(driverId));
+}
+/* Fecha del cargo de seguro más viejo que todavía no está pagado (los pagos cubren primero lo más viejo). */
+export function seguroPendienteDesde(driverId) {
+  let pagado = seguroPagado(driverId);
+  const cargos = S.gastos.filter(g => esSeguroRecuperable(g) && g.recuperaDe === driverId).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
+  for (const g of cargos) { pagado -= +g.costo || 0; if (pagado < 0) return g.fecha; }
+  return null;
+}
 export function saldoAdelantos(driverId) {
   const d = S.drivers.find(x => x.id === driverId);
   return ((d && d.adelantos) || []).reduce((a, x) => a + (+x.monto || 0), 0);
@@ -780,8 +808,8 @@ export function desgloseCobradoPorChofer(c) {
   return Object.values(porChofer).map(x => Object.assign(x, { neta: x.cobrado - x.gastos })).sort((a, b) => b.cobrado - a.cobrado);
 }
 export function rentabilidadAuto(c) {
-  const cobrado = S.payments.filter(p => p.carId === c.id).reduce((a, p) => a + (+p.monto || 0), 0);
-  const gastosCar = S.gastos.filter(g => g.carId === c.id);
+  const cobrado = S.payments.filter(p => p.carId === c.id && p.tipo !== 'seguro').reduce((a, p) => a + (+p.monto || 0), 0);
+  const gastosCar = S.gastos.filter(g => g.carId === c.id && !esSeguroRecuperable(g));
   const gastosFijos = gastosCar.filter(esGastoFijoAuto).reduce((a, g) => a + (+g.costo || 0), 0);
   const gastosVariables = gastosCar.filter(g => !esGastoFijoAuto(g)).reduce((a, g) => a + (+g.costo || 0), 0) +
     S.mantenimientos.filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
@@ -790,7 +818,7 @@ export function rentabilidadAuto(c) {
   return { cobrado, gastos, gastosFijos, gastosVariables, neta: moneda === 'USD' ? null : cobrado - gastos, netaSinFijos: moneda === 'USD' ? null : cobrado - gastosVariables, costoCompra: +c.costoCompra || 0, moneda };
 }
 export function gastosFijosMensuales(c) {
-  const seguro = +c.seguroMensual || 0, patente = +c.patenteMensual || 0, mantenimientoEstimado = +c.mantenimientoMensualEstimado || 0;
+  const seguro = seguroPaga(c) === 'empresa' ? (+c.seguroMensual || 0) : 0, patente = +c.patenteMensual || 0, mantenimientoEstimado = +c.mantenimientoMensualEstimado || 0;
   return { seguro, patente, mantenimientoEstimado, total: seguro + patente + mantenimientoEstimado };
 }
 export function gastosFijosFlotaMensual() {

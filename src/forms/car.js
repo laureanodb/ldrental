@@ -1,7 +1,7 @@
 import { S } from '../state.js';
 import { $, val, uid, iso, today, esc, fdate, money, moneyUSD, parse, days } from '../utils.js';
 import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS, MOTIVOS_REEMPLAZO, TIPOS_SINIESTRO, SINIESTRO_ESTADOS, ASEGURADORAS, TRANSMISIONES, COBERTURAS_SEGURO, ELEMENTOS_SEGURIDAD, CUMPLIMIENTO_NORMATIVO_ITEMS, RECLAMO_SEGURO_ESTADOS, STOCK_UNIDADES } from '../constants.js';
-import { isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas, estadoGeneralAuto, mejorPeorMesAuto, lineaDeTiempoAuto, contratoVencimiento, vs, gastosFijosMensuales, historialGastosFijos, comparacionGastoFijo, desgloseCobradoPorChofer, movimientosSalidaPorAuto, gastosRepuestosPorAuto } from '../calc.js';
+import { seguroPaga, seguroPendiente, seguroPendienteDesde, isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas, estadoGeneralAuto, mejorPeorMesAuto, lineaDeTiempoAuto, contratoVencimiento, vs, gastosFijosMensuales, historialGastosFijos, comparacionGastoFijo, desgloseCobradoPorChofer, movimientosSalidaPorAuto, gastosRepuestosPorAuto } from '../calc.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -31,6 +31,51 @@ export function actualizarHistorialMonto(ex, monto) {
 
 /* Valor semanal del alquiler: en autos alquilados es el monto del contrato;
    en el resto es la tarifa de referencia (valorSemanal) que se propone al asignar. */
+export const SEGURO_PAGA = [['empresa', 'Yo, es costo mío'], ['recupera', 'Yo, y se lo cobro al chofer'], ['chofer', 'El chofer, por su cuenta']];
+export function ayudaSeguroPaga(v) {
+  if (v === 'recupera') return 'Cada mes la app registra el pago del seguro y se lo suma al chofer como seguro a pagar, en pesos. No cuenta como gasto en la rentabilidad.';
+  if (v === 'chofer') return 'No se genera ningún gasto. La app solo controla el vencimiento de la póliza.';
+  return 'La app genera el gasto del seguro todos los meses como costo tuyo.';
+}
+// Al pasar un auto a "se lo cobro al chofer", el seguro ya cargado este mes queda a cargo del chofer actual.
+async function pasarSeguroDelMesAlChofer(c) {
+  if (!c.choferId) return;
+  const desde = iso(today()).slice(0, 8) + '01';
+  for (const g of S.gastos.filter(x => x.carId === c.id && x.categoria === 'seguro' && !x.recuperaDe && (x.fecha || '') >= desde)) {
+    await save('gastos', Object.assign({}, g, { recuperaDe: c.choferId }));
+  }
+}
+function tarjetaSeguroRecupera(c) {
+  const mes = iso(today()).slice(0, 7);
+  const delMes = S.gastos.filter(g => g.carId === c.id && g.categoria === 'seguro' && g.recuperaDe && (g.fecha || '').slice(0, 7) === mes);
+  const pend = c.choferId ? seguroPendiente(c.choferId) : 0;
+  const desde = c.choferId ? seguroPendienteDesde(c.choferId) : null;
+  return '<div class="sec-t">Seguro a cobrar al chofer</div><div class="card">' +
+    (delMes.length ? delMes.map(g => '<div class="row between"><span class="muted">Seguro de este mes</span><span><b>' + money(g.costo) + '</b> <button class="btn sec sm" onclick="corregirSeguroForm(\'' + g.id + '\')">Corregir</button></span></div>').join('')
+      : '<div class="small muted">Todavía no se generó el seguro de este mes.</div>') +
+    (c.choferId ? '<div class="row between" style="margin-top:6px"><span class="muted">' + esc(driverName(c.choferId)) + ' debe de seguro</span><b style="color:' + (pend > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(pend) + '</b></div>' +
+      (desde ? '<div class="small muted">Sin pagar desde el ' + fdate(desde) + '</div>' : '') +
+      (pend > 0 ? '<button class="btn block" style="margin-top:8px" onclick="payFormSeguro(\'' + c.id + '\')">Registrar pago de seguro</button>' : '') : '<div class="small muted" style="margin-top:6px">El auto no tiene chofer: el seguro queda como costo tuyo.</div>') +
+    '</div>';
+}
+export function corregirSeguroForm(gastoId) {
+  const g = S.gastos.find(x => x.id === gastoId); if (!g) return;
+  const c = S.cars.find(x => x.id === g.carId);
+  openModal('<h3>Seguro de ' + esc(c ? c.patente : 'auto') + '</h3>' +
+    '<div class="small muted" style="margin-bottom:10px">Poné lo que te cobró la aseguradora este mes. Es lo que se le cobra al chofer.</div>' +
+    '<label class="f"><span>Monto del mes</span><input id="cs_monto" inputmode="decimal" value="' + esc(g.costo || '') + '"></label>' +
+    '<label class="chk"><input type="checkbox" id="cs_default"><span>Usar este monto también para los próximos meses</span></label>' +
+    '<div class="row" style="margin-top:14px"><button class="btn grow" onclick="guardarCorreccionSeguro(\'' + g.id + '\')">Guardar</button><button class="btn sec" onclick="carForm(\'' + g.carId + '\')">Cancelar</button></div>');
+}
+export async function guardarCorreccionSeguro(gastoId) {
+  const g = S.gastos.find(x => x.id === gastoId); if (!g) return;
+  const monto = +val('cs_monto') || 0;
+  if (!monto) { toast('Poné el monto'); return; }
+  if (!(await save('gastos', Object.assign({}, g, { costo: monto })))) return;
+  const c = S.cars.find(x => x.id === g.carId);
+  if (c && document.getElementById('cs_default').checked) await save('cars', Object.assign({}, c, { seguroMensual: monto }));
+  toast('Seguro corregido'); carForm(g.carId); setTabAuto('contrato');
+}
 export function valorSemanalRow(c, volver) {
   const fin = c.tipo === 'financiado', alq = c.tipo === 'alquiler';
   const v = (alq || fin) ? +c.monto || 0 : +c.valorSemanal || 0;
@@ -178,6 +223,9 @@ export function carForm(id) {
   })() +
   '<div class="two"><label class="f"><span>Cobertura</span><select id="c_coberturaSeguro"><option value="">Sin especificar</option>' + COBERTURAS_SEGURO.map(x => '<option value="' + x[0] + '"' + (c.coberturaSeguro === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
   '<label class="f"><span>Franquicia</span><input id="c_franquiciaSeguro" inputmode="decimal" value="' + esc(c.franquiciaSeguro || '') + '"></label></div>' +
+  '<label class="f"><span>¿Quién paga el seguro?</span><select id="c_seguroPaga" onchange="document.getElementById(\'seguroPagaAyuda\').textContent=ayudaSeguroPaga(this.value)"' + (isAdmin() ? '' : ' disabled') + '>' +
+    SEGURO_PAGA.map(x => '<option value="' + x[0] + '"' + (seguroPaga(c) === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
+  '<div id="seguroPagaAyuda" class="small muted" style="margin:-4px 0 8px">' + esc(ayudaSeguroPaga(seguroPaga(c))) + '</div>' +
   '<div class="small muted" style="margin:-4px 0 8px">Si cargás un monto mensual, la app genera el gasto automáticamente cada mes (dejalo en 0 para no generarlo).' + (!isAdmin() ? ' Solo un administrador puede editar estos montos.' : '') + '</div>' +
   '<div class="two"><label class="f"><span>Seguro: monto mensual</span><input id="c_seguroMensual" inputmode="decimal" value="' + esc(c.seguroMensual || '') + '"' + (isAdmin() ? '' : ' disabled') + '></label>' +
   '<label class="f"><span>Patente: monto mensual</span><input id="c_patenteMensual" inputmode="decimal" value="' + esc(c.patenteMensual || '') + '"' + (isAdmin() ? '' : ' disabled') + '></label></div>' +
@@ -278,6 +326,7 @@ export function carForm(id) {
       '<div class="row between small" style="margin-top:2px"><span class="muted">Peor: ' + esc(mesLabel(mp.peor[0])) + '</span><b style="color:var(--bad)">' + money(mp.peor[1]) + '</b></div></div>';
     }
   }
+  if (ex && seguroPaga(c) === 'recupera') contrato = tarjetaSeguroRecupera(c) + contrato;
   contrato += '<div id="contrato"><label class="f"><span>Chofer</span><select id="c_chofer"><option value="">Elegir chofer</option>' + S.drivers.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre))).map(d => '<option value="' + d.id + '"' + (c.choferId === d.id ? ' selected' : '') + '>' + esc(d.nombre) + '</option>').join('') + '</select></label>' +
   '<div id="finbox" class="two"><label class="f"><span id="lbltotal">Total a pagar en cuotas</span><input id="c_total" inputmode="decimal" value="' + esc(c.total || '') + '" oninput="autoCuota()"></label>' +
   '<label class="f"><span>Cantidad de cuotas</span><input id="c_cuotas" inputmode="numeric" value="' + esc(c.cuotas || '') + '" oninput="autoCuota()"></label>' +
@@ -525,7 +574,7 @@ export async function saveCar(btn, id) {
     numeroFlota: val('c_numflota'), combustible: val('c_combustible'), km: val('c_km'), costoCompra: +val('c_costocompra') || 0,
     valorMercado: +val('c_valormercado') || 0,
     polizaNumero: val('c_poliza'), aseguradora: val('c_aseguradora') === 'Otro' ? val('c_aseguradoraOtro') : val('c_aseguradora'),
-    seguroMensual: nuevoSeguro, patenteMensual: nuevaPatente, mantenimientoMensualEstimado: +val('c_mantenimientoMensualEstimado') || 0, gastoFijoHistorial,
+    seguroPaga: document.getElementById('c_seguroPaga') ? val('c_seguroPaga') : seguroPaga(ex), seguroMensual: nuevoSeguro, patenteMensual: nuevaPatente, mantenimientoMensualEstimado: +val('c_mantenimientoMensualEstimado') || 0, gastoFijoHistorial,
     dondeDuerme: val('c_dondeDuerme'), dondeDuermeMaps: val('c_dondeDuermeMaps'),
     gpsTipo: val('c_gpsTipo'), gpsAlerta: document.getElementById('c_gpsAlerta').checked,
     form08: document.getElementById('c_form08').checked,
@@ -573,6 +622,7 @@ export async function saveCar(btn, id) {
     if (tipo === 'financiado' && !o.cuotas) { toast('Completá la cantidad de cuotas'); return; }
   }
   if (!(await save('cars', o))) return;
+  if (o.seguroPaga === 'recupera' && seguroPaga(ex) !== 'recupera') await pasarSeguroDelMesAlChofer(o);
   if (o.gpsAlerta && !(ex && ex.gpsAlerta)) await marcarEnTaller(o.id);
   closeModal(); toast('Auto guardado');
 }

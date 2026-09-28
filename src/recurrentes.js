@@ -8,10 +8,14 @@ const GATE_KEY = 'flota-recurrentes-fecha';
 
 async function generarSiFalta(c, categoria, monto) {
   if (!monto) return false;
+  if (categoria === 'seguro' && (c.seguroPaga || 'empresa') === 'chofer') return false;
   const mesActual = iso(today()).slice(0, 7);
   const yaExiste = S.gastos.some(g => g.carId === c.id && g.categoria === categoria && (g.fecha || '').slice(0, 7) === mesActual && g.generadoAuto);
   if (yaExiste) return false;
-  await save('gastos', { id: uid(), carId: c.id, categoria, fecha: iso(today()), costo: monto, descripcion: 'Generado automáticamente', generadoAuto: true });
+  const g = { id: uid(), carId: c.id, categoria, fecha: iso(today()), costo: monto, descripcion: 'Generado automáticamente', generadoAuto: true };
+  // Seguro que la empresa paga y le cobra al chofer: queda como cargo a su nombre.
+  if (categoria === 'seguro' && c.seguroPaga === 'recupera' && c.choferId) { g.recuperaDe = c.choferId; g.descripcion = 'Generado automáticamente · a cobrar al chofer'; }
+  await save('gastos', g);
   return true;
 }
 async function generarSiFaltaGeneral(r) {

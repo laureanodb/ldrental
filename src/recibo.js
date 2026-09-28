@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { carById, driverName, driverDebt } from './calc.js';
+import { carById, driverName, calc, isContract, saldoAdelantos, seguroPendiente } from './calc.js';
 import { money, moneyUSD, fdate, iso, today } from './utils.js';
 import { settings } from './settings.js';
 import { toast } from './modal.js';
@@ -22,7 +22,7 @@ async function construirRecibo(paymentId) {
   linea('Fecha:', fdate(p.fecha));
   linea('Auto:', c ? c.patente : '—');
   linea('Chofer:', chofer || '—');
-  linea('Concepto:', p.tipo === 'alquiler' ? 'Alquiler semanal' : p.tipo === 'cuota' ? 'Cuota de financiación' : 'Otro');
+  linea('Concepto:', p.tipo === 'alquiler' ? 'Alquiler semanal' : p.tipo === 'cuota' ? 'Cuota de financiación' : p.tipo === 'seguro' ? 'Seguro del auto' : 'Otro');
   if (metodoLabel(p.metodo)) linea('Método de pago:', metodoLabel(p.metodo));
   if (p.parcial) linea('Tipo:', 'Pago parcial');
   if (p.nota) linea('Nota:', p.nota);
@@ -67,7 +67,7 @@ export async function estadoCuentaPDF(driverId) {
       let totalARS = 0, totalUSD = 0;
       pagos.forEach(p => {
         if (y > 270) { doc.addPage(); y = 20; }
-        const concepto = p.tipo === 'alquiler' ? 'Alquiler' : p.tipo === 'cuota' ? 'Cuota' : 'Otro';
+        const concepto = p.tipo === 'alquiler' ? 'Alquiler' : p.tipo === 'cuota' ? 'Cuota' : p.tipo === 'seguro' ? 'Seguro' : 'Otro';
         const metodo = (METODOS_PAGO.find(x => x[0] === p.metodo) || [0, ''])[1];
         const monto = p.tipo === 'cuota' ? moneyUSD(p.monto) : money(p.monto);
         if (p.tipo === 'cuota') totalUSD += (+p.monto || 0); else totalARS += (+p.monto || 0);
@@ -76,8 +76,16 @@ export async function estadoCuentaPDF(driverId) {
       y += 3; doc.line(margin, y, margin + width, y); y += 7;
       doc.setFontSize(11); doc.text('Total pagado en el período: ' + money(totalARS) + (totalUSD ? ' + ' + moneyUSD(totalUSD) : ''), margin, y); y += 8;
     }
-    const debt = driverDebt(driverId);
-    doc.setFontSize(11); doc.text('Deuda actual: ' + money(debt), margin, y); y += 10;
+    // Deuda separada por moneda: alquiler en pesos, cuotas de financiación en dólares y seguro en pesos.
+    const autos = S.cars.filter(c => c.choferId === driverId && isContract(c));
+    const debtUSD = autos.filter(c => c.tipo === 'financiado').reduce((a, c) => a + calc(c).debt, 0);
+    const debtARS = autos.filter(c => c.tipo !== 'financiado').reduce((a, c) => a + calc(c).debt, 0) + saldoAdelantos(driverId);
+    const seguro = seguroPendiente(driverId);
+    doc.setFontSize(11);
+    if (debtUSD) { doc.text('Deuda de cuotas: ' + moneyUSD(debtUSD), margin, y); y += 7; }
+    if (debtARS || !debtUSD) { doc.text((debtUSD ? 'Otras deudas: ' : 'Deuda actual: ') + money(debtARS), margin, y); y += 7; }
+    if (seguro) { doc.text('Seguro a pagar: ' + money(seguro), margin, y); y += 7; }
+    y += 3;
     doc.setFontSize(8); doc.setTextColor(140); doc.text('Comprobante generado por ' + (settings.companyName || 'LD Rental'), margin, y);
     doc.save('estado-cuenta-' + d.nombre.replace(/\s+/g, '-').toLowerCase() + '-' + hasta + '.pdf');
     toast('Estado de cuenta generado');

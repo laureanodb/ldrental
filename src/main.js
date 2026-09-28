@@ -7,7 +7,7 @@ import { doLogin, logout } from './session.js';
 import { activarBiometria, desactivarBiometria, loginConBiometria } from './biometric.js';
 import { asignarChoferForm, guardarAsignacionChofer, quitarChofer, asignarAutoForm, guardarAsignacionAuto, quitarAutoDeChofer, onAsignacionTipo, calcularCuotaAsignacion, onAsignarAutoElegido } from './forms/asignacion.js';
 import { altaRapidaAutoForm, onAltaRapidaAutoTipo, guardarAltaRapidaAuto, altaRapidaChoferForm, guardarAltaRapidaChofer } from './forms/alta-rapida.js';
-import { valorSemanalForm, guardarValorSemanal, volverDeValorSemanal, carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento } from './forms/car.js';
+import { ayudaSeguroPaga, corregirSeguroForm, guardarCorreccionSeguro, valorSemanalForm, guardarValorSemanal, volverDeValorSemanal, carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento } from './forms/car.js';
 import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
 import { calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, escenarioFlotaForm, calcularEscenarioFlota } from './forms/calculadora.js';
 import { compararAutosForm, renderComparacionAutos } from './forms/comparar.js';
@@ -32,7 +32,7 @@ import { goMas } from './views/mas.js';
 import { initPortal, toggleTemaPortal } from './portal.js';
 import { initPostulacion } from './postulacion.js';
 import { depositoForm, saveDeposito, delDeposito, semanaAdelantadaForm, guardarSemanaAdelantada, delSemanaAdelantada, confirmarBorrarSemanaAdelantada, fusionarDuplicadosLedger } from './forms/deposito.js';
-import { payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal } from './forms/payment.js';
+import { payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, payFormSeguro, onPayTipo } from './forms/payment.js';
 import { closeModal, confirmDel } from './modal.js';
 import { attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile } from './files.js';
 import { backup, pickRestore, doRestore, exportCSV, cancelRestore, archivarCobrosViejosForm, actualizarInfoArchivar, archivarCobrosViejos } from './backup.js';
@@ -87,7 +87,7 @@ Object.assign(window, {
   driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, togglePortalDesactivado, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion,
   adelantoForm, guardarAdelanto, borrarAdelanto,
   depositoForm, saveDeposito, delDeposito, semanaAdelantadaForm, guardarSemanaAdelantada, delSemanaAdelantada, confirmarBorrarSemanaAdelantada, fusionarDuplicadosLedger,
-  payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, marcarComprobantePortal,
+  payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, marcarComprobantePortal, payFormSeguro, onPayTipo, ayudaSeguroPaga, corregirSeguroForm, guardarCorreccionSeguro,
   closeModal, confirmDel,
   attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile,
   backup, pickRestore, doRestore, exportCSV, cancelRestore, archivarCobrosViejosForm, actualizarInfoArchivar, archivarCobrosViejos,

@@ -50,7 +50,10 @@ export async function saveGasto(carId, btn) {
   const proveedor = selProveedor === '__otro__' ? val('g_proveedorOtro') : selProveedor;
   const reclamoSeguro = document.getElementById('g_reclamoSeguro').checked;
   const o = { id: uid(), carId, categoria, fecha, costo, km: val('g_km'), proveedor, descripcion: val('g_desc'), sinFactura: document.getElementById('g_sinFactura').checked, reclamoSeguro, reclamoEstado: reclamoSeguro ? 'pendiente' : '' };
-  if (await save('gastos', o)) { closeModal(); toast('Gasto registrado'); }
+  // Seguro de un auto cuyo seguro se le cobra al chofer: queda a su cargo.
+  const car = carById(carId);
+  if (categoria === 'seguro' && car && car.seguroPaga === 'recupera' && car.choferId) o.recuperaDe = car.choferId;
+  if (await save('gastos', o)) { closeModal(); toast(o.recuperaDe ? 'Gasto registrado y sumado al seguro que debe ' + (S.drivers.find(d => d.id === car.choferId) || {}).nombre : 'Gasto registrado'); }
 }
 export async function delGasto(id) {
   const g = S.gastos.find(x => x.id === id);

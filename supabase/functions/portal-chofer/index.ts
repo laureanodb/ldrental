@@ -142,12 +142,13 @@ Deno.serve(async (req) => {
     const d = Object.assign({ id: driverRow.id }, driverRow.data);
     if (d.portalDesactivado) return json({ ok: false, error: 'El acceso al portal está desactivado temporalmente' }, 403);
 
-    const [{ data: carsRaw }, { data: paymentsRaw }, { data: multasRaw }, { data: settingsRow }, { data: depositosRaw }] = await Promise.all([
+    const [{ data: carsRaw }, { data: paymentsRaw }, { data: multasRaw }, { data: settingsRow }, { data: depositosRaw }, { data: gastosRaw }] = await Promise.all([
       sb.from('cars').select('id,data'),
       sb.from('payments').select('id,data'),
       sb.from('multas').select('id,data'),
       sb.from('app_settings').select('data').eq('id', 'main').maybeSingle(),
       sb.from('depositos').select('id,data'),
+      sb.from('gastos').select('id,data'),
     ]);
     const cars = (carsRaw || []).map((r: any) => Object.assign({ id: r.id }, r.data))
       .filter((c: any) => c.choferId === driverId && !c.vendido && (c.tipo === 'alquiler' || c.tipo === 'financiado'));
@@ -161,6 +162,10 @@ Deno.serve(async (req) => {
       .sort((a: any, b: any) => String(a.fecha).localeCompare(String(b.fecha)))
       .map((m: any) => ({ fecha: m.fecha, monto: +m.monto || 0, estado: m.estado, numeroActa: m.numeroActa || '', fechaLimitePago: m.fechaLimitePago || '' }));
     const cfg = (settingsRow && settingsRow.data) || {};
+    // Seguro que paga la empresa y le cobra al chofer: cargos a su nombre menos lo que pagó.
+    const seguroCargado = (gastosRaw || []).map((r: any) => r.data || {}).filter((g: any) => g.categoria === 'seguro' && g.recuperaDe === driverId)
+      .reduce((a: number, g: any) => a + (+g.costo || 0), 0);
+    const seguroPagado = payments.filter((p: any) => p.tipo === 'seguro').reduce((a: number, p: any) => a + (+p.monto || 0), 0);
 
     const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
     let adelantoRestante = saldoSemanaAdelantadaTotal;
@@ -204,6 +209,7 @@ Deno.serve(async (req) => {
       ok: true, nombre: d.nombre || '', autos, pagos, multas,
       deposito: saldoDeposito, depositoObjetivo: +d.depositoObjetivo || 0,
       semanaAdelantada: Math.max(0, adelantoRestante),
+      seguroPendiente: Math.max(0, seguroCargado - seguroPagado), seguroACargo: seguroCargado > 0,
       companyName: cfg.companyName || '', companyLogo: cfg.companyLogo || '', companyPhone: cfg.companyPhone || '',
       telefonoEmergencia: cfg.telefonoEmergencia || '', protocoloEmergencia: cfg.protocoloEmergencia || '', anuncios: cfg.anuncios || [],
     });

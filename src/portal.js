@@ -115,9 +115,13 @@ function renderPortal(app, j) {
       '</div>';
     });
   }
+  if (j.seguroACargo) {
+    h += '<div class="sec-t">Seguro del auto</div><div class="card"><div class="row between"><span class="muted">Seguro a pagar</span><b style="color:' + (j.seguroPendiente > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + (j.seguroPendiente > 0 ? money(j.seguroPendiente) : 'Al día') + '</b></div>' +
+      '<div class="small muted" style="margin-top:4px">Es el seguro que te pagamos y se abona aparte de la cuota, en pesos.</div></div>';
+  }
   const pagos = j.pagos || [];
   if (pagos.length) {
-    h += '<div class="sec-t">Historial de pagos</div>' + pagos.map((p, i) => '<div class="card row between"><div><div>' + fdate(p.fecha) + '</div><div class="small muted">' + esc(p.metodoLabel || '') + (p.patente ? ' · ' + esc(p.patente) : '') + '</div></div>' +
+    h += '<div class="sec-t">Historial de pagos</div>' + pagos.map((p, i) => '<div class="card row between"><div><div>' + fdate(p.fecha) + '</div><div class="small muted">' + (p.tipo === 'seguro' ? 'Seguro · ' : '') + esc(p.metodoLabel || '') + (p.patente ? ' · ' + esc(p.patente) : '') + '</div></div>' +
     '<div class="row" style="align-items:center;gap:8px"><b>' + (p.tipo === 'cuota' ? moneyUSD(p.monto) : money(p.monto)) + '</b><button class="btn sec sm" data-recibo="' + i + '">Recibo</button></div></div>').join('');
   }
   if (autos.length) {
@@ -225,7 +229,7 @@ async function descargarReciboPortal(j, p) {
   linea('Fecha:', fdate(p.fecha));
   if (p.patente) linea('Auto:', p.patente);
   linea('Chofer:', j.nombre || '—');
-  linea('Concepto:', p.tipo === 'alquiler' ? 'Alquiler semanal' : p.tipo === 'cuota' ? 'Cuota de financiación' : 'Otro');
+  linea('Concepto:', p.tipo === 'alquiler' ? 'Alquiler semanal' : p.tipo === 'cuota' ? 'Cuota de financiación' : p.tipo === 'seguro' ? 'Seguro del auto' : 'Otro');
   if (p.metodoLabel) linea('Método de pago:', p.metodoLabel);
   y += 4;
   doc.setFontSize(13); doc.text('Monto: ' + (p.tipo === 'cuota' ? moneyUSD(p.monto) : money(p.monto)), 12, y);

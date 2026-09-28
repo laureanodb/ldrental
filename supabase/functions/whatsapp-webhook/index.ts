@@ -267,6 +267,13 @@ function calc(D: any, c: any, hoy: string): any {
   if (c.tipo === 'financiado') { r.total = +c.total || c.monto * (+c.cuotas || 0); r.saldo = Math.max(0, r.total - paid); }
   return r;
 }
+// Seguro que paga la empresa y le cobra al chofer (auto con seguroPaga = 'recupera').
+function esSeguroRecuperable(g: any): boolean { return g.categoria === 'seguro' && Boolean(g.recuperaDe); }
+function seguroPendiente(D: any, driverId: string): number {
+  const cargado = D.gastos.filter((g: any) => esSeguroRecuperable(g) && g.recuperaDe === driverId).reduce((a: number, g: any) => a + (+g.costo || 0), 0);
+  const pagado = D.payments.filter((p: any) => p.tipo === 'seguro' && p.choferId === driverId).reduce((a: number, p: any) => a + (+p.monto || 0), 0);
+  return Math.max(0, cargado - pagado);
+}
 function saldoAdelantos(D: any, driverId: string): number {
   const d = chofer(D, driverId);
   return ((d && d.adelantos) || []).reduce((a: number, x: any) => a + (+x.monto || 0), 0);
@@ -356,15 +363,15 @@ function sumaPagos(L: any[]): { ars: number; usd: number } {
 }
 function lineaPesosDolares(x: { ars: number; usd: number }): string { return !x.ars && x.usd ? dolares(x.usd) : pesos(x.ars) + (x.usd ? ' + ' + dolares(x.usd) : ''); }
 function gastosDe(D: any, desde: string, hasta: string, carId?: string): any[] {
-  const g = D.gastos.filter((x: any) => x.fecha >= desde && x.fecha <= hasta && (carId === undefined || x.carId === carId))
+  const g = D.gastos.filter((x: any) => x.fecha >= desde && x.fecha <= hasta && (carId === undefined || x.carId === carId) && !esSeguroRecuperable(x))
     .map((x: any) => ({ fecha: x.fecha, costo: +x.costo || 0, cat: x.categoria || 'otro', desc: x.descripcion || '' }));
   const m = D.mantenimientos.filter((x: any) => x.fecha >= desde && x.fecha <= hasta && (carId === undefined || x.carId === carId))
     .map((x: any) => ({ fecha: x.fecha, costo: +x.costo || 0, cat: 'mantenimiento', desc: x.label || x.item || 'Mantenimiento' }));
   return g.concat(m);
 }
 function rentabilidadAuto(D: any, c: any): any {
-  const cobrado = D.payments.filter((p: any) => p.carId === c.id).reduce((a: number, p: any) => a + (+p.monto || 0), 0);
-  const gastos = D.gastos.filter((g: any) => g.carId === c.id).reduce((a: number, g: any) => a + (+g.costo || 0), 0) +
+  const cobrado = D.payments.filter((p: any) => p.carId === c.id && p.tipo !== 'seguro').reduce((a: number, p: any) => a + (+p.monto || 0), 0);
+  const gastos = D.gastos.filter((g: any) => g.carId === c.id && !esSeguroRecuperable(g)).reduce((a: number, g: any) => a + (+g.costo || 0), 0) +
     D.mantenimientos.filter((m: any) => m.carId === c.id).reduce((a: number, m: any) => a + (+m.costo || 0), 0);
   const usd = c.tipo === 'financiado';
   return { cobrado, gastos, neta: usd ? null : cobrado - gastos, usd, costoCompra: +c.costoCompra || 0 };
@@ -632,6 +639,7 @@ function ayudaCargar(u: Usuario): string {
   if (puede(u, 'cobrar')) {
     L.push('💵 *Cobro:* cobré 100000 AB123CD', '   Podés sumar el método (efectivo, transferencia, mp) y la fecha (ayer, 25/09).');
     L.push('💵 *Pago a cuenta:* a cuenta 50000 AB123CD', '   O "parcial" si es parte de la semana.');
+    L.push('🛡️ *Pago de seguro:* cobré seguro 45000 AB123CD');
   }
   L.push('🧾 *Gasto:* gasto 25000 aceite AB123CD', '   Sin patente queda como gasto general.');
   L.push('🛣️ *Kilometraje:* km AB123CD 123456');
@@ -671,6 +679,7 @@ function resumen(D: any, hoy: string): string {
     'Vencimientos en ' + AVISO_WARN + ' días: ' + v.length,
     'Multas pendientes: ' + multas.length,
     bajo.length ? 'Repuestos bajo mínimo: ' + bajo.length : '',
+    (() => { const t = choferesActivos(D).reduce((a: number, d: any) => a + seguroPendiente(D, d.id), 0); return t ? 'Seguro a cobrar a choferes: ' + pesos(t) : ''; })(),
     '', 'Escribí *menú* para ver todas las opciones.',
   ].filter((l, i, a) => l !== '' || (a[i - 1] !== '' && i > 0)).join('\n');
 }
@@ -728,7 +737,9 @@ function quienNoPago(D: any, hoy: string): string {
     const pagos = D.payments.filter((p: any) => p.carId === c.id && p.tipo === kind && p.fecha >= desde);
     (pagos.length ? parcial : sinPago).push({ c, i, desde });
   }
-  if (!sinPago.length && !parcial.length) return '✅ Todos pagaron su semana. Nadie debe nada.';
+  const seguros = choferesActivos(D).map((d: any) => ({ d, s: seguroPendiente(D, d.id) })).filter((x: any) => x.s > 0);
+  const lineaSeguro = seguros.length ? '\n🛡️ *Seguro sin pagar* (' + seguros.length + ')\n' + seguros.map((x: any) => '• ' + x.d.nombre + ': ' + pesos(x.s)).join('\n') : '';
+  if (!sinPago.length && !parcial.length) return seguros.length ? '✅ Todos pagaron su semana.\n' + lineaSeguro : '✅ Todos pagaron su semana. Nadie debe nada.';
   const linea = (x: any) => '• ' + x.c.patente + ' ' + nombreChofer(D, x.c.choferId) + ': debe ' + monedaDe(x.c)(x.i.debt) +
     (x.i.late >= 1.05 ? ' (' + semanas(x.i.late) + ')' : '') + ' · paga ' + losDias(x.c.inicio);
   const orden = (a: any, b: any) => b.i.late - a.i.late;
@@ -737,6 +748,7 @@ function quienNoPago(D: any, hoy: string): string {
     ...sinPago.sort(orden).map(linea),
     parcial.length ? (sinPago.length ? '\n' : '') + '🟡 *Pagaron una parte* (' + parcial.length + ')' : '',
     ...parcial.sort(orden).map(linea),
+    lineaSeguro,
   ].filter(Boolean).join('\n');
 }
 function listaDeudas(D: any, hoy: string): string {
@@ -782,6 +794,7 @@ function estadoDeCuenta(D: any, d: any, hoy: string): string {
     saldoAdelantos(D, d.id) ? 'Incluye adelantos pendientes por ' + pesos(saldoAdelantos(D, d.id)) : null,
     'Depósito en garantía: ' + pesos(garantia) + (d.depositoObjetivo ? ' de ' + pesos(d.depositoObjetivo) : ''),
     'Semana adelantada disponible: ' + pesos(adelantada),
+    seguroPendiente(D, d.id) ? '🛡️ Seguro a pagar: ' + pesos(seguroPendiente(D, d.id)) : null,
     '', pagos.length ? 'Últimos pagos:' : 'Sin pagos registrados.',
     ...pagos.map((p: any) => '• ' + fechaCorta(p.fecha) + ' ' + (p.tipo === 'cuota' ? dolares(+p.monto) : pesos(+p.monto)) + (p.metodo ? ' (' + metodoLabel(p.metodo) + ')' : '') + (p.aCuenta ? ' · a cuenta' : '')),
   ].filter(l => l !== null).filter((l, i, a) => l !== '' || (i > 0 && a[i - 1] !== '')).join('\n');
@@ -815,7 +828,7 @@ function financiados(D: any, hoy: string): string {
 function tablero(D: any, hoy: string): string {
   const desde = sumarDias(hoy, -7);
   const L = D.cars.filter((c: any) => c.choferId && esContrato(c)).map((c: any) => {
-    const cobrado = D.payments.filter((p: any) => p.carId === c.id && p.fecha >= desde && p.fecha <= hoy).reduce((a: number, p: any) => a + (+p.monto || 0), 0);
+    const cobrado = D.payments.filter((p: any) => p.carId === c.id && p.tipo !== 'seguro' && p.fecha >= desde && p.fecha <= hoy).reduce((a: number, p: any) => a + (+p.monto || 0), 0);
     const gasto = gastosDe(D, desde, hoy, c.id).reduce((a: number, g: any) => a + g.costo, 0);
     return { c, cobrado, gasto, neto: cobrado - gasto, deuda: calc(D, c, hoy).debt };
   }).sort((a: any, b: any) => a.neto - b.neto);
@@ -920,7 +933,7 @@ function gastosAuto(D: any, c: any, hoy: string): string {
 function rentabilidad(D: any, c: any, hoy: string): string {
   const r = rentabilidadAuto(D, c);
   const desde = hoy.slice(0, 8) + '01';
-  const cobMes = D.payments.filter((p: any) => p.carId === c.id && p.fecha >= desde && p.fecha <= hoy).reduce((a: number, p: any) => a + (+p.monto || 0), 0);
+  const cobMes = D.payments.filter((p: any) => p.carId === c.id && p.tipo !== 'seguro' && p.fecha >= desde && p.fecha <= hoy).reduce((a: number, p: any) => a + (+p.monto || 0), 0);
   const gasMes = gastosDe(D, desde, hoy, c.id).reduce((a, g) => a + g.costo, 0);
   if (r.usd) {
     return ['📈 *' + c.patente + '* (financiado)', '', 'Cobrado desde el inicio: ' + dolares(r.cobrado), 'Gastos: ' + pesos(r.gastos),
@@ -936,7 +949,7 @@ function rankingRentabilidad(D: any, hoy: string): string {
   const desde = hoy.slice(0, 8) + '01';
   const L = D.cars.filter((c: any) => c.tipo !== 'financiado').map((c: any) => {
     const r = rentabilidadAuto(D, c);
-    const mes = D.payments.filter((p: any) => p.carId === c.id && p.fecha >= desde).reduce((a: number, p: any) => a + (+p.monto || 0), 0) -
+    const mes = D.payments.filter((p: any) => p.carId === c.id && p.tipo !== 'seguro' && p.fecha >= desde).reduce((a: number, p: any) => a + (+p.monto || 0), 0) -
       gastosDe(D, desde, hoy, c.id).reduce((a, g) => a + g.costo, 0);
     return { c, neta: r.neta, mes };
   }).sort((a: any, b: any) => b.neta - a.neta);
@@ -1041,6 +1054,7 @@ function fichaChofer(D: any, d: any, hoy: string, u: Usuario): Salida[] {
     d.tel ? 'Chat: ' + waLink(d.tel) : '',
     autos.length ? autos.map((c: any) => 'Auto: ' + tituloAuto(c) + (esContrato(c) && c.monto ? ' · ' + monedaDe(c)(c.monto) + ' por semana' : '')).join('\n') : 'Sin auto asignado',
     'Deuda: ' + (deuda.ars || deuda.usd ? lineaPesosDolares(deuda) : 'al día ✅'),
+    seguroPendiente(D, d.id) ? 'Seguro a pagar: ' + pesos(seguroPendiente(D, d.id)) : '',
     score != null ? 'Puntualidad: ' + score + '/100' : '',
     d.licVenc ? 'Licencia: vence ' + fecha(d.licVenc) + ' (' + textoDias(lic.d) + ')' + (d.tipoLicencia ? ' · ' + d.tipoLicencia : '') : 'Licencia: sin vencimiento cargado',
   ];
@@ -1095,6 +1109,7 @@ function prepararCobro(u: Usuario, D: any, t: string, hoy: string, mediaId?: str
     if (!c) return [txt('¿De qué auto es el cobro? Escribilo con la patente, por ejemplo: *cobré 100000 AB123CD*')];
   }
   if (!esContrato(c) || !c.choferId) return [txt(c.patente + ' no tiene un contrato activo con chofer, así que no puedo registrarle un cobro.')];
+  const esSeguro = /\bseguro\b/.test(t);
   const f = leerFecha(t, hoy);
   const resto = quitar(sinPatente(t, c), f?.texto);
   const nums = leerNumeros(resto).filter(n => !n.km);
@@ -1105,6 +1120,15 @@ function prepararCobro(u: Usuario, D: any, t: string, hoy: string, mediaId?: str
   if (fechaPago > hoy) return [txt('La fecha del cobro no puede ser futura (' + fecha(fechaPago) + ').')];
   const metodo = detectarMetodo(resto) || metodoPreferido(D, c.choferId) || 'efectivo';
   const aCuenta = /\ba cuenta\b/.test(t), parcial = /\bparcial\b/.test(t);
+  if (esSeguro) {
+    const pend = seguroPendiente(D, c.choferId);
+    const textoSeg = ['¿Registro este pago de seguro?\n', '🚗 ' + c.patente + ' — ' + nombreChofer(D, c.choferId),
+      '🛡️ ' + pesos(monto) + ' · ' + metodoLabel(metodo) + ' · ' + fecha(fechaPago), mediaId ? '📎 Con la foto como comprobante' : '',
+      'Seguro pendiente: ' + pesos(pend) + ' → quedaría en ' + pesos(Math.max(0, pend - monto))].filter(Boolean).join('\n');
+    const as: any = { a: 'cobro', t: 'seguro', c: c.id, m: monto, f: fechaPago, me: metodo, i: uid() };
+    if (mediaId) as.md = mediaId;
+    return [pedirConfirmacion(textoSeg, as, 'Registrar')];
+  }
   const mon = monedaDe(c);
   const i = calc(D, c, hoy);
   const esperado = +c.monto || 0;
@@ -1305,10 +1329,14 @@ async function ejecutar(u: Usuario, a: any): Promise<Salida[]> {
       try { const f = await subirMediaWhatsApp(a.md); files.push({ id: f.id, name: 'comprobante-' + c.patente + '-' + a.f + '.' + EXT[f.type], cat: 'comprobante', type: f.type, size: f.size, fecha: hoy }); }
       catch (e) { avisoFoto = '\n⚠️ No pude guardar la foto: ' + (e as Error).message; }
     }
-    const pago: any = { id: a.i, carId: c.id, choferId: c.choferId, fecha: a.f, monto: a.m, tipo: c.tipo === 'alquiler' ? 'alquiler' : 'cuota', metodo: a.me || 'efectivo', parcial: Boolean(a.p), aCuenta: Boolean(a.ac), nota: 'Cargado por WhatsApp', depositado: false, origen: 'whatsapp' };
+    const pago: any = { id: a.i, carId: c.id, choferId: c.choferId, fecha: a.f, monto: a.m, tipo: a.t === 'seguro' ? 'seguro' : c.tipo === 'alquiler' ? 'alquiler' : 'cuota', metodo: a.me || 'efectivo', parcial: Boolean(a.p), aCuenta: Boolean(a.ac), nota: 'Cargado por WhatsApp', depositado: false, origen: 'whatsapp' };
     if (files.length) pago.files = files;
     await guardar(u, 'payments', pago);
     D.payments.push(pago);
+    if (a.t === 'seguro') {
+      const pend = seguroPendiente(D, c.choferId);
+      return [txt('✅ Pago de seguro registrado: ' + pesos(a.m) + ' de ' + nombreChofer(D, c.choferId) + ' (' + c.patente + ').\n' + (pend > 0 ? 'Todavía debe ' + pesos(pend) + ' de seguro.' : 'El seguro quedó al día ✅') + (files.length ? '\n📎 Comprobante guardado.' : '') + avisoFoto)];
+    }
     const mon = monedaDe(c), deuda = calc(D, c, hoy).debt;
     const d = chofer(D, c.choferId);
     const aviso = d && d.tel ? '\n\nAvisale a ' + d.nombre.split(' ')[0] + ':\n' + waLink(d.tel, 'Hola ' + d.nombre.split(' ')[0] + ', te confirmamos que registramos tu pago de ' + mon(a.m) + ' del ' + fecha(a.f) + '. ¡Gracias!') : '';
@@ -1466,6 +1494,7 @@ Comandos (PATENTE = patente del catálogo; NOMBRE = nombre del chofer como figur
 - doc PATENTE | doc PATENTE CATEGORIA   (CATEGORIA: cedula, titulo, seguro, vtv, patente, contrato, manual, fotos)
 - buscar TEXTO   (marca, modelo, color o número de flota)
 - cobre MONTO PATENTE [efectivo|transferencia|mp] [FECHA]   (registra un cobro; agregá "a cuenta" o "parcial" si corresponde)
+- cobre seguro MONTO PATENTE   (el chofer pagó el seguro del auto, que se cobra aparte en pesos)
 - gasto MONTO DESCRIPCION [PATENTE] [FECHA]
 - km PATENTE KILOMETROS
 - recordame FECHA TEXTO
