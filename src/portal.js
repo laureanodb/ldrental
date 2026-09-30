@@ -112,6 +112,9 @@ function renderPortal(app, j) {
       (a.tipo === 'financiado' && a.saldo != null ? '<div class="row between small"><span class="muted">Saldo total</span><span>' + moneyUSD(a.saldo) + '</span></div>' : '') +
       (a.vtv ? '<div class="row between small"><span class="muted">VTV</span><span>' + fdate(a.vtv) + '</span></div>' : '') +
       (a.seguro ? '<div class="row between small"><span class="muted">Seguro</span><span>' + fdate(a.seguro) + '</span></div>' : '') +
+      (a.docsSeguro && a.docsSeguro.length ? '<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><div class="small muted">Papeles del seguro' + (a.aseguradora ? ' · ' + esc(a.aseguradora) : '') + (a.polizaNumero ? ' · Póliza ' + esc(a.polizaNumero) : '') + '</div>' +
+        a.docsSeguro.map(d => '<a class="btn sec block" style="margin-top:6px" target="_blank" rel="noopener" href="' + esc(d.url) + '">Descargar ' + esc(d.label.toLowerCase()) + '</a>').join('') +
+        '<div class="small muted" style="margin-top:4px">Tenelos a mano por si te paran. Si el link no abre, recargá la página.</div></div>' : '') +
       '</div>';
     });
   }

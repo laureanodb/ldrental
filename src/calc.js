@@ -409,6 +409,12 @@ export function alerts() {
   activeCars().forEach(c => VENC.forEach(([k, l]) => {
     const s = vs(c[k]); if (!s) return;
     const key = 'car:' + c.id + ':' + k; if (isSnoozed(key)) return;
+    // Seguro por vencer que paga la empresa: recordar pedir y comparar cotizaciones.
+    if (k === 'seguro' && s.d <= 30 && seguroPaga(c) !== 'chofer') {
+      const n = (c.cotizacionesSeguro || []).length;
+      out.push(Object.assign({ who: c.patente || 'Auto sin patente', sub: 'Seguro: renovación', kind: 'car', id: c.id, key }, s, { t: s.t + ' · ' + (n ? n + (n === 1 ? ' cotización cargada' : ' cotizaciones cargadas') : 'pedí cotizaciones') }));
+      return;
+    }
     out.push(Object.assign({ who: c.patente || 'Auto sin patente', sub: l, kind: 'car', id: c.id, key }, s));
   }));
   activeCars().forEach(c => {

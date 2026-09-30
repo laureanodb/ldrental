@@ -19,6 +19,7 @@ import { viewTablero } from './tablero.js';
 import { ajustesCard, backupCard, saludDatosCard } from './shared.js';
 import { googleCard } from './google-ui.js';
 import { featureOculta } from '../settings.js';
+import { viewCruce } from '../forms/cruce.js';
 
 export function goMas(v) { ui.masView = v; render(); window.scrollTo(0, 0); }
 
@@ -44,6 +45,7 @@ export function viewMas() {
   if (v === 'backup') return backBar('Copia de seguridad') + backupCard();
   if (v === 'saluddatos') return backBar('Salud de los datos') + saludDatosCard();
   if (v === 'google') return backBar('Google') + googleCard();
+  if (v === 'cruce' && canVerFinanzas()) return backBar('Cruce con Mercado Pago / banco') + viewCruce();
 
   let h = '<h1>Más</h1>';
   h += grupo('Flota', [
@@ -56,6 +58,7 @@ export function viewMas() {
     ['Mapa de flota', 'mapaFlotaView()'],
     ['Mantenimiento preventivo en lote', 'mantenimientoLoteForm()'],
   ]);
+  if (canVerFinanzas()) h += grupo('Cobros', [['Cruzar con el resumen de Mercado Pago o del banco', "goMas('cruce')"]]);
   h += grupo('Análisis', [['Tablero semanal por auto', "goMas('tablero')"], ['Reportes', "goMas('reportes')"], ['Reporte personalizado', 'reportePersonalizadoForm()']]);
   h += grupo('Herramientas', [
     ['Recordatorios', 'recordatoriosView()'],

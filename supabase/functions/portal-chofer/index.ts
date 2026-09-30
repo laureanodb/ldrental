@@ -3,8 +3,9 @@
 // en el chofer, devuelve su deuda, próximo pago, cronograma de cuotas si
 // es financiado, datos del auto asignado, los últimos pagos, sus multas
 // pendientes y la config compartida (branding, protocolo de emergencia,
-// anuncios) desde app_settings. No expone nada de otros choferes ni de la
-// operación en general.
+// anuncios) desde app_settings, y links de descarga (1 hora) de la credencial
+// de circulación y el certificado de cobertura del seguro de su auto. No
+// expone nada de otros choferes ni de la operación en general.
 // POST { id, t, accion: 'service'|'problema'|'actualizar_datos'|'encuesta'|'foto', ... }:
 // valida el mismo token. Todas menos 'foto' solo mandan una notificación
 // push a la empresa (no guardan nada, es un aviso best-effort). 'foto' sube
@@ -21,6 +22,23 @@ const MAX_FOTO_BYTES = 8 * 1024 * 1024;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+}
+// Documentos del seguro que el chofer puede descargar (por si lo para la policía).
+// La póliza no se muestra: solo la credencial de circulación y el certificado.
+const DOCS_SEGURO_CHOFER: [string, string][] = [['seguroCredencial', 'Credencial de circulación'], ['seguroCertificado', 'Certificado de cobertura']];
+async function docsSeguroDe(sb: any, c: any) {
+  const out: any[] = [];
+  for (const [cat, label] of DOCS_SEGURO_CHOFER) {
+    const f = (c.files || []).filter((x: any) => x.cat === cat).sort((a: any, b: any) => String(b.fecha || '').localeCompare(String(a.fecha || '')))[0];
+    if (!f) continue;
+    let url = f.link || '';
+    if (!url && f.id) {
+      const { data } = await sb.storage.from(BUCKET).createSignedUrl(f.id, 3600);
+      url = (data && data.signedUrl) || '';
+    }
+    if (url) out.push({ cat, label, url, fecha: f.fecha || '', tipo: f.type || '' });
+  }
+  return out;
 }
 function diasEntre(fechaIso: string, hoy: Date): number {
   return Math.round((hoy.getTime() - new Date(fechaIso + 'T00:00:00').getTime()) / 86400000);
@@ -196,8 +214,10 @@ Deno.serve(async (req) => {
           }
         }
       }
-      return { id: c.id, patente: c.patente || '', marca: c.marca || '', modelo: c.modelo || '', vtv: c.vtv || '', seguro: c.seguro || '', tipo: c.tipo, monto: +c.monto || 0, moneda, debt, proximo, cuotas: +c.cuotas || 0, cuotaActual, saldo, adelantoAplicado };
+      return { id: c.id, patente: c.patente || '', marca: c.marca || '', modelo: c.modelo || '', vtv: c.vtv || '', seguro: c.seguro || '', aseguradora: c.aseguradora || '', polizaNumero: c.polizaNumero || '', tipo: c.tipo, monto: +c.monto || 0, moneda, debt, proximo, cuotas: +c.cuotas || 0, cuotaActual, saldo, adelantoAplicado };
     });
+    const docsPorAuto = await Promise.all(cars.map((c: any) => docsSeguroDe(sb, c).catch(() => [])));
+    autos.forEach((a: any, i: number) => { a.docsSeguro = docsPorAuto[i]; });
 
     const pagos = payments.filter((p: any) => p.fecha).sort((a: any, b: any) => b.fecha.localeCompare(a.fecha)).slice(0, 100)
       .map((p: any) => {

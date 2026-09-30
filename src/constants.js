@@ -4,6 +4,13 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-09-30', items: [
+    'Registrar cobro: subí la foto o el PDF del comprobante y la IA completa monto, fecha y método. Avisa si el comprobante ya se usó o si lo pagó otra persona.',
+    'Solapa Seguro: al subir la póliza o el certificado, la IA completa aseguradora, n° de póliza, cobertura, vencimiento y monto mensual. Avisa si la patente no coincide.',
+    'Renovación del seguro: cuánto pagaste en el último año, cotizaciones para comparar (se pueden leer con IA) y aviso 30 días antes del vencimiento.',
+    'Cruce con Mercado Pago o el banco (en Más): subí el resumen y ves qué cobros entraron, cuáles faltan registrar y cuáles no aparecen.',
+    'Portal del chofer: puede descargar la credencial de circulación y el certificado del seguro.',
+  ] },
   { v: '2026-09-25', items: [
     'Fondo de autoseguro: registrá aportes y pagos de siniestros, con comparación contra una aseguradora externa.',
     'Adelantos y devoluciones a choferes, con vínculo opcional a una cuota de financiación.',

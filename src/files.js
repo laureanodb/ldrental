@@ -205,9 +205,21 @@ export async function attach(col, id, inputId, blobIn, catIn) {
     if (!(await patchDoc(col, id, patch))) { try { await as.delete(r.id); } catch (x) {} fstat('El archivo se subió pero no se pudo guardar en la ficha. Probá de nuevo.', 1); return; }
     if (tick) { const cb = document.getElementById('dc_' + cat); if (cb) cb.checked = true; }
     renderFiles(col, id); if (col === 'cars' && window.renderSeguroDocs) window.renderSeguroDocs(id); fstat('Listo: archivo adjuntado.');
+    return files[files.length - 1];
   } catch (e) {
     fstat('Error al adjuntar: ' + ((e && (e.code || e.message)) || 'desconocido'), 1);
   }
+}
+// Sube una foto o PDF suelto (achicando la foto) y devuelve { id, type, size }, o null si falla.
+export async function subirArchivoSuelto(f) {
+  if (!as || !f) return null;
+  const ft = guessType(f);
+  let blob = f;
+  if (ft.startsWith('image/') && ft !== 'image/gif') blob = await shrink(f);
+  else if (!f.type && ft) blob = f.slice(0, f.size, ft);
+  if (!ACCEPT.includes(blob.type)) { toast('Formato no admitido. Usá foto JPG o PNG, o PDF.'); return null; }
+  try { const r = await as.upload(blob); return { id: r.id, type: r.contentType, size: r.sizeBytes }; }
+  catch (e) { toast('No se pudo subir el archivo: ' + ((e && e.message) || 'error')); return null; }
 }
 export async function delFile(col, id, fid) {
   const e = S[col].find(x => x.id === id); if (!e) return;
