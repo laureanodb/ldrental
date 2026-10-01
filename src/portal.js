@@ -69,6 +69,19 @@ function renderPortal(app, j) {
   if (companyPhone) {
     h += '<a class="btn block" style="margin-bottom:14px" target="_blank" href="https://wa.me/' + esc(companyPhone.replace(/\D/g, '')) + '?text=' + encodeURIComponent('Hola, soy ' + (j.nombre || '') + '.') + '">Contactar por WhatsApp</a>';
   }
+  (j.contratosPendientes || []).forEach((k, i) => {
+    h += '<div class="sec-t">Contrato para firmar</div><div class="card" id="fc_card_' + i + '" style="border-color:var(--warn);margin-bottom:14px">' +
+      '<b>' + esc(k.titulo) + (k.patente ? ' · ' + esc(k.patente) : '') + '</b>' +
+      '<div style="max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.45">' + k.parrafos.map(t => '<p style="margin:0 0 8px">' + esc(t) + '</p>').join('') + '</div>' +
+      '<div class="two"><label class="f"><span>Nombre y apellido</span><input id="fc_nombre_' + i + '" value="' + esc(j.nombre || '') + '"></label>' +
+      '<label class="f"><span>DNI</span><input id="fc_dni_' + i + '" inputmode="numeric"></label></div>' +
+      '<div class="small muted" style="margin-bottom:6px">Firmá con el dedo en el recuadro</div>' +
+      '<canvas id="fc_firma_' + i + '" width="335" height="140" style="width:100%;height:140px;border:1px solid var(--line);border-radius:8px;touch-action:none;background:#fff;display:block"></canvas>' +
+      '<button type="button" class="btn sec sm" style="margin-top:6px" id="fc_limpiar_' + i + '">Borrar firma</button>' +
+      '<label class="chk" style="margin-top:8px"><input type="checkbox" id="fc_acepto_' + i + '"><span>Leí el contrato completo y lo acepto</span></label>' +
+      '<button class="btn block" style="margin-top:8px" id="fc_btn_' + i + '">Firmar contrato</button>' +
+      '<div class="small muted" id="fc_status_' + i + '" style="margin-top:6px"></div></div>';
+  });
   const anuncios = (j.anuncios && j.anuncios.length ? j.anuncios : (settings.anuncios || [])).slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5);
   if (anuncios.length) {
     h += '<div class="sec-t">Anuncios</div>' + anuncios.map(a => '<div class="card"><div>' + esc(a.texto) + '</div><div class="small muted" style="margin-top:4px">' + fdate(a.fecha) + '</div></div>').join('');
@@ -80,6 +93,22 @@ function renderPortal(app, j) {
     (telEmergencia ? '<a class="btn block" href="tel:' + esc(telEmergencia) + '">Llamar a ' + esc(telEmergencia) + '</a>' : '') +
     (protocolo ? '<div class="small" style="white-space:pre-wrap;margin-top:10px">' + esc(protocolo) + '</div>' : '') +
     '</div>';
+  }
+  if (j.cuenta && (j.cuenta.deudaARS > 0 || j.cuenta.deudaUSD > 0)) {
+    h += '<div class="sec-t">Tu deuda total</div><div class="card" style="margin-bottom:14px">' +
+      (j.cuenta.deudaARS > 0 ? '<div class="row between"><span class="muted">En pesos</span><b style="color:var(--bad)">' + money(j.cuenta.deudaARS) + '</b></div><div class="small muted">Suma alquiler, seguro, multas y adelantos pendientes.</div>' : '') +
+      (j.cuenta.deudaUSD > 0 ? '<div class="row between"' + (j.cuenta.deudaARS > 0 ? ' style="margin-top:6px"' : '') + '><span class="muted">Cuotas en dólares</span><b style="color:var(--bad)">' + moneyUSD(j.cuenta.deudaUSD) + '</b></div>' : '') +
+      '</div>';
+  }
+  if (j.plan) {
+    const p = j.plan, m = n => (p.moneda === 'USD' ? moneyUSD(n) : money(n));
+    const pct = p.deudaInicial ? Math.min(100, Math.round(Math.max(0, p.deudaInicial - p.deudaHoy) / p.deudaInicial * 100)) : 0;
+    h += '<div class="sec-t">Tu plan de pagos</div><div class="card" style="margin-bottom:14px">' +
+      '<div class="row between"><span>' + p.cuotas + ' semanas de ' + m(p.montoCuota) + '</span><b style="color:' + (p.alDia ? 'var(--ok)' : 'var(--bad)') + '">' + (p.cumplido ? '¡Cumplido!' : p.alDia ? 'Al día' : 'Atrasado') + '</b></div>' +
+      '<div style="background:var(--soft);border-radius:6px;height:8px;overflow:hidden;margin:8px 0"><div style="width:' + pct + '%;height:100%;background:var(--ok)"></div></div>' +
+      '<div class="small muted">Vas ' + pct + '% · semana ' + p.semanas + ' de ' + p.cuotas + '. Esta cuota se paga además del ' + (p.moneda === 'USD' ? 'pago de la cuota' : 'alquiler') + '.</div>' +
+      (!p.alDia ? '<div class="small" style="color:var(--bad);margin-top:4px">Para estar al día deberías deber como máximo ' + m(p.deberiaQuedar) + ' (hoy debés ' + m(p.deudaHoy) + ').</div>' : '') +
+      '</div>';
   }
   if (j.deposito || j.semanaAdelantada) {
     h += '<div class="sec-t">Tu cuenta con nosotros</div><div class="card" style="margin-bottom:14px">' +
@@ -150,6 +179,20 @@ function renderPortal(app, j) {
     '<button class="btn sec block" id="cp_btn" style="margin-top:8px">Subir</button>' +
     '<div class="small muted" id="cp_status" style="margin-top:6px"></div></div>';
   }
+  const docs = j.documentos || [];
+  if (docs.length) {
+    h += '<div class="sec-t">Tu documentación</div>' + docs.map(x => {
+      const color = x.enRevision ? 'var(--muted)' : x.dias == null ? 'var(--warn)' : x.dias < 0 ? 'var(--bad)' : x.dias <= 30 ? 'var(--warn)' : 'var(--ok)';
+      const estado = x.enRevision ? 'En revisión' : x.dias == null ? 'Sin fecha cargada' : x.dias < 0 ? 'Vencida hace ' + (-x.dias) + ' d' : x.dias === 0 ? 'Vence hoy' : x.dias <= 30 ? 'Vence en ' + x.dias + ' d' : 'Vence el ' + fdate(x.vence);
+      const pedir = !x.enRevision && (x.dias == null || x.dias <= 30);
+      return '<div class="card" data-doc="' + esc(x.tipo) + '"><div class="row between"><b>' + esc(x.label) + '</b><span class="small" style="color:' + color + ';font-weight:600">' + estado + '</span></div>' +
+        (pedir ? '<div class="small muted" style="margin:4px 0 6px">Subí una foto de la nueva para que la empresa la actualice.</div>' : '') +
+        '<details' + (pedir ? ' open' : '') + '><summary class="small muted" style="cursor:pointer">' + (pedir ? 'Subir la nueva' : 'Subir una nueva') + '</summary>' +
+        '<label class="f" style="margin-top:6px"><span>¿Hasta cuándo vale la nueva?</span><input type="date" class="doc_vence"></label>' +
+        '<label class="btn sec block filebtn">Sacar o elegir foto<input class="doc_file" type="file" accept="image/*" capture="environment"></label>' +
+        '<button class="btn block doc_btn" style="margin-top:8px">Enviar</button><div class="small muted doc_status" style="margin-top:6px"></div></details></div>';
+    }).join('');
+  }
   h += '<div class="sec-t">Actualizar mis datos</div><div class="card">' +
   '<label class="f"><span>Teléfono nuevo</span><input id="ad_tel" type="tel"></label>' +
   '<label class="f"><span>Domicilio nuevo</span><input id="ad_domicilio"></label>' +
@@ -159,6 +202,35 @@ function renderPortal(app, j) {
   wrap.insertAdjacentHTML('beforeend', h);
   wrap.querySelectorAll('[data-recibo]').forEach(btn => {
     btn.addEventListener('click', () => descargarReciboPortal(j, pagos[+btn.dataset.recibo]));
+  });
+  (j.contratosPendientes || []).forEach((k, i) => {
+    const pad = padFirma(wrap.querySelector('#fc_firma_' + i));
+    wrap.querySelector('#fc_limpiar_' + i).addEventListener('click', pad.limpiar);
+    const btn = wrap.querySelector('#fc_btn_' + i), st = wrap.querySelector('#fc_status_' + i);
+    btn.addEventListener('click', async () => {
+      const nombre = wrap.querySelector('#fc_nombre_' + i).value.trim(), dni = wrap.querySelector('#fc_dni_' + i).value.trim();
+      if (nombre.length < 3) { st.textContent = 'Escribí tu nombre y apellido'; return; }
+      if (!/\d{6,}/.test(dni.replace(/\D/g, ''))) { st.textContent = 'Escribí tu DNI'; return; }
+      if (!pad.trazada()) { st.textContent = 'Falta tu firma en el recuadro'; return; }
+      if (!wrap.querySelector('#fc_acepto_' + i).checked) { st.textContent = 'Marcá que leíste y aceptás el contrato'; return; }
+      btn.disabled = true; st.textContent = 'Firmando…';
+      const r = await postPortal({ accion: 'firmar_contrato', carId: k.carId, firmaId: k.id, nombre, dni, acepto: true, firma: pad.png() });
+      if (r.ok) wrap.querySelector('#fc_card_' + i).innerHTML = '<b style="color:var(--ok)">✓ Contrato firmado</b><div class="small muted" style="margin-top:4px">Gracias, ' + esc(nombre.split(' ')[0]) + '. La empresa ya recibió tu firma.</div>';
+      else { st.textContent = r.error || 'No se pudo firmar, probá de nuevo.'; btn.disabled = false; }
+    });
+  });
+  wrap.querySelectorAll('[data-doc]').forEach(card => {
+    const btn = card.querySelector('.doc_btn'), st = card.querySelector('.doc_status');
+    btn.addEventListener('click', async () => {
+      const f = card.querySelector('.doc_file').files[0];
+      if (!f) { st.textContent = 'Sacá o elegí la foto primero'; return; }
+      st.textContent = 'Preparando…'; btn.disabled = true;
+      let imagen;
+      try { imagen = await comprimirImagen(f); } catch (e) { st.textContent = 'No se pudo procesar la foto'; btn.disabled = false; return; }
+      const r = await postPortal({ accion: 'documento', tipo: card.dataset.doc, vence: card.querySelector('.doc_vence').value, imagen });
+      if (r.ok) card.querySelector('details').outerHTML = '<div class="small" style="color:var(--ok);margin-top:4px">✓ Enviada. La empresa la va a revisar.</div>';
+      else { st.textContent = r.error || 'No se pudo enviar, probá de nuevo.'; btn.disabled = false; }
+    });
   });
   const ptBtn = wrap.querySelector('#pt_btn');
   if (ptBtn) ptBtn.addEventListener('click', () => enviarAccionPortal(
@@ -200,6 +272,24 @@ function renderPortal(app, j) {
     await enviarAccionPortal({ accion: 'comprobante', carId: wrap.querySelector('#cp_car').value, imagen }, statusEl, cpBtn);
     inp.value = '';
   });
+}
+
+async function postPortal(body) {
+  try {
+    const r = await fetch(SUPABASE_URL + '/functions/v1/portal-chofer', { method: 'POST', headers: { Authorization: 'Bearer ' + SUPABASE_KEY, apikey: SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ id: PORTAL_ID, t: PORTAL_TOKEN }, body)) });
+    return await r.json();
+  } catch (e) { return { ok: false, error: 'No se pudo enviar, revisá tu conexión.' }; }
+}
+// Recuadro para firmar con el dedo o el mouse.
+function padFirma(cv) {
+  const ctx = cv.getContext('2d');
+  ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#111';
+  let dibujando = false, ultimo = null, trazada = false;
+  const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * (cv.width / r.width), (e.clientY - r.top) * (cv.height / r.height)]; };
+  cv.onpointerdown = e => { dibujando = true; ultimo = pos(e); try { cv.setPointerCapture(e.pointerId); } catch (x) {} };
+  cv.onpointermove = e => { if (!dibujando) return; const p = pos(e); ctx.beginPath(); ctx.moveTo(ultimo[0], ultimo[1]); ctx.lineTo(p[0], p[1]); ctx.stroke(); ultimo = p; trazada = true; };
+  cv.onpointerup = cv.onpointerleave = () => { dibujando = false; };
+  return { limpiar: () => { ctx.clearRect(0, 0, cv.width, cv.height); trazada = false; }, trazada: () => trazada, png: () => cv.toDataURL('image/png') };
 }
 
 function comprimirImagen(file) {

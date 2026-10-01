@@ -6,7 +6,7 @@
 // anuncios) desde app_settings, y links de descarga (1 hora) de la credencial
 // de circulación y el certificado de cobertura del seguro de su auto. No
 // expone nada de otros choferes ni de la operación en general.
-// POST { id, t, accion: 'service'|'problema'|'actualizar_datos'|'encuesta'|'foto', ... }:
+// POST { id, t, accion: 'service'|'problema'|'actualizar_datos'|'encuesta'|'foto'|'comprobante'|'firmar_contrato'|'documento', ... }:
 // valida el mismo token. Todas menos 'foto' solo mandan una notificación
 // push a la empresa (no guardan nada, es un aviso best-effort). 'foto' sube
 // una imagen (base64) al bucket de documentos y la agrega a los archivos
@@ -40,6 +40,11 @@ async function docsSeguroDe(sb: any, c: any) {
   }
   return out;
 }
+// Documentos del chofer con vencimiento que puede renovar desde el portal.
+const DOCS_CHOFER: Record<string, { label: string; campo: string; archivo: string }> = {
+  lic: { label: 'Licencia de conducir', campo: 'licVenc', archivo: 'licencia' },
+  ant: { label: 'Certificado de antecedentes', campo: 'antecedentesVenc', archivo: 'antecedentes' },
+};
 function diasEntre(fechaIso: string, hoy: Date): number {
   return Math.round((hoy.getTime() - new Date(fechaIso + 'T00:00:00').getTime()) / 86400000);
 }
@@ -138,6 +143,52 @@ Deno.serve(async (req) => {
         const upd = await sb.from('drivers').update({ data: Object.assign({}, driverRow.data, { comprobantesPortal: comprobantes }) }).eq('id', driverId);
         if (upd.error) return json({ ok: false, error: 'No se pudo guardar: ' + upd.error.message }, 500);
         await avisarPush(sb, 'Comprobante subido por ' + (d.nombre || 'un chofer'), 'Revisalo en la ficha del chofer');
+      } else if (accion === 'documento') {
+        // El chofer sube la licencia o el certificado de antecedentes nuevo;
+        // queda para que la empresa lo revise y actualice el vencimiento.
+        const tipo = String(body.tipo || '');
+        if (!DOCS_CHOFER[tipo]) return json({ ok: false, error: 'Documento inválido' }, 400);
+        const vence = /^\d{4}-\d{2}-\d{2}$/.test(String(body.vence || '')) ? String(body.vence) : '';
+        const m = String(body.imagen || '').match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
+        if (!m) return json({ ok: false, error: 'Foto inválida' }, 400);
+        const contentType = m[1];
+        const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0));
+        if (bytes.byteLength > MAX_FOTO_BYTES) return json({ ok: false, error: 'La foto es muy pesada' }, 400);
+        const ext = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
+        const path = new Date().getFullYear() + '/doc-' + tipo + '-' + crypto.randomUUID() + '.' + ext;
+        const up = await sb.storage.from(BUCKET).upload(path, bytes, { contentType, upsert: false });
+        if (up.error) return json({ ok: false, error: 'No se pudo subir: ' + up.error.message }, 500);
+        const fecha = new Date().toISOString().slice(0, 10);
+        const actual = driverRow.data;
+        const files = (actual.files || []).concat([{ id: path, name: DOCS_CHOFER[tipo].archivo + '-' + fecha + '.' + ext, cat: tipo, type: contentType, size: bytes.byteLength, fecha, subidoPorChofer: true }]);
+        const docsPortal = (actual.docsPortal || []).concat([{ id: path, tipo, fecha, venceInformado: vence, type: contentType }]);
+        const upd = await sb.from('drivers').update({ data: Object.assign({}, actual, { files, docsPortal }) }).eq('id', driverId);
+        if (upd.error) return json({ ok: false, error: 'No se pudo guardar: ' + upd.error.message }, 500);
+        await avisarPush(sb, DOCS_CHOFER[tipo].label + ' nueva de ' + (d.nombre || 'un chofer'), (vence ? 'Vence el ' + vence.split('-').reverse().join('/') + '. ' : '') + 'Revisala en la ficha del chofer.');
+      } else if (accion === 'firmar_contrato') {
+        // Firma remota del contrato: valida que el auto sea del chofer y que el
+        // pedido de firma siga pendiente; guarda la firma, quién, cuándo y la IP.
+        const carId = String(body.carId || '');
+        const firmaId = String(body.firmaId || '');
+        const nombre = String(body.nombre || '').trim().slice(0, 120);
+        const dni = String(body.dni || '').replace(/\D/g, '').slice(0, 12);
+        const m = String(body.firma || '').match(/^data:image\/png;base64,(.+)$/);
+        if (!carId || !firmaId || !m || nombre.length < 3 || !body.acepto) return json({ ok: false, error: 'Faltan datos para firmar' }, 400);
+        const { data: carRow } = await sb.from('cars').select('id,data').eq('id', carId).maybeSingle();
+        if (!carRow || !carRow.data || carRow.data.choferId !== driverId) return json({ ok: false, error: 'Auto no asignado a este chofer' }, 403);
+        const f = carRow.data.firmaRemota;
+        if (!f || f.id !== firmaId || f.choferId !== driverId) return json({ ok: false, error: 'Este contrato ya no está para firmar' }, 409);
+        if (f.estado !== 'pendiente') return json({ ok: false, error: 'Este contrato ya fue firmado' }, 409);
+        const bytes = Uint8Array.from(atob(m[1]), c => c.charCodeAt(0));
+        if (bytes.byteLength > 600 * 1024) return json({ ok: false, error: 'La firma es muy pesada' }, 400);
+        const path = new Date().getFullYear() + '/firma-' + crypto.randomUUID() + '.png';
+        const up = await sb.storage.from(BUCKET).upload(path, bytes, { contentType: 'image/png', upsert: false });
+        if (up.error) return json({ ok: false, error: 'No se pudo guardar la firma: ' + up.error.message }, 500);
+        const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim().slice(0, 60);
+        const firmada = Object.assign({}, f, { estado: 'firmado', firmadoEn: new Date().toISOString(), firmaPath: path, nombreFirmante: nombre, dniFirmante: dni, ip, userAgent: (req.headers.get('user-agent') || '').slice(0, 200) });
+        const upd = await sb.from('cars').update({ data: Object.assign({}, carRow.data, { firmaRemota: firmada }) }).eq('id', carId);
+        if (upd.error) return json({ ok: false, error: 'No se pudo guardar: ' + upd.error.message }, 500);
+        await avisarPush(sb, 'Contrato firmado por ' + (d.nombre || 'un chofer'), (carRow.data.patente ? 'Auto ' + carRow.data.patente + '. ' : '') + 'Descargalo desde la solapa Contrato del auto.');
       } else {
         return json({ ok: false, error: 'Acción inválida' }, 400);
       }
@@ -216,6 +267,8 @@ Deno.serve(async (req) => {
       }
       return { id: c.id, patente: c.patente || '', marca: c.marca || '', modelo: c.modelo || '', vtv: c.vtv || '', seguro: c.seguro || '', aseguradora: c.aseguradora || '', polizaNumero: c.polizaNumero || '', tipo: c.tipo, monto: +c.monto || 0, moneda, debt, proximo, cuotas: +c.cuotas || 0, cuotaActual, saldo, adelantoAplicado };
     });
+    const contratosPendientes = cars.filter((c: any) => c.firmaRemota && c.firmaRemota.estado === 'pendiente' && c.firmaRemota.choferId === driverId)
+      .map((c: any) => ({ carId: c.id, id: c.firmaRemota.id, patente: c.patente || '', titulo: c.firmaRemota.titulo || 'Contrato', parrafos: c.firmaRemota.parrafos || [] }));
     const docsPorAuto = await Promise.all(cars.map((c: any) => docsSeguroDe(sb, c).catch(() => [])));
     autos.forEach((a: any, i: number) => { a.docsSeguro = docsPorAuto[i]; });
 
@@ -225,8 +278,30 @@ Deno.serve(async (req) => {
         return { fecha: p.fecha, monto: +p.monto || 0, tipo: p.tipo, metodoLabel: METODOS[p.metodo] || '', patente: c ? c.patente : '' };
       });
 
+    // Cuenta corriente resumida y plan de pagos (mismas cuentas que la app).
+    const seguroPend = Math.max(0, seguroCargado - seguroPagado);
+    const multasTotal = multas.reduce((a: number, m: any) => a + m.monto, 0);
+    const adelantos = (d.adelantos || []).reduce((a: number, x: any) => a + (+x.monto || 0), 0);
+    const deudaARS = Math.max(0, autos.filter((a: any) => a.moneda === 'ARS').reduce((s: number, a: any) => s + a.debt, 0) + seguroPend + multasTotal + adelantos);
+    const deudaUSD = autos.filter((a: any) => a.moneda === 'USD').reduce((s: number, a: any) => s + a.debt, 0);
+    let plan: any = null;
+    if (d.planPagos && d.planPagos.activo) {
+      const p = d.planPagos;
+      const dd = diasEntre(p.inicio, hoy);
+      const semanas = dd < 0 ? 0 : Math.min(+p.cuotas || 0, Math.floor(dd / 7) + 1);
+      const deudaHoy = p.moneda === 'USD' ? deudaUSD : deudaARS;
+      const deberiaQuedar = Math.max(0, (+p.deudaInicial || 0) - semanas * (+p.montoCuota || 0));
+      plan = { moneda: p.moneda, cuotas: +p.cuotas || 0, montoCuota: +p.montoCuota || 0, inicio: p.inicio, deudaInicial: +p.deudaInicial || 0, semanas, deudaHoy, deberiaQuedar, alDia: deudaHoy <= deberiaQuedar + 0.5, cumplido: deudaHoy <= 0.5 };
+    }
+
     return json({
       ok: true, nombre: d.nombre || '', autos, pagos, multas,
+      cuenta: { deudaARS, deudaUSD, adelantos }, plan, contratosPendientes,
+      documentos: Object.entries(DOCS_CHOFER).map(([tipo, x]) => {
+        const vence = d[x.campo] || '';
+        const enRevision = (d.docsPortal || []).some((p: any) => p.tipo === tipo && !p.revisado && !p.rechazado);
+        return { tipo, label: x.label, vence, dias: vence ? -diasEntre(vence, hoy) : null, enRevision };
+      }),
       deposito: saldoDeposito, depositoObjetivo: +d.depositoObjetivo || 0,
       semanaAdelantada: Math.max(0, adelantoRestante),
       seguroPendiente: Math.max(0, seguroCargado - seguroPagado), seguroACargo: seguroCargado > 0,

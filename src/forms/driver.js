@@ -1,7 +1,7 @@
 import { $, esc, val, uid, money, moneyUSD, fdate, iso, today } from '../utils.js';
 import { S } from '../state.js';
 import { DOCS, RATINGS, MULTA_ESTADOS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS, CANALES_PROSPECTO, METODOS_PAGO, COMUNICACION_TIPOS } from '../constants.js';
-import { seguroPendiente, seguroPendienteDesde, plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, saldoSemanaAdelantada, semanaAdelantadaDeChofer, semanaAdelantadaDisponible, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer, estadoGeneralChofer, promedioIngresos3MesesChofer, encuestasDeChofer, promedioNpsChofer, desafiosCumplidos, vs } from '../calc.js';
+import { estadoPlan, seguroPendiente, seguroPendienteDesde, plate, driverDebt, carHistoryForDriver, driverScore, multasDeChofer, estadoMultaCls, badge, saldoDeposito, depositosDeChofer, saldoSemanaAdelantada, semanaAdelantadaDeChofer, semanaAdelantadaDisponible, sugerirAptoFinanciar, driverEnRiesgo, driverCalificaBono, puntosLicencia, metodoPreferidoChofer, estadoGeneralChofer, promedioIngresos3MesesChofer, encuestasDeChofer, promedioNpsChofer, desafiosCumplidos, vs } from '../calc.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles } from '../files.js';
@@ -77,6 +77,7 @@ export function driverForm(id) {
   '<label class="btn sec sm filebtn">Foto de perfil<input id="fotoPerfilIn" type="file" accept="image/*" onchange="onFotoPerfil(this)"></label>' +
   '<input type="hidden" id="d_fotoPerfilData" value="' + esc(d.fotoPerfil || '') + '">' +
   '</div>' +
+  (ex ? seccionDocsPortal(d) : '') +
   '<label class="f"><span>Nombre y apellido</span><input id="d_nombre" value="' + esc(d.nombre) + '"></label>' +
   '<label class="chk"><input type="checkbox" id="d_prospecto" onchange="document.getElementById(\'etapaBox\').style.display=this.checked?\'\':\'none\'"' + (d.prospecto ? ' checked' : '') + '><span>Es un prospecto (todavía no firmó contrato)</span></label>' +
   '<div id="etapaBox" style="display:' + (d.prospecto ? '' : 'none') + '"><label class="f"><span>Etapa del embudo</span><select id="d_etapaProspecto">' + ETAPAS_PROSPECTO.map(x => '<option value="' + x[0] + '"' + (d.etapaProspecto === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
@@ -160,6 +161,7 @@ export function driverForm(id) {
     if (SEM.length) financiacion += SEM.map(x => '<div class="card row"><div class="grow"><div>' + (x.monto >= 0 ? '+' + money(x.monto) : '-' + money(-x.monto)) + ' <span class="small muted">' + fdate(x.fecha) + (medioLabel(x.medio) ? ' · ' + medioLabel(x.medio) : '') + '</span></div>' + (x.nota ? '<div class="small muted">' + esc(x.nota) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmarBorrarSemanaAdelantada(\'' + x.id + '\')">Borrar</button>' : '') + '</div>').join('');
     if (canDelete() && gruposDuplicadosLedger(d.id, 'semana_adelantada').length) financiacion += '<div class="card row between small" style="background:#fff8c4;border-color:#e8d47a;margin-bottom:8px"><span>Hay movimientos que parecen duplicados</span><button class="btn sec sm" onclick="fusionarDuplicadosLedger(\'' + d.id + '\',\'semana_adelantada\')">Fusionar</button></div>';
     financiacion += '<button class="btn sec block" style="margin:8px 0 20px" onclick="semanaAdelantadaForm(\'' + d.id + '\')">+ Registrar semana adelantada</button>';
+    financiacion += '<button class="btn block" style="margin-bottom:8px" onclick="cuentaCorrienteView(\'' + d.id + '\')">Cuenta corriente' + (estadoPlan(d) ? ' y plan de pagos' : '') + '</button>';
     if (canVerFinanzas()) financiacion += '<button class="btn sec block" style="margin-bottom:20px" onclick="estadoCuentaPDF(\'' + d.id + '\')">Estado de cuenta del mes (PDF)</button>';
     if (!featureOculta('adelantos')) financiacion += seccionAdelantos(d);
     if (!d.inactivo && !d.prospecto) {
@@ -277,6 +279,36 @@ function seccionComprobantesPortal(d) {
         : '<button class="btn sm grow" onclick="cobrarComprobantePortal(\'' + d.id + '\',\'' + esc(x.id) + '\')">Registrar cobro</button><button class="btn sec sm" onclick="marcarComprobantePortal(\'' + d.id + '\',\'' + esc(x.id) + '\',true)">Marcar revisado</button>') +
       '</div></div>';
   }).join('');
+}
+// Licencia o antecedentes nuevos que subió el chofer desde el portal.
+const DOC_PORTAL = { lic: ['Licencia de conducir', 'licVenc'], ant: ['Certificado de antecedentes', 'antecedentesVenc'] };
+function seccionDocsPortal(d) {
+  const L = (d.docsPortal || []).filter(x => !x.revisado && !x.rechazado);
+  if (!L.length) return '';
+  return '<div class="sec-t">Documentos subidos desde el portal ' + badge('warn', L.length + ' para revisar') + '</div>' + L.map(x => {
+    const [label, campo] = DOC_PORTAL[x.tipo] || ['Documento', ''];
+    const ver = 'viewFile(\'' + esc(x.id) + '\',\'' + esc(label) + '\')';
+    return '<div class="card"><div class="row"><img class="fthumb tap" alt="" data-path="' + esc(x.id) + '" onclick="' + ver + '">' +
+      '<div class="grow"><b>' + esc(label) + '</b><div class="small muted">Subida el ' + fdate(x.fecha) + (d[campo] ? ' · la actual vence el ' + fdate(d[campo]) : '') + '</div></div></div>' +
+      '<label class="f" style="margin-top:8px"><span>Nuevo vencimiento' + (x.venceInformado ? ' <small>(lo puso el chofer, revisalo en la foto)</small>' : '') + '</span><input type="date" id="dp_vence_' + esc(x.id.replace(/\W/g, '')) + '" value="' + esc(x.venceInformado || '') + '"></label>' +
+      '<div class="row"><button class="btn sm grow" onclick="aceptarDocPortal(\'' + d.id + '\',\'' + esc(x.id) + '\')">Aceptar y actualizar</button>' +
+      '<button class="btn sec sm" onclick="rechazarDocPortal(\'' + d.id + '\',\'' + esc(x.id) + '\')">Rechazar</button></div></div>';
+  }).join('');
+}
+export async function aceptarDocPortal(id, docId) {
+  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const x = (d.docsPortal || []).find(v => v.id === docId); if (!x) return;
+  const [, campo] = DOC_PORTAL[x.tipo] || [];
+  const vence = val('dp_vence_' + docId.replace(/\W/g, ''));
+  if (!vence) { toast('Poné la fecha de vencimiento del documento nuevo'); return; }
+  const patch = { docsPortal: d.docsPortal.map(v => v.id === docId ? Object.assign({}, v, { revisado: true, venceAceptado: vence }) : v), docs: Object.assign({}, d.docs || {}, { [x.tipo]: true }) };
+  if (campo) patch[campo] = vence;
+  if (await save('drivers', Object.assign({}, d, patch))) { toast('Documento aceptado: vence el ' + fdate(vence)); driverForm(id); }
+}
+export async function rechazarDocPortal(id, docId) {
+  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const docsPortal = (d.docsPortal || []).map(v => v.id === docId ? Object.assign({}, v, { rechazado: true }) : v);
+  if (await save('drivers', Object.assign({}, d, { docsPortal }))) { toast('Documento rechazado: pedile al chofer que suba otra foto'); driverForm(id); }
 }
 export async function marcarComprobantePortal(id, compId, revisado) {
   const d = S.drivers.find(x => x.id === id); if (!d) return;

@@ -4,6 +4,13 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-10-01', items: [
+    'Cuenta corriente del chofer (ficha → Financiación): todos los cargos y pagos con el saldo, deuda total en pesos y en dólares, y PDF.',
+    'Plan de pagos: repartí la deuda en cuotas semanales y la app avisa si el chofer se atrasa. El chofer también lo ve en su portal.',
+    'Firma del contrato desde el portal: mandalo a firmar y el chofer lo lee y firma desde el celular. Después descargás el PDF firmado.',
+    'Entrega y devolución con fotos guiadas (frente, laterales, interior, tablero, baúl) y comparación lado a lado con la entrega.',
+    'Portal del chofer: ve cuándo vencen su licencia y antecedentes y sube la nueva. Vos la revisás y actualizás la fecha con un toque.',
+  ] },
   { v: '2026-09-30', items: [
     'Registrar cobro: subí la foto o el PDF del comprobante y la IA completa monto, fecha y método. Avisa si el comprobante ya se usó o si lo pagó otra persona.',
     'Solapa Seguro: al subir la póliza o el certificado, la IA completa aseguradora, n° de póliza, cobertura, vencimiento y monto mensual. Avisa si la patente no coincide.',
@@ -46,6 +53,8 @@ export const GASTO_CATS = [['service', 'Service / mantenimiento'], ['siniestro',
 export const STOCK_CATEGORIAS = [['aceite', 'Aceite'], ['filtros', 'Filtros'], ['bujias', 'Bujías'], ['frenos', 'Frenos (pastillas, discos)'], ['neumaticos', 'Neumáticos'], ['bateria', 'Batería'], ['liquidos', 'Líquidos (freno, refrigerante)'], ['correas', 'Correas / cadenas'], ['otro', 'Otro']];
 export const STOCK_UNIDADES = [['unidad', 'Unidad'], ['litro', 'Litro'], ['kg', 'Kilogramo'], ['juego', 'Juego']];
 export const MOTIVOS_REEMPLAZO = [['km', 'Mucho kilometraje'], ['gasto', 'Mucho gasto de mantenimiento'], ['antiguedad', 'Muy viejo'], ['otro', 'Otro motivo']];
+// Fotos guiadas de la entrega y la devolución, en el orden en que se recorre el auto.
+export const PASOS_FOTOS = [['frente', 'Frente'], ['izquierdo', 'Lado izquierdo'], ['trasera', 'Trasera'], ['derecho', 'Lado derecho'], ['interiorDel', 'Interior adelante'], ['interiorTras', 'Interior atrás'], ['tablero', 'Tablero (km y nafta)'], ['baul', 'Baúl y rueda de auxilio']];
 export const INSPECCION_ITEMS = [['carroceria', 'Carrocería sin daños nuevos'], ['limpieza', 'Interior limpio'], ['neumaticos', 'Neumáticos en buen estado'], ['documentos', 'Documentos en el auto'], ['auxilio', 'Rueda de auxilio y herramientas']];
 
 /* Catálogo de mantenimiento: [clave, etiqueta, intervalo en km u null, intervalo en meses u null] */

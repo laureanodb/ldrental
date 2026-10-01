@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { VENC, TIPOS, MANTENIMIENTO_ITEMS, COLS } from './constants.js';
-import { days, parse, today, iso, esc, fdate, money, num1 } from './utils.js';
+import { days, parse, today, iso, esc, fdate, money, moneyUSD, num1 } from './utils.js';
 import { settings } from './settings.js';
 import { isSnoozed } from './snooze.js';
 import { isEnTramite } from './tramite.js';
@@ -475,6 +475,18 @@ export function alerts() {
     const dias = days(parse(desde), today()); if (dias < 7) return;
     const key = 'driver:' + d.id + ':seguro'; if (isSnoozed(key)) return;
     out.push({ who: d.nombre, sub: 'Seguro sin pagar', kind: 'driver', id: d.id, key, d: 0, cls: dias >= 30 ? 'bad' : 'warn', t: money(pend) + ' desde el ' + fdate(desde) });
+  });
+  activeDrivers().forEach(d => {
+    const e = estadoPlan(d); if (!e || e.alDia) return;
+    const key = 'driver:' + d.id + ':plan'; if (isSnoozed(key)) return;
+    const m = n => (e.p.moneda === 'USD' ? moneyUSD(n) : money(n));
+    out.push({ who: d.nombre, sub: 'Plan de pagos atrasado', kind: 'driver', id: d.id, key, d: 0, cls: 'bad', t: m(e.atraso) + ' atrasado' });
+  });
+  activeDrivers().forEach(d => {
+    const n = (d.docsPortal || []).filter(x => !x.revisado && !x.rechazado).length;
+    if (!n) return;
+    const key = 'driver:' + d.id + ':docsportal'; if (isSnoozed(key)) return;
+    out.push({ who: d.nombre, sub: 'Documento subido desde el portal', kind: 'driver', id: d.id, key, d: 0, cls: 'warn', t: n + ' para revisar' });
   });
   activeDrivers().forEach(d => {
     const n = comprobantesPortalPendientes(d).length;
@@ -1224,4 +1236,40 @@ export function rankingMultasChoferes() {
     porChofer[m.choferId].cantidad++; porChofer[m.choferId].total += (+m.monto || 0);
   });
   return Object.values(porChofer).map(x => Object.assign(x, { nombre: driverName(x.driverId) })).sort((a, b) => b.total - a.total);
+}
+
+/* ---------- Cuenta corriente del chofer y plan de pagos ---------- */
+// Lo que debe hoy, por concepto. Es lo mismo que muestra el resto de la app.
+export function saldosCuenta(driverId) {
+  const autos = S.cars.filter(c => c.choferId === driverId && isContract(c));
+  const alquiler = autos.filter(c => c.tipo !== 'financiado').reduce((a, c) => a + calc(c).debt, 0);
+  const cuotas = autos.filter(c => c.tipo === 'financiado').reduce((a, c) => a + calc(c).debt, 0);
+  const seguro = seguroPendiente(driverId);
+  const multas = multasPendientesChofer(driverId);
+  const adelantos = saldoAdelantos(driverId);
+  return {
+    alquiler, cuotas, seguro, multas, adelantos,
+    ars: Math.max(0, alquiler + seguro + multas + adelantos), usd: cuotas,
+    deposito: saldoDeposito(driverId), semanaAdelantada: semanaAdelantadaDisponible(driverId),
+  };
+}
+
+// El plan reparte una deuda en cuotas semanales que se pagan además del
+// alquiler. Se sigue comparando la deuda de hoy contra lo que debería quedar.
+export function estadoPlan(d) {
+  const p = d && d.planPagos;
+  if (!p || !p.activo) return null;
+  const s = saldosCuenta(d.id);
+  const deudaHoy = p.moneda === 'USD' ? s.usd : s.ars;
+  const dd = days(parse(p.inicio), today());
+  const semanas = dd < 0 ? 0 : Math.min(+p.cuotas || 0, Math.floor(dd / 7) + 1);
+  const deberiaQuedar = Math.max(0, (+p.deudaInicial || 0) - semanas * (+p.montoCuota || 0));
+  const cumplido = deudaHoy <= 0.5;
+  const fin = parse(p.inicio); fin.setDate(fin.getDate() + 7 * ((+p.cuotas || 1) - 1));
+  return {
+    p, deudaHoy, semanas, deberiaQuedar, cumplido, fin: iso(fin),
+    atraso: cumplido ? 0 : Math.max(0, deudaHoy - deberiaQuedar),
+    alDia: cumplido || deudaHoy <= deberiaQuedar + 0.5,
+    pagadoDelPlan: Math.max(0, (+p.deudaInicial || 0) - deudaHoy),
+  };
 }

@@ -10,6 +10,7 @@ import { seccionSocios } from './socios.js';
 import { inflacionAcumulada } from '../inflacion.js';
 import { settings, featureOculta } from '../settings.js';
 import { leerDocumento, archivoADataUrl } from '../ia.js';
+import { tarjetaFirmaRemota } from '../contrato.js';
 
 const gastoCatLabel = k => (GASTO_CATS.find(x => x[0] === k) || [0, 'Gasto'])[1];
 const unidadLabel = k => (STOCK_UNIDADES.find(x => x[0] === k) || [0, 'Unidad'])[1];
@@ -482,6 +483,7 @@ export function carForm(id) {
       else if (cv) contrato += '<div class="small muted" style="margin-bottom:6px">Contrato vigente hasta ' + fdate(cv) + '.</div>';
       const vencido = cvs && cvs.cls !== 'ok';
       contrato += '<div class="row" style="margin:8px 0"><button class="btn sec grow" onclick="' + (vencido ? 'renovarContratoForm' : 'contratoForm') + '(\'' + c.id + '\')">' + (vencido ? 'Renovar contrato' : 'Generar contrato') + '</button><button class="btn sec" onclick="generarConstanciaCesion(\'' + c.id + '\')">Constancia de uso</button></div>';
+      contrato += tarjetaFirmaRemota(c);
       if ((c.contratoHistorial || []).length > 1) {
         contrato += '<details style="margin-bottom:8px"><summary class="small muted" style="cursor:pointer">Historial de contratos (' + c.contratoHistorial.length + ')</summary>' +
         c.contratoHistorial.slice().reverse().map(h => '<div class="row between small" style="padding:2px 0"><span>' + (h.renovacion ? 'Renovación · ' : '') + fdate(h.fecha) + '</span><span class="muted">' + (h.tipo === 'financiado' ? moneyUSD(h.monto) : money(h.monto)) + (h.cuotas ? ' · ' + h.cuotas + ' cuotas' : '') + (h.pdfId ? ' · <a class="tap" style="text-decoration:underline" onclick="viewFile(\'' + h.pdfId + '\',\'' + esc(h.pdfName || 'contrato.pdf') + '\')">ver PDF</a>' : '') + '</span></div>').join('') + '</details>';
@@ -608,7 +610,8 @@ export function carForm(id) {
     }
     const I = S.inspecciones.filter(x => x.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     hist += '<div class="sec-t">Inspecciones de entrega/recepción</div>';
-    if (I.length) hist += I.map(x => '<div class="card row"><div class="grow"><div>' + (x.tipo === 'entrega' ? 'Entrega' : 'Recepción') + ' <span class="small muted">' + fdate(x.fecha) + (x.km ? ' · ' + x.km + ' km' : '') + (x.firma ? ' · firmado' : '') + '</span></div>' + (x.notas ? '<div class="small muted">' + esc(x.notas) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delInspeccion(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    if (I.length) hist += I.map(x => '<div class="card row"><div class="grow"><div>' + (x.tipo === 'entrega' ? 'Entrega' : 'Recepción') + ' <span class="small muted">' + fdate(x.fecha) + (x.km ? ' · ' + x.km + ' km' : '') + (x.firma ? ' · firmado' : '') + (x.fotos && Object.keys(x.fotos).length ? ' · ' + Object.keys(x.fotos).length + ' fotos' : '') + '</span></div>' + (x.notas ? '<div class="small muted">' + esc(x.notas) + '</div>' : '') +
+      (x.fotos && Object.keys(x.fotos).length ? '<button class="btn sec sm" style="margin-top:4px" onclick="compararInspeccion(\'' + x.id + '\')">' + (x.tipo === 'recepcion' ? 'Comparar con la entrega' : 'Ver fotos') + '</button>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delInspeccion(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     else hist += '<div class="small muted" style="margin-bottom:8px">Sin inspecciones registradas.</div>';
     hist += '<button class="btn sec block" style="margin:8px 0 6px" onclick="inspeccionForm(\'' + c.id + '\')">+ Registrar inspección</button>';
     hist += '<button class="btn sec block" style="margin-bottom:20px" onclick="traspasoForm(\'' + c.id + '\')">Traspaso (cambiar chofer con checklist)</button>';

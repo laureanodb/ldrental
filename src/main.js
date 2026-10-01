@@ -23,16 +23,17 @@ import { siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSini
 import { repuestoForm, saveRepuesto, delRepuesto, movimientoStockForm, guardarMovimientoStock, delMovimientoStock } from './forms/repuesto.js';
 import { reciboPDF, reciboCompartir, estadoCuentaPDF } from './recibo.js';
 import { descargarReporteEjecutivo } from './reporte-ejecutivo.js';
-import { contratoForm, renovarContratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion } from './contrato.js';
+import { contratoForm, renovarContratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion, mandarContratoAFirmar, avisoFirmaRemota, cancelarFirmaRemota, descargarContratoFirmado, copiarLinkFirma } from './contrato.js';
 import { plantillaForm, onPlantillaTipo, generarPlantilla, marcarCartaEnviada } from './plantillas.js';
 import { exportarExcel } from './export-excel.js';
 import { activarPush, desactivarPush, guardarHorarioPush, guardarPreferenciasPush } from './push.js';
-import { marcarComprobantePortal, driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, togglePortalDesactivado, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion } from './forms/driver.js';
+import { marcarComprobantePortal, aceptarDocPortal, rechazarDocPortal, driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, togglePortalDesactivado, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion } from './forms/driver.js';
 import { goMas } from './views/mas.js';
 import { initPortal, toggleTemaPortal } from './portal.js';
 import { initPostulacion } from './postulacion.js';
 import { depositoForm, saveDeposito, delDeposito, semanaAdelantadaForm, guardarSemanaAdelantada, delSemanaAdelantada, confirmarBorrarSemanaAdelantada, fusionarDuplicadosLedger } from './forms/deposito.js';
 import { payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, payFormSeguro, onPayTipo, leerComprobanteCobro } from './forms/payment.js';
+import { cuentaCorrienteView, planPagosForm, planPagosRecalcular, guardarPlanPagos, cerrarPlanPagos, cuentaCorrientePDF } from './forms/cuenta.js';
 import { cruceArchivo, cruceColumna, cruceOrigen, cruceLimpiar, cruceCobrar, cruceIgnorar, cruceConfirmar } from './forms/cruce.js';
 import { closeModal, confirmDel } from './modal.js';
 import { attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile } from './files.js';
@@ -48,7 +49,7 @@ import { mostrarNovedades } from './changelog.js';
 import { gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro, elegirCategoriaGasto } from './forms/gasto.js';
 import { gastosGeneralesView, gastoGeneralForm, onGastoGeneralCat, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, onGastoRecurrenteCat, saveGastoRecurrente, delGastoRecurrente } from './forms/gastos-generales.js';
 import { sancionForm, saveSancion, delSancion } from './forms/sancion.js';
-import { inspeccionForm, saveInspeccion, delInspeccion, limpiarFirmaInspeccion } from './forms/inspeccion.js';
+import { inspeccionForm, saveInspeccion, delInspeccion, limpiarFirmaInspeccion, renderPasosFotos, fotoPaso, compararInspeccion } from './forms/inspeccion.js';
 import { proveedoresView, saveProveedor, delProveedor } from './forms/proveedor.js';
 import { ajusteForm, saveAjuste, delAjuste } from './forms/ajuste.js';
 import { searchView, doSearch, usarFiltroReciente } from './forms/search.js';
@@ -88,7 +89,10 @@ Object.assign(window, {
   driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, togglePortalDesactivado, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion,
   adelantoForm, guardarAdelanto, borrarAdelanto,
   depositoForm, saveDeposito, delDeposito, semanaAdelantadaForm, guardarSemanaAdelantada, delSemanaAdelantada, confirmarBorrarSemanaAdelantada, fusionarDuplicadosLedger,
-  payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, marcarComprobantePortal, payFormSeguro, onPayTipo, leerComprobanteCobro, renderSeguroDocs, subirDocSeguro, completarSeguroConIA, leerCotizacionSeguro, agregarCotizacionSeguro, quitarCotizacionSeguro, elegirCotizacionSeguro,
+  payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, marcarComprobantePortal, aceptarDocPortal, rechazarDocPortal, payFormSeguro, onPayTipo, leerComprobanteCobro, renderSeguroDocs, subirDocSeguro, completarSeguroConIA, leerCotizacionSeguro, agregarCotizacionSeguro, quitarCotizacionSeguro, elegirCotizacionSeguro,
+  renderPasosFotos, fotoPaso, compararInspeccion,
+  mandarContratoAFirmar, avisoFirmaRemota, cancelarFirmaRemota, descargarContratoFirmado, copiarLinkFirma,
+  cuentaCorrienteView, planPagosForm, planPagosRecalcular, guardarPlanPagos, cerrarPlanPagos, cuentaCorrientePDF,
   cruceArchivo, cruceColumna, cruceOrigen, cruceLimpiar, cruceCobrar, cruceIgnorar, cruceConfirmar, ayudaSeguroPaga, corregirSeguroForm, guardarCorreccionSeguro,
   closeModal, confirmDel,
   attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile,
