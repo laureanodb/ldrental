@@ -5,7 +5,7 @@ export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sa
 
 export const CHANGELOG = [
   { v: '2026-10-01c', items: [
-    'Simulador de financiación (Más → Herramientas, o desde la ficha del auto): cuota semanal en dólares y en pesos a 1, 2, 3 y 4 años, total, ganancia y recargo. Se manda por WhatsApp, se baja en PDF o se pasa al auto con un toque.',
+    'Simulador de financiación (Más → Herramientas, o desde la ficha del auto): elegí los plazos (6 meses a 5 años, o los meses que quieras) con su tasa, y mirá la cuota semanal en dólares y en pesos, el total, tu ganancia y el recargo. Se manda por WhatsApp, se baja en PDF o se pasa al auto con un toque.',
   ] },
   { v: '2026-10-01b', items: [
     'Dólar del día: la deuda de los financiados se ve también en pesos, y al cobrar una cuota que te pagan en pesos la app la pasa a dólares. Se configura en Ajustes.',

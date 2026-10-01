@@ -33,7 +33,7 @@ import { initPortal, toggleTemaPortal } from './portal.js';
 import { initPostulacion } from './postulacion.js';
 import { depositoForm, saveDeposito, delDeposito, semanaAdelantadaForm, guardarSemanaAdelantada, delSemanaAdelantada, confirmarBorrarSemanaAdelantada, fusionarDuplicadosLedger } from './forms/deposito.js';
 import { payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, payFormSeguro, onPayTipo, leerComprobanteCobro, onPayPesos } from './forms/payment.js';
-import { simuladorFinanciacionForm, simuladorElegirAuto, simuladorCalcular, simuladorCompartir, simuladorPDF, simuladorUsar } from './forms/simulador.js';
+import { simuladorFinanciacionForm, simuladorElegirAuto, simuladorCalcular, simuladorCompartir, simuladorPDF, simuladorUsar, simuladorTogglePlazo, simuladorAgregarPlazo } from './forms/simulador.js';
 import { cuentaCorrienteView, planPagosForm, planPagosRecalcular, guardarPlanPagos, cerrarPlanPagos, cuentaCorrientePDF } from './forms/cuenta.js';
 import { cruceArchivo, cruceColumna, cruceOrigen, cruceLimpiar, cruceCobrar, cruceIgnorar, cruceConfirmar } from './forms/cruce.js';
 import { closeModal, confirmDel } from './modal.js';
@@ -93,7 +93,7 @@ Object.assign(window, {
   payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, marcarComprobantePortal, aceptarDocPortal, rechazarDocPortal, payFormSeguro, onPayTipo, leerComprobanteCobro, onPayPesos, renderSeguroDocs, subirDocSeguro, completarSeguroConIA, leerCotizacionSeguro, agregarCotizacionSeguro, quitarCotizacionSeguro, elegirCotizacionSeguro,
   renderPasosFotos, fotoPaso, compararInspeccion, leerFacturaGasto, leerFacturaMant,
   mandarContratoAFirmar, avisoFirmaRemota, cancelarFirmaRemota, descargarContratoFirmado, copiarLinkFirma,
-  simuladorFinanciacionForm, simuladorElegirAuto, simuladorCalcular, simuladorCompartir, simuladorPDF, simuladorUsar,
+  simuladorFinanciacionForm, simuladorElegirAuto, simuladorCalcular, simuladorCompartir, simuladorPDF, simuladorUsar, simuladorTogglePlazo, simuladorAgregarPlazo,
   cuentaCorrienteView, planPagosForm, planPagosRecalcular, guardarPlanPagos, cerrarPlanPagos, cuentaCorrientePDF,
   cruceArchivo, cruceColumna, cruceOrigen, cruceLimpiar, cruceCobrar, cruceIgnorar, cruceConfirmar, ayudaSeguroPaga, corregirSeguroForm, guardarCorreccionSeguro,
   closeModal, confirmDel,

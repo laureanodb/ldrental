@@ -62,7 +62,7 @@ export function viewMas() {
   h += grupo('Análisis', [['Tablero semanal por auto', "goMas('tablero')"], ['Reportes', "goMas('reportes')"], ['Reporte personalizado', 'reportePersonalizadoForm()']]);
   h += grupo('Herramientas', [
     ['Recordatorios', 'recordatoriosView()'],
-    ['Simulador de financiación (1 a 4 años)', 'simuladorFinanciacionForm()'],
+    ['Simulador de financiación', 'simuladorFinanciacionForm()'],
     ['Calculadora: financiar vs. alquilar', 'calculadoraForm()'],
     ['Calculadora: ROI antes de comprar', 'roiAutoForm()'],
     ['Simular un aumento general de la flota', 'escenarioFlotaForm()'],
