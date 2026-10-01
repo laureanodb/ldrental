@@ -6,6 +6,7 @@ import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { actualizarKm } from './car.js';
 import { leerDocumento } from '../ia.js';
+import { cotizacion, textoCotizacion } from '../dolar.js';
 import { subirArchivoSuelto } from '../files.js';
 
 // Comprobante que se adjunta al próximo cobro guardado: el que subió el chofer
@@ -26,6 +27,8 @@ export function payForm(carId, comprobante) {
   '<div class="small muted" id="p_info" style="margin:-4px 0 12px"></div>' +
   '<div class="two"><label class="f"><span id="p_lblmonto">Monto</span><input id="p_monto" inputmode="decimal"></label>' +
   '<label class="f"><span>Fecha</span><input id="p_fecha" type="date" value="' + iso(today()) + '"></label></div>' +
+  '<div id="p_pesosBox" class="card small" style="display:none;margin-bottom:10px"><div class="two"><label class="f"><span>Te pagó en pesos <small>opcional</small></span><input id="p_pesos" inputmode="decimal" oninput="onPayPesos()"></label>' +
+  '<label class="f"><span>Dólar a</span><input id="p_cot" inputmode="decimal" oninput="onPayPesos()"></label></div><div class="small muted" id="p_cotInfo"></div></div>' +
   '<div class="two"><label class="f"><span>Tipo</span><select id="p_tipo" onchange="onPayTipo()"><option value="alquiler">Alquiler</option><option value="cuota">Cuota de financiación</option><option value="seguro">Seguro (en pesos)</option><option value="otro">Otro (anticipo, seña, etc.)</option></select></label>' +
   '<label class="f"><span>Método de pago</span><select id="p_metodo">' + METODOS_PAGO.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label></div>' +
   '<label class="chk"><input type="checkbox" id="p_parcial"><span>Es un pago parcial</span></label>' +
@@ -72,7 +75,8 @@ export function aplicarLecturaComprobante(d) {
     if (d.moneda === 'ARS' && pendSeguro > 0 && Math.abs(d.monto - pendSeguro) < 1 && Math.abs(d.monto - (+c.monto || 0)) >= 1) {
       $('#p_tipo').value = 'seguro'; onPayTipo(); $('#p_monto').value = d.monto;
     } else if (c && c.tipo === 'financiado' && d.moneda === 'ARS' && $('#p_tipo').value === 'cuota') {
-      avisos.push('El comprobante es en pesos (' + money(d.monto) + ') y la cuota es en dólares: poné el equivalente en dólares.');
+      $('#p_pesos').value = d.monto; onPayPesos();
+      avisos.push(+val('p_cot') ? 'Pagó en pesos: lo pasé a dólares a ' + money(+val('p_cot')) + '. Revisá la cotización.' : 'Pagó en pesos: escribí a cuánto tomás el dólar.');
     } else $('#p_monto').value = d.monto;
   }
   if (d.fecha) {
@@ -101,9 +105,28 @@ export function payFormSeguro(carId) {
   $('#p_tipo').value = 'seguro'; onPayTipo();
   $('#p_monto').value = c.choferId ? (seguroPendiente(c.choferId) || '') : '';
 }
+// Cuota en dólares pagada en pesos: se convierte con el dólar del día (o el que se escriba).
+function actualizarPesosBox() {
+  const box = document.getElementById('p_pesosBox'); if (!box) return;
+  const esCuota = $('#p_tipo').value === 'cuota';
+  box.style.display = esCuota ? '' : 'none';
+  if (!esCuota) return;
+  const cot = cotizacion();
+  if (!val('p_cot') && cot) $('#p_cot').value = cot.valor;
+  $('#p_cotInfo').textContent = cot ? textoCotizacion() + (cot.manual ? '' : ' (cotización del día)') : 'Sin cotización del día: escribí a cuánto tomás el dólar.';
+}
+export function onPayPesos() {
+  const pesos = +val('p_pesos'), cot = +val('p_cot');
+  if (!pesos) { actualizarPesosBox(); return; }
+  if (!cot) { $('#p_cotInfo').textContent = 'Escribí a cuánto tomás el dólar.'; return; }
+  const usd = Math.round(pesos / cot * 100) / 100;
+  $('#p_monto').value = usd;
+  $('#p_cotInfo').textContent = money(pesos) + ' ÷ ' + money(cot) + ' = ' + moneyUSD(usd) + ' (US$ ' + usd.toLocaleString('es-AR') + ')';
+}
 export function onPayTipo() {
   const c = carById($('#p_car').value); if (!c) return;
   const t = $('#p_tipo').value;
+  actualizarPesosBox();
   $('#p_lblmonto').textContent = t === 'cuota' ? 'Monto (en dólares)' : t === 'seguro' ? 'Monto del seguro (en pesos)' : 'Monto';
   if (t === 'seguro') $('#p_info').textContent = 'Seguro pendiente de ' + (driverName(c.choferId) || 'el chofer') + ': ' + money(c.choferId ? seguroPendiente(c.choferId) : 0) + '.';
 }
@@ -122,6 +145,8 @@ export function onPayCar() {
   $('#p_info').textContent = (i.debt > 0 ? 'Debe ' + mon(i.debt) + ' (' + num1(i.late) + ' semanas). ' : 'Está al día. ') + (c.tipo === 'alquiler' ? 'Alquiler' : 'Cuota') + ' semanal: ' + mon(c.monto) + '.';
   const metodoHabitual = metodoPreferidoChofer(c.choferId);
   if (metodoHabitual) $('#p_metodo').value = metodoHabitual;
+  if (document.getElementById('p_pesos')) $('#p_pesos').value = '';
+  actualizarPesosBox();
 }
 let payAnomaloArmed = null;
 export async function savePay(btn) {
@@ -151,6 +176,7 @@ export async function savePay(btn) {
   const comp = comprobantePortal;
   if (comp) o.files = [{ id: comp.id, name: (comp.driverId ? 'comprobante-portal-' : 'comprobante-') + comp.fecha + '.' + (String(comp.type || '').split('/')[1] || 'jpg').replace('jpeg', 'jpg'), cat: 'comprobante', type: comp.type, size: comp.size, fecha: comp.fecha }];
   if (comprobanteRef) o.comprobanteRef = comprobanteRef;
+  if (tipo === 'cuota' && +val('p_pesos') > 0 && +val('p_cot') > 0) { o.pesos = +val('p_pesos'); o.cotizacion = +val('p_cot'); o.cotizacionNombre = (cotizacion() && +val('p_cot') === cotizacion().valor) ? textoCotizacion() : 'Dólar a mano'; }
   const km = val('p_km');
   if (!(await save('payments', o))) return;
   comprobantePortal = null; comprobanteRef = '';

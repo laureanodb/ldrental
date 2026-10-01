@@ -11,6 +11,7 @@ import { inflacionAcumulada } from '../inflacion.js';
 import { settings, featureOculta } from '../settings.js';
 import { leerDocumento, archivoADataUrl } from '../ia.js';
 import { tarjetaFirmaRemota } from '../contrato.js';
+import { cotizacion, enPesos, textoCotizacion } from '../dolar.js';
 
 const gastoCatLabel = k => (GASTO_CATS.find(x => x[0] === k) || [0, 'Gasto'])[1];
 const unidadLabel = k => (STOCK_UNIDADES.find(x => x[0] === k) || [0, 'Unidad'])[1];
@@ -459,6 +460,7 @@ export function carForm(id) {
     contrato += '<div class="card"><div class="row between"><span class="muted">Pagado desde el inicio</span><b>' + mon(i.paid) + '</b></div>' +
     '<div class="row between"><span class="muted">Debería haber pagado</span><b>' + mon(i.due) + '</b></div>' +
     '<div class="row between"><span class="muted">Deuda</span><b style="color:' + (i.debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + mon(i.debt) + '</b></div>' +
+    (c.tipo === 'financiado' && cotizacion() ? '<div class="row between small muted"><span>En pesos hoy (' + esc(textoCotizacion()) + ')</span><span>' + money(enPesos(i.debt)) + (c.monto ? ' · cuota ' + money(enPesos(c.monto)) : '') + '</span></div>' : '') +
     (i.ajustes !== 0 ? '<div class="row between small muted"><span>Ajustes / condonaciones</span><span>' + (i.ajustes > 0 ? '-' + mon(i.ajustes) : '+' + mon(-i.ajustes)) + '</span></div>' : '') +
     (i.adelantoAplicado ? '<div class="row between small muted"><span>Cubierto con semana adelantada</span><span>-' + mon(i.adelantoAplicado) + '</span></div>' : '') +
     (c.anticipo ? '<div class="row between small muted"><span>Anticipo pagado</span><span>' + mon(c.anticipo) + '</span></div>' : '') +
@@ -575,7 +577,7 @@ export function carForm(id) {
     const G = S.gastos.filter(g => g.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     const totalGastos = G.reduce((a, g) => a + (+g.costo || 0), 0);
     gastos += '<div class="sec-t row between">Gastos<span class="small muted">' + money(totalGastos) + ' en total</span></div>';
-    if (G.length) gastos += G.map(g => '<div class="card row"><div class="grow tap" onclick="' + (g.reclamoSeguro ? "reclamoSeguroForm('" + g.id + "')" : '') + '"><div>' + money(g.costo) + ' <span class="small muted">' + esc(gastoCatLabel(g.categoria)) + (g.sinFactura ? ' · sin factura' : '') + '</span></div><div class="small muted">' + fdate(g.fecha) + (g.proveedor ? ' · ' + esc(g.proveedor) : '') + (g.descripcion ? ' · ' + esc(g.descripcion) : '') + '</div>' + (g.reclamoSeguro ? badge(g.reclamoEstado === 'aprobado' ? 'ok' : g.reclamoEstado === 'rechazado' ? 'bad' : 'warn', 'Seguro: ' + (RECLAMO_SEGURO_ESTADOS.find(x => x[0] === g.reclamoEstado) || [0, g.reclamoEstado])[1]) : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="event.stopPropagation();confirmDel(this,()=>delGasto(\'' + g.id + '\'))">Borrar</button>' : '') + '</div>').join('');
+    if (G.length) gastos += G.map(g => '<div class="card row"><div class="grow tap" onclick="' + (g.reclamoSeguro ? "reclamoSeguroForm('" + g.id + "')" : '') + '"><div>' + money(g.costo) + ' <span class="small muted">' + esc(gastoCatLabel(g.categoria)) + (g.sinFactura ? ' · sin factura' : '') + '</span></div><div class="small muted">' + fdate(g.fecha) + (g.proveedor ? ' · ' + esc(g.proveedor) : '') + (g.descripcion ? ' · ' + esc(g.descripcion) : '') + (g.files || []).filter(f => f.cat === 'factura').map(f => ' · <a class="tap" style="text-decoration:underline" onclick="event.stopPropagation();viewFile(\'' + esc(f.id) + '\',\'' + esc(f.name || 'factura') + '\')">ver factura</a>').join('') + '</div>' + (g.reclamoSeguro ? badge(g.reclamoEstado === 'aprobado' ? 'ok' : g.reclamoEstado === 'rechazado' ? 'bad' : 'warn', 'Seguro: ' + (RECLAMO_SEGURO_ESTADOS.find(x => x[0] === g.reclamoEstado) || [0, g.reclamoEstado])[1]) : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="event.stopPropagation();confirmDel(this,()=>delGasto(\'' + g.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     gastos += '<button class="btn sec block" style="margin:8px 0 20px" onclick="gastoForm(\'' + c.id + '\')">+ Agregar gasto</button>';
     const MU = S.multas.filter(m => m.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     const estLabel = e => (MULTA_ESTADOS.find(x => x[0] === e) || [0, e])[1];

@@ -305,6 +305,8 @@ Deno.serve(async (req) => {
       deposito: saldoDeposito, depositoObjetivo: +d.depositoObjetivo || 0,
       semanaAdelantada: Math.max(0, adelantoRestante),
       seguroPendiente: Math.max(0, seguroCargado - seguroPagado), seguroACargo: seguroCargado > 0,
+      dolar: { tipo: cfg.tipoDolar || 'blue', precio: cfg.dolarPrecio === 'compra' ? 'compra' : 'venta', manual: +cfg.dolarManual || 0 },
+      pago: { alias: cfg.pagoAlias || '', cbu: cfg.pagoCbu || '', titular: cfg.pagoTitular || '', cuit: cfg.pagoCuit || '', banco: cfg.pagoBanco || '', nota: cfg.pagoNota || '' },
       companyName: cfg.companyName || '', companyLogo: cfg.companyLogo || '', companyPhone: cfg.companyPhone || '',
       telefonoEmergencia: cfg.telefonoEmergencia || '', protocoloEmergencia: cfg.protocoloEmergencia || '', anuncios: cfg.anuncios || [],
     });

@@ -4,6 +4,11 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-10-01b', items: [
+    'Dólar del día: la deuda de los financiados se ve también en pesos, y al cobrar una cuota que te pagan en pesos la app la pasa a dólares. Se configura en Ajustes.',
+    'Portal del chofer: "Cómo pagar" con tu alias y CBU para copiar y el monto que tiene que pagar esa semana (en dólares y en pesos).',
+    'Gastos y mantenimiento: sacale una foto a la factura o el ticket y la IA carga monto, fecha, proveedor y concepto. La factura queda adjunta.',
+  ] },
   { v: '2026-10-01', items: [
     'Cuenta corriente del chofer (ficha → Financiación): todos los cargos y pagos con el saldo, deuda total en pesos y en dólares, y PDF.',
     'Plan de pagos: repartí la deuda en cuotas semanales y la app avisa si el chofer se atrasa. El chofer también lo ve en su portal.',

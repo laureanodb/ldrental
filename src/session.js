@@ -12,6 +12,7 @@ import { iniciarAlertasSupervisor, detenerAlertasSupervisor } from './admin-aler
 import { brandH1, cargarSettingsServidor } from './settings.js';
 import { generarGastosRecurrentes } from './recurrentes.js';
 import { checkChangelog } from './changelog.js';
+import { cargarDolar } from './dolar.js';
 import { biometricRegistrado } from './biometric.js';
 
 export function viewSetup() {
@@ -48,6 +49,7 @@ export async function start() {
   checkChangelog();
   iniciarAlertasSupervisor();
   cargarSettingsServidor().then(changed => { if (changed) render(); });
+  cargarDolar().then(() => render());
   const resto = COLS.filter(c => !PRIORITY_COLS.includes(c));
   Promise.all(resto.map(load)).then(() => { render(); generarGastosRecurrentes(); });
   if (!S.chan) {

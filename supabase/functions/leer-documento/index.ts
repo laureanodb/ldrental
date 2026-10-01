@@ -1,11 +1,12 @@
 // LD Rental — lectura de documentos con IA (Claude).
-// POST { tipo: 'comprobante'|'poliza'|'resumen', path?: string, archivo?: dataURL }
+// POST { tipo: 'comprobante'|'poliza'|'factura'|'resumen', path?: string, archivo?: dataURL }
 // con el token de sesión del usuario de la app (Authorization: Bearer ...).
 // Lee el archivo (del bucket de documentos si viene `path`, o el que manda la
 // app en base64) y devuelve los datos que encontró:
 // - comprobante: monto, fecha, método, quién pagó, n° de operación.
 // - poliza: aseguradora, n° de póliza, patente, cobertura, franquicia,
 //   vigencia y premio mensual (sirve para póliza, certificado y credencial).
+// - factura: proveedor, fecha, total, concepto y categoría de un gasto.
 // - resumen: los movimientos de un resumen de Mercado Pago o del banco en PDF.
 // No guarda nada: la app muestra lo leído y el usuario confirma.
 // Necesita el secreto ANTHROPIC_API_KEY (el mismo que usa el bot).
@@ -83,6 +84,29 @@ const ESQUEMAS: Record<string, { instruccion: string; schema: any; maxTokens: nu
       additionalProperties: false,
     },
   },
+  factura: {
+    instruccion: 'Es una factura, ticket o recibo de un gasto de un auto (taller, repuestos, combustible, gomería, seguro, patente, etc.). Sacá el proveedor, su CUIT, la fecha, el número de comprobante, el total pagado, un concepto corto (qué se compró o qué trabajo se hizo, en pocas palabras), la categoría del gasto, la patente y el kilometraje si figuran, y el tipo de comprobante. Categorías: service (mano de obra, service, alineación, gomería, chapa y pintura), repuestos (repuestos, lubricantes, cubiertas, baterías), combustible, seguro, patente (patente o impuesto automotor), multa, siniestro, otro. Si no es un comprobante de un gasto, poné es_factura en false.',
+    maxTokens: 4000,
+    schema: {
+      type: 'object',
+      properties: {
+        es_factura: { type: 'boolean' },
+        proveedor: { type: 'string' },
+        cuit: { type: 'string' },
+        fecha: { type: 'string', description: 'AAAA-MM-DD o ""' },
+        numero: { type: 'string' },
+        total: { type: 'number' },
+        concepto: { type: 'string' },
+        categoria: { type: 'string', enum: ['service', 'repuestos', 'combustible', 'seguro', 'patente', 'multa', 'siniestro', 'otro'] },
+        patente: { type: 'string' },
+        km: { type: 'number' },
+        tipo_comprobante: { type: 'string', enum: ['factura_a', 'factura_b', 'factura_c', 'ticket', 'recibo', 'presupuesto', 'otro'] },
+        observaciones: { type: 'string', description: 'Algo que convenga revisar, o ""' },
+      },
+      required: ['es_factura', 'proveedor', 'cuit', 'fecha', 'numero', 'total', 'concepto', 'categoria', 'patente', 'km', 'tipo_comprobante', 'observaciones'],
+      additionalProperties: false,
+    },
+  },
   resumen: {
     instruccion: 'Es un resumen de cuenta o reporte de actividad de Mercado Pago o de un banco. Listá todos los movimientos en orden, con la fecha, el monto (positivo si entró plata a la cuenta, negativo si salió), la descripción tal como figura (incluí el nombre de quien mandó la plata si aparece) y el número de operación si está.',
     maxTokens: 32000,
@@ -126,6 +150,13 @@ function limpiar(tipo: string, d: any) {
       cobertura: ['todo_riesgo', 'terceros_completo', 'terceros_basico'].includes(d.cobertura) ? d.cobertura : '',
       franquicia: numOk(d.franquicia), vigenciaDesde: fechaOk(d.vigencia_desde), vigenciaHasta: fechaOk(d.vigencia_hasta),
       premioMensual: numOk(d.premio_mensual), observaciones: txtOk(d.observaciones, 300),
+    };
+  }
+  if (tipo === 'factura') {
+    return {
+      esFactura: Boolean(d.es_factura), proveedor: txtOk(d.proveedor, 80), cuit: txtOk(d.cuit, 20).replace(/\D/g, ''), fecha: fechaOk(d.fecha), numero: txtOk(d.numero, 40),
+      total: numOk(d.total), concepto: txtOk(d.concepto, 120), categoria: ['service', 'repuestos', 'combustible', 'seguro', 'patente', 'multa', 'siniestro'].includes(d.categoria) ? d.categoria : 'otro',
+      patente: txtOk(d.patente, 12).toUpperCase().replace(/[\s-]/g, ''), km: Math.round(numOk(d.km)), tipoComprobante: txtOk(d.tipo_comprobante, 20), observaciones: txtOk(d.observaciones, 300),
     };
   }
   return {

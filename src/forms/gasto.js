@@ -5,12 +5,16 @@ import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { carById, proveedoresActivos } from '../calc.js';
 import { carForm } from './car.js';
+import { subirYLeerFactura, resumenFactura, opcionParecida } from '../factura.js';
 
 export function gastoForm(carId) {
   const c = carById(carId);
   if (!c) { toast('Auto no encontrado'); return; }
   const FRECUENTES = ['combustible', 'service', 'patente', 'seguro'];
+  facturaGasto = null; facturaDatos = null;
   const h = '<h3>Nuevo gasto — ' + esc(c.patente) + '</h3>' +
+  '<label class="btn sec sm block filebtn" style="margin-bottom:4px">📷 Leer la factura o el ticket (foto o PDF)<input id="g_factIn" type="file" accept="image/*,application/pdf" onchange="leerFacturaGasto(\'' + c.id + '\')"></label>' +
+  '<div id="g_ia" class="small muted" style="margin-bottom:10px"></div>' +
   '<div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:10px">' + FRECUENTES.map(k => {
     const cat = GASTO_CATS.find(x => x[0] === k);
     return cat ? '<button type="button" class="btn sec sm" onclick="elegirCategoriaGasto(\'' + k + '\')">' + esc(cat[1].replace(/ \(.*\)/, '')) + '</button>' : '';
@@ -26,6 +30,28 @@ export function gastoForm(carId) {
   '<label class="chk"><input type="checkbox" id="g_reclamoSeguro"><span>A reclamar al seguro</span></label>' +
   '<div class="row"><button class="btn grow" onclick="saveGasto(\'' + c.id + '\', this)">Guardar</button><button class="btn sec" onclick="carForm(\'' + c.id + '\')">Cancelar</button></div>';
   openModal(h);
+}
+// Factura leída con IA para el gasto que se está cargando.
+let facturaGasto = null, facturaDatos = null;
+export async function leerFacturaGasto(carId) {
+  const r = await subirYLeerFactura('g_factIn', 'g_ia');
+  if (!r) return;
+  facturaGasto = r.archivo; facturaDatos = r.datos;
+  const d = r.datos; if (!d) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v !== '' && v != null && v !== 0) el.value = v; };
+  set('g_cat', d.categoria);
+  if (d.fecha && d.fecha <= iso(today())) set('g_fecha', d.fecha);
+  set('g_costo', d.total);
+  set('g_km', d.km);
+  if (d.proveedor) {
+    const sel = document.getElementById('g_proveedorSel');
+    const v = opcionParecida(sel, d.proveedor);
+    if (v) sel.value = v;
+    else { sel.value = '__otro__'; document.getElementById('g_proveedorOtroBox').style.display = ''; set('g_proveedorOtro', d.proveedor); }
+  }
+  if (!val('g_desc')) set('g_desc', d.concepto + (d.numero ? ' (comp. ' + d.numero + ')' : ''));
+  if (d.esFactura && /factura/.test(d.tipoComprobante || '')) document.getElementById('g_sinFactura').checked = false;
+  resumenFactura(d, carId, 'g_ia');
 }
 export function elegirCategoriaGasto(cat) {
   const sel = document.getElementById('g_cat'); if (!sel) return;
@@ -50,10 +76,12 @@ export async function saveGasto(carId, btn) {
   const proveedor = selProveedor === '__otro__' ? val('g_proveedorOtro') : selProveedor;
   const reclamoSeguro = document.getElementById('g_reclamoSeguro').checked;
   const o = { id: uid(), carId, categoria, fecha, costo, km: val('g_km'), proveedor, descripcion: val('g_desc'), sinFactura: document.getElementById('g_sinFactura').checked, reclamoSeguro, reclamoEstado: reclamoSeguro ? 'pendiente' : '' };
+  if (facturaGasto) o.files = [facturaGasto];
+  if (facturaDatos && facturaDatos.numero) { o.facturaNumero = facturaDatos.numero; o.facturaCuit = facturaDatos.cuit || ''; }
   // Seguro de un auto cuyo seguro se le cobra al chofer: queda a su cargo.
   const car = carById(carId);
   if (categoria === 'seguro' && car && car.seguroPaga === 'recupera' && car.choferId) o.recuperaDe = car.choferId;
-  if (await save('gastos', o)) { closeModal(); toast(o.recuperaDe ? 'Gasto registrado y sumado al seguro que debe ' + (S.drivers.find(d => d.id === car.choferId) || {}).nombre : 'Gasto registrado'); }
+  if (await save('gastos', o)) { facturaGasto = null; facturaDatos = null; closeModal(); toast(o.recuperaDe ? 'Gasto registrado y sumado al seguro que debe ' + (S.drivers.find(d => d.id === car.choferId) || {}).nombre : 'Gasto registrado'); }
 }
 export async function delGasto(id) {
   const g = S.gastos.find(x => x.id === id);

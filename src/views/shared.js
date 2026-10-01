@@ -2,6 +2,7 @@ import { ui } from '../state.js';
 import { esc, val, fdate, iso, today } from '../utils.js';
 import { badge, usoDeDatos, saludDeDatos } from '../calc.js';
 import { settings, saveSettings } from '../settings.js';
+import { CASAS_DOLAR, cotizacion, textoCotizacion, cargarDolar } from '../dolar.js';
 import { PANEL_KPIS, FEATURES_TOGGLEABLES } from '../constants.js';
 import { snooze } from '../snooze.js';
 import { isEnTramite, marcarEnTramite, quitarEnTramite } from '../tramite.js';
@@ -87,6 +88,7 @@ export function ajustesCard() {
   (settings.companyLogo ? '<div class="row" style="margin-bottom:10px;align-items:center"><img src="' + settings.companyLogo + '" alt="" style="height:36px"><button class="btn sec sm" onclick="quitarLogo()">Quitar logo</button></div>' : '') +
   '<label class="btn sec block filebtn" style="margin-bottom:10px">' + (settings.companyLogo ? 'Cambiar logo' : 'Subir logo') + '<input id="logoIn" type="file" accept="image/*" onchange="subirLogo(this)"></label>' +
   '<button class="btn sec block" onclick="guardarNombreEmpresa()">Guardar</button></div>' : '') +
+  (isAdmin() ? dolarCard() + datosPagoCard() : '') +
   (isAdmin() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Protocolo de emergencia: se muestra a todos los usuarios y a los choferes en su portal.</div>' +
   '<label class="f"><span>Teléfono de emergencia</span><input id="a_telEmergencia" type="tel" value="' + esc(settings.telefonoEmergencia) + '"></label>' +
   '<label class="f"><span>Pasos a seguir</span><textarea id="a_protocoloEmergencia" placeholder="ej: 1) Ponerse a salvo. 2) Llamar al teléfono de emergencia. 3) Sacar fotos si es seguro hacerlo...">' + esc(settings.protocoloEmergencia) + '</textarea></label>' +
@@ -148,6 +150,35 @@ export function saveAjustes() {
   if (featEls.length) patch.featuresOcultas = [...featEls].filter(el => !el.checked).map(el => el.value);
   saveSettings(patch);
   toast('Ajustes guardados'); render();
+}
+function dolarCard() {
+  const c = cotizacion();
+  return '<div class="card"><b>Dólar para los financiados</b><div class="small muted" style="margin:4px 0 10px">Se usa para mostrar en pesos la deuda de las cuotas y para convertir a dólares una cuota que te pagan en pesos.' + (c ? ' Hoy: <b>' + esc(textoCotizacion()) + '</b>.' : ' Todavía no se pudo traer la cotización.') + '</div>' +
+  '<div class="two"><label class="f"><span>Cotización</span><select id="a_tipoDolar">' + CASAS_DOLAR.map(x => '<option value="' + x[0] + '"' + ((settings.tipoDolar || 'blue') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
+  '<label class="f"><span>Valor</span><select id="a_dolarPrecio"><option value="venta"' + (settings.dolarPrecio !== 'compra' ? ' selected' : '') + '>Venta</option><option value="compra"' + (settings.dolarPrecio === 'compra' ? ' selected' : '') + '>Compra</option></select></label></div>' +
+  '<label class="f"><span>Fijar un valor a mano <small>opcional, deja de usar la cotización del día</small></span><input id="a_dolarManual" inputmode="decimal" value="' + (+settings.dolarManual || '') + '"></label>' +
+  '<button class="btn sec block" onclick="guardarDolarAjustes()">Guardar</button></div>';
+}
+export async function guardarDolarAjustes() {
+  saveSettings({ tipoDolar: val('a_tipoDolar'), dolarPrecio: val('a_dolarPrecio'), dolarManual: +val('a_dolarManual') || 0 });
+  await cargarDolar(true);
+  toast('Guardado' + (textoCotizacion() ? ': ' + textoCotizacion() : '')); render();
+}
+function datosPagoCard() {
+  return '<div class="card"><b>Datos para que te paguen</b><div class="small muted" style="margin:4px 0 10px">Los choferes los ven en su portal con un botón para copiarlos, junto con lo que tienen que pagar.</div>' +
+  '<div class="two"><label class="f"><span>Alias</span><input id="a_pagoAlias" value="' + esc(settings.pagoAlias) + '"></label>' +
+  '<label class="f"><span>CBU / CVU</span><input id="a_pagoCbu" inputmode="numeric" value="' + esc(settings.pagoCbu) + '"></label></div>' +
+  '<div class="two"><label class="f"><span>Titular</span><input id="a_pagoTitular" value="' + esc(settings.pagoTitular) + '"></label>' +
+  '<label class="f"><span>CUIT</span><input id="a_pagoCuit" inputmode="numeric" value="' + esc(settings.pagoCuit) + '"></label></div>' +
+  '<label class="f"><span>Banco o billetera</span><input id="a_pagoBanco" placeholder="ej: Mercado Pago, Galicia..." value="' + esc(settings.pagoBanco) + '"></label>' +
+  '<label class="f"><span>Aclaración <small>opcional</small></span><input id="a_pagoNota" placeholder="ej: poné tu patente en el concepto" value="' + esc(settings.pagoNota) + '"></label>' +
+  '<button class="btn sec block" onclick="guardarDatosPago()">Guardar</button></div>';
+}
+export function guardarDatosPago() {
+  const cbu = val('a_pagoCbu').replace(/\D/g, '');
+  if (cbu && cbu.length !== 22) { toast('El CBU/CVU tiene que tener 22 números', 'error'); return; }
+  saveSettings({ pagoAlias: val('a_pagoAlias').trim(), pagoCbu: cbu, pagoTitular: val('a_pagoTitular').trim(), pagoCuit: val('a_pagoCuit').replace(/\D/g, ''), pagoBanco: val('a_pagoBanco').trim(), pagoNota: val('a_pagoNota').trim() });
+  toast('Datos de pago guardados'); render();
 }
 export function guardarNombreEmpresa() {
   saveSettings({ companyName: val('a_companyName') || 'LD Rental', companyPhone: val('a_companyPhone') });

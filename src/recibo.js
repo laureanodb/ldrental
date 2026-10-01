@@ -26,6 +26,7 @@ async function construirRecibo(paymentId) {
   if (metodoLabel(p.metodo)) linea('Método de pago:', metodoLabel(p.metodo));
   if (p.parcial) linea('Tipo:', 'Pago parcial');
   if (p.nota) linea('Nota:', p.nota);
+  if (p.pesos) linea('Pagado en pesos:', money(p.pesos) + (p.cotizacion ? ' (dólar a ' + money(p.cotizacion) + ')' : ''));
   y += 4;
   doc.setFontSize(13); doc.text('Monto: ' + (p.tipo === 'cuota' ? moneyUSD(p.monto) : money(p.monto)), 12, y);
   y += 14;

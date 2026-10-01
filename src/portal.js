@@ -46,8 +46,46 @@ export async function initPortal(driverId, token) {
     pantalla(app, '<div class="card"><b>No se pudo cargar</b><p class="small muted">Revisá tu conexión e intentá de nuevo.</p></div>');
     return;
   }
+  j.cotizacion = await cotizacionPortal(j.dolar);
   pantalla(app, '', j);
   renderPortal(app, j);
+}
+// Dólar del día con la misma cotización que eligió la empresa en Ajustes.
+async function cotizacionPortal(cfg) {
+  if (!cfg) return null;
+  if (+cfg.manual > 0) return { valor: +cfg.manual, nombre: '' };
+  try {
+    const r = await fetch('https://dolarapi.com/v1/dolares');
+    const L = await r.json();
+    const x = (L || []).find(d => d.casa === cfg.tipo);
+    const valor = x ? +(cfg.precio === 'compra' ? x.compra : x.venta) : 0;
+    return valor ? { valor, nombre: (x.nombre || cfg.tipo) } : null;
+  } catch (e) { return null; }
+}
+function tarjetaComoPagar(j) {
+  const pg = j.pago || {};
+  const autos = j.autos || [];
+  const cot = j.cotizacion;
+  const enPesos = usd => (cot ? '<span class="small muted" style="display:block;font-weight:400">≈ ' + money(Math.round(usd * cot.valor)) + '</span>' : '');
+  const lineas = [];
+  autos.forEach(a => {
+    const usd = a.moneda === 'USD';
+    const m = n => (usd ? moneyUSD(n) : money(n));
+    if (a.debt > 0) lineas.push('<div class="row between" style="gap:8px"><span>' + esc(a.patente) + ': lo que debés</span><b style="color:var(--bad);white-space:nowrap;text-align:right">' + m(a.debt) + (usd ? enPesos(a.debt) : '') + '</b></div>');
+    else if (a.proximo) lineas.push('<div class="row between" style="gap:8px"><span>' + esc(a.patente) + ': ' + (usd ? 'cuota' : 'alquiler') + ' del ' + fdate(a.proximo) + '</span><b style="white-space:nowrap;text-align:right">' + m(a.monto) + (usd ? enPesos(a.monto) : '') + '</b></div>');
+  });
+  if (j.seguroPendiente > 0) lineas.push('<div class="row between"><span>Seguro</span><b style="color:var(--bad)">' + money(j.seguroPendiente) + '</b></div>');
+  if (j.plan && !j.plan.cumplido) lineas.push('<div class="row between"><span>Cuota del plan de pagos</span><b>' + (j.plan.moneda === 'USD' ? moneyUSD(j.plan.montoCuota) : money(j.plan.montoCuota)) + '</b></div>');
+  const hayDatos = pg.alias || pg.cbu;
+  if (!hayDatos && !lineas.length) return '';
+  const copiar = (label, valor) => '<div class="row between" style="padding:6px 0;border-top:1px solid var(--line)"><div style="min-width:0"><div class="small muted">' + label + '</div><b style="overflow-wrap:anywhere">' + esc(valor) + '</b></div><button type="button" class="btn sec sm" data-copiar="' + esc(valor) + '">Copiar</button></div>';
+  return '<div class="sec-t">Cómo pagar</div><div class="card" style="margin-bottom:14px">' +
+    (lineas.length ? lineas.join('') + (cot && autos.some(a => a.moneda === 'USD') ? '<div class="small muted" style="margin-top:2px">Pesos al dólar ' + esc(cot.nombre ? cot.nombre.toLowerCase() + ' ' : '') + 'de hoy: ' + money(cot.valor) + '. Confirmá el valor con la empresa.</div>' : '') : '') +
+    (hayDatos ? '<div style="margin-top:8px">' + (pg.alias ? copiar('Alias', pg.alias) : '') + (pg.cbu ? copiar('CBU / CVU', pg.cbu) : '') +
+      ((pg.titular || pg.cuit || pg.banco) ? '<div class="small muted" style="padding-top:6px;border-top:1px solid var(--line)">' + [pg.titular, pg.cuit ? 'CUIT ' + pg.cuit : '', pg.banco].filter(Boolean).map(esc).join(' · ') + '</div>' : '') +
+      (pg.nota ? '<div class="small" style="margin-top:4px">' + esc(pg.nota) + '</div>' : '') + '</div>' : '') +
+    ((j.autos || []).length ? '<button type="button" class="btn block" style="margin-top:10px" id="ya_pague">Ya pagué: subir el comprobante</button>' : '') +
+    '</div>';
 }
 async function enviarAccionPortal(body, statusEl, btn) {
   btn.disabled = true;
@@ -82,6 +120,7 @@ function renderPortal(app, j) {
       '<button class="btn block" style="margin-top:8px" id="fc_btn_' + i + '">Firmar contrato</button>' +
       '<div class="small muted" id="fc_status_' + i + '" style="margin-top:6px"></div></div>';
   });
+  h += tarjetaComoPagar(j);
   const anuncios = (j.anuncios && j.anuncios.length ? j.anuncios : (settings.anuncios || [])).slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5);
   if (anuncios.length) {
     h += '<div class="sec-t">Anuncios</div>' + anuncios.map(a => '<div class="card"><div>' + esc(a.texto) + '</div><div class="small muted" style="margin-top:4px">' + fdate(a.fecha) + '</div></div>').join('');
@@ -203,6 +242,12 @@ function renderPortal(app, j) {
   wrap.querySelectorAll('[data-recibo]').forEach(btn => {
     btn.addEventListener('click', () => descargarReciboPortal(j, pagos[+btn.dataset.recibo]));
   });
+  wrap.querySelectorAll('[data-copiar]').forEach(b => b.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(b.dataset.copiar); b.textContent = '¡Copiado!'; } catch (e) { b.textContent = 'No se pudo'; }
+    setTimeout(() => { b.textContent = 'Copiar'; }, 1800);
+  }));
+  const yaPague = wrap.querySelector('#ya_pague');
+  if (yaPague) yaPague.addEventListener('click', () => { const el = wrap.querySelector('#cp_file'); if (el) { el.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' }); } });
   (j.contratosPendientes || []).forEach((k, i) => {
     const pad = padFirma(wrap.querySelector('#fc_firma_' + i));
     wrap.querySelector('#fc_limpiar_' + i).addEventListener('click', pad.limpiar);

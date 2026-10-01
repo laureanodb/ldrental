@@ -1,3 +1,4 @@
+import { subirYLeerFactura, resumenFactura, opcionParecida } from '../factura.js';
 import { $, val, uid, iso, today, esc } from '../utils.js';
 import { S } from '../state.js';
 import { MANTENIMIENTO_CHECKLIST, STOCK_UNIDADES } from '../constants.js';
@@ -18,6 +19,23 @@ function proveedoresParaSelect(actualId) {
   }
   return L;
 }
+let facturaMant = null, facturaMantDatos = null;
+export async function leerFacturaMant() {
+  const r = await subirYLeerFactura('m_factIn', 'm_ia');
+  if (!r) return;
+  facturaMant = r.archivo; facturaMantDatos = r.datos;
+  const d = r.datos; if (!d) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v !== '' && v != null && v !== 0) el.value = v; };
+  if (d.fecha && d.fecha <= iso(today())) set('m_fecha', d.fecha);
+  set('m_costo', d.total);
+  set('m_km', d.km);
+  const v = opcionParecida(document.getElementById('m_proveedor'), d.proveedor);
+  if (v) document.getElementById('m_proveedor').value = v;
+  const notas = document.getElementById('m_notas');
+  if (notas && !notas.value) notas.value = [d.concepto, d.proveedor && !v ? 'Taller: ' + d.proveedor : '', d.numero ? 'Comp. ' + d.numero : ''].filter(Boolean).join(' · ');
+  if (d.esFactura && /factura/.test(d.tipoComprobante || '')) { const sf = document.getElementById('m_sinFactura'); if (sf) sf.checked = false; }
+  resumenFactura(d, val('m_carid') || (document.getElementById('m_car') || {}).value, 'm_ia');
+}
 export function mantenimientoForm(carId, editId, presetItem) {
   const cars = S.cars.filter(x => !x.vendido).slice().sort((a, b) => String(a.patente).localeCompare(String(b.patente)));
   const c = carById(carId) || (carId ? null : cars[0]);
@@ -25,7 +43,10 @@ export function mantenimientoForm(carId, editId, presetItem) {
   const ex = editId ? S.mantenimientos.find(x => x.id === editId) : null;
   const elegido = ex ? ex.item : (presetItem || '');
   const plan = c.mantenimientoPlan || [];
+  facturaMant = null; facturaMantDatos = null;
   const h = '<h3>' + (carId ? 'Mantenimiento — ' + esc(c.patente) : 'Nuevo mantenimiento') + '</h3>' +
+  '<label class="btn sec sm block filebtn" style="margin-bottom:4px">📷 Leer la factura del taller (foto o PDF)<input id="m_factIn" type="file" accept="image/*,application/pdf" onchange="leerFacturaMant()"></label>' +
+  '<div id="m_ia" class="small muted" style="margin-bottom:10px"></div>' +
   '<input type="hidden" id="m_carid" value="' + esc(c.id) + '">' +
   (carId ? '' : '<label class="f"><span>Auto</span><select id="m_car" onchange="onMantCar()">' + cars.map(x => '<option value="' + x.id + '"' + (x.id === c.id ? ' selected' : '') + '>' + esc(x.patente) + '</option>').join('') + '</select></label>') +
   '<label class="f"><span>Ítem</span><select id="m_item" onchange="onMantItem()">' +
@@ -89,9 +110,11 @@ export async function saveMantenimiento(editId) {
     proveedorId: val('m_proveedor'), costo: +val('m_costo') || 0, checklist,
     garantiaMeses: +val('m_garMeses') || 0, garantiaKm: +val('m_garKm') || 0,
     sinFactura: document.getElementById('m_sinFactura').checked,
-    notas: val('m_notas'), files: (editId && S.mantenimientos.find(x => x.id === editId) || {}).files || [],
+    notas: val('m_notas'), files: ((editId && S.mantenimientos.find(x => x.id === editId) || {}).files || []).concat(facturaMant ? [facturaMant] : []),
   };
+  if (facturaMantDatos && facturaMantDatos.numero) { o.facturaNumero = facturaMantDatos.numero; o.facturaCuit = facturaMantDatos.cuit || ''; }
   if (!(await save('mantenimientos', o))) return;
+  facturaMant = null; facturaMantDatos = null;
   await save('cars', Object.assign({}, c, { mantenimientoPlan: plan }));
   if (km) await actualizarKm(carId, km);
   const marcarTaller = document.getElementById('m_taller');

@@ -15,7 +15,7 @@ import { reportePersonalizadoForm, toggleColumnaReporte, renderReportePersonaliz
 import { traspasoForm, saveTraspaso } from './forms/traspaso.js';
 import { reemplazoTemporalForm, saveReemplazoTemporal, finalizarReemplazoTemporal } from './forms/reemplazo-temporal.js';
 import { mantenimientoLoteForm, marcarTodosLote, saveMantenimientoLote } from './forms/mantenimiento-lote.js';
-import { mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, addRepuestoMantRow } from './forms/mantenimiento.js';
+import { mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, addRepuestoMantRow, leerFacturaMant } from './forms/mantenimiento.js';
 import { mantAtajoFecha } from './views/mantenimiento.js';
 import { listaDeCompraForm } from './views/stock.js';
 import { multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta } from './forms/multa.js';
@@ -32,21 +32,21 @@ import { goMas } from './views/mas.js';
 import { initPortal, toggleTemaPortal } from './portal.js';
 import { initPostulacion } from './postulacion.js';
 import { depositoForm, saveDeposito, delDeposito, semanaAdelantadaForm, guardarSemanaAdelantada, delSemanaAdelantada, confirmarBorrarSemanaAdelantada, fusionarDuplicadosLedger } from './forms/deposito.js';
-import { payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, payFormSeguro, onPayTipo, leerComprobanteCobro } from './forms/payment.js';
+import { payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, payFormSeguro, onPayTipo, leerComprobanteCobro, onPayPesos } from './forms/payment.js';
 import { cuentaCorrienteView, planPagosForm, planPagosRecalcular, guardarPlanPagos, cerrarPlanPagos, cuentaCorrientePDF } from './forms/cuenta.js';
 import { cruceArchivo, cruceColumna, cruceOrigen, cruceLimpiar, cruceCobrar, cruceIgnorar, cruceConfirmar } from './forms/cruce.js';
 import { closeModal, confirmDel } from './modal.js';
 import { attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile } from './files.js';
 import { backup, pickRestore, doRestore, exportCSV, cancelRestore, archivarCobrosViejosForm, actualizarInfoArchivar, archivarCobrosViejos } from './backup.js';
 import { buscarArchivosHuerfanos, confirmarBorrarHuerfanos } from './huerfanos.js';
-import { saveAjustes, snoozeAlert, toggleEnTramite, silenciarAlertasAuto, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm, anunciosForm, agregarAnuncio, borrarAnuncio, activarModoConsultaUI, desactivarModoConsultaUI, guardarNotaInterna, desafioMesForm, guardarDesafioMes, borrarDesafioMes } from './views/shared.js';
+import { saveAjustes, snoozeAlert, toggleEnTramite, silenciarAlertasAuto, guardarNombreEmpresa, guardarDolarAjustes, guardarDatosPago, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm, anunciosForm, agregarAnuncio, borrarAnuncio, activarModoConsultaUI, desactivarModoConsultaUI, guardarNotaInterna, desafioMesForm, guardarDesafioMes, borrarDesafioMes } from './views/shared.js';
 import { posponerSugerencia, resolverSugerencia } from './views/panel.js';
 import { socioForm, guardarSocio, borrarSocio, reporteSocios } from './forms/socios.js';
 import { adelantoForm, guardarAdelanto, borrarAdelanto } from './forms/adelanto.js';
 import { autoseguroForm, registrarTransaccionAutoseguro, borrarTransaccionAutoseguro } from './autoseguro.js';
 import { imprimirContactosChoferes } from './views/choferes.js';
 import { mostrarNovedades } from './changelog.js';
-import { gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro, elegirCategoriaGasto } from './forms/gasto.js';
+import { gastoForm, saveGasto, delGasto, reclamoSeguroForm, guardarReclamoSeguro, elegirCategoriaGasto, leerFacturaGasto } from './forms/gasto.js';
 import { gastosGeneralesView, gastoGeneralForm, onGastoGeneralCat, saveGastoGeneral, delGastoGeneral, gastoRecurrenteForm, onGastoRecurrenteCat, saveGastoRecurrente, delGastoRecurrente } from './forms/gastos-generales.js';
 import { sancionForm, saveSancion, delSancion } from './forms/sancion.js';
 import { inspeccionForm, saveInspeccion, delInspeccion, limpiarFirmaInspeccion, renderPasosFotos, fotoPaso, compararInspeccion } from './forms/inspeccion.js';
@@ -89,8 +89,8 @@ Object.assign(window, {
   driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, togglePortalDesactivado, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion,
   adelantoForm, guardarAdelanto, borrarAdelanto,
   depositoForm, saveDeposito, delDeposito, semanaAdelantadaForm, guardarSemanaAdelantada, delSemanaAdelantada, confirmarBorrarSemanaAdelantada, fusionarDuplicadosLedger,
-  payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, marcarComprobantePortal, aceptarDocPortal, rechazarDocPortal, payFormSeguro, onPayTipo, leerComprobanteCobro, renderSeguroDocs, subirDocSeguro, completarSeguroConIA, leerCotizacionSeguro, agregarCotizacionSeguro, quitarCotizacionSeguro, elegirCotizacionSeguro,
-  renderPasosFotos, fotoPaso, compararInspeccion,
+  payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, marcarComprobantePortal, aceptarDocPortal, rechazarDocPortal, payFormSeguro, onPayTipo, leerComprobanteCobro, onPayPesos, renderSeguroDocs, subirDocSeguro, completarSeguroConIA, leerCotizacionSeguro, agregarCotizacionSeguro, quitarCotizacionSeguro, elegirCotizacionSeguro,
+  renderPasosFotos, fotoPaso, compararInspeccion, leerFacturaGasto, leerFacturaMant,
   mandarContratoAFirmar, avisoFirmaRemota, cancelarFirmaRemota, descargarContratoFirmado, copiarLinkFirma,
   cuentaCorrienteView, planPagosForm, planPagosRecalcular, guardarPlanPagos, cerrarPlanPagos, cuentaCorrientePDF,
   cruceArchivo, cruceColumna, cruceOrigen, cruceLimpiar, cruceCobrar, cruceIgnorar, cruceConfirmar, ayudaSeguroPaga, corregirSeguroForm, guardarCorreccionSeguro,
@@ -98,7 +98,7 @@ Object.assign(window, {
   attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile,
   backup, pickRestore, doRestore, exportCSV, cancelRestore, archivarCobrosViejosForm, actualizarInfoArchivar, archivarCobrosViejos,
   buscarArchivosHuerfanos, confirmarBorrarHuerfanos,
-  saveAjustes, snoozeAlert, toggleEnTramite, silenciarAlertasAuto, guardarNombreEmpresa, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm,
+  saveAjustes, snoozeAlert, toggleEnTramite, silenciarAlertasAuto, guardarNombreEmpresa, guardarDolarAjustes, guardarDatosPago, subirLogo, quitarLogo, guardarProtocoloEmergencia, protocoloEmergenciaForm,
   anunciosForm, agregarAnuncio, borrarAnuncio, activarModoConsultaUI, desactivarModoConsultaUI, guardarNotaInterna,
   desafioMesForm, guardarDesafioMes, borrarDesafioMes,
   posponerSugerencia, resolverSugerencia,

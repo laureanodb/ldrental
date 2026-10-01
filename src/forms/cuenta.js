@@ -11,6 +11,7 @@ import { openModal, toast } from '../modal.js';
 import { save } from '../data.js';
 import { canVerFinanzas } from '../roles.js';
 import { settings } from '../settings.js';
+import { cotizacion, enPesos, textoCotizacion } from '../dolar.js';
 
 const metodoLabel = m => (METODOS_PAGO.find(x => x[0] === m) || [0, ''])[1];
 const mon = (m, n) => (m === 'USD' ? moneyUSD(n) : money(n));
@@ -85,7 +86,8 @@ export function cuentaCorrienteView(driverId, todo) {
   let h = '<h3>Cuenta corriente · ' + esc(d.nombre) + '</h3>' +
     '<div class="card"><div class="row between"><span class="muted">Debe en pesos</span><b style="font-size:18px;color:' + (s.ars > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(s.ars) + '</b></div>' +
     linea('Alquiler', s.alquiler) + linea('Seguro', s.seguro) + linea('Multas', s.multas) + linea(s.adelantos >= 0 ? 'Adelantos' : 'Adelantos (a favor)', Math.abs(s.adelantos)) +
-    (s.usd || S.cars.some(c => c.choferId === driverId && c.tipo === 'financiado') ? '<div class="row between" style="margin-top:6px"><span class="muted">Debe en dólares (cuotas)</span><b style="font-size:18px;color:' + (s.usd > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + moneyUSD(s.usd) + '</b></div>' : '') +
+    (s.usd || S.cars.some(c => c.choferId === driverId && c.tipo === 'financiado') ? '<div class="row between" style="margin-top:6px"><span class="muted">Debe en dólares (cuotas)</span><b style="font-size:18px;color:' + (s.usd > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + moneyUSD(s.usd) + '</b></div>' +
+      (s.usd > 0 && cotizacion() ? '<div class="row between small muted"><span>En pesos hoy (' + esc(textoCotizacion()) + ')</span><span>' + money(enPesos(s.usd)) + '</span></div>' : '') : '') +
     (s.deposito || s.semanaAdelantada ? '<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:6px">' + linea('Depósito de garantía (a favor)', s.deposito, 'ARS', 'var(--ok)') + linea('Semana adelantada sin usar (a favor)', s.semanaAdelantada, 'ARS', 'var(--ok)') + '</div>' : '') +
     '</div>';
   h += tarjetaPlan(d);
