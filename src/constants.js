@@ -4,6 +4,9 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-10-01c', items: [
+    'Simulador de financiación (Más → Herramientas, o desde la ficha del auto): cuota semanal en dólares y en pesos a 1, 2, 3 y 4 años, total, ganancia y recargo. Se manda por WhatsApp, se baja en PDF o se pasa al auto con un toque.',
+  ] },
   { v: '2026-10-01b', items: [
     'Dólar del día: la deuda de los financiados se ve también en pesos, y al cobrar una cuota que te pagan en pesos la app la pasa a dólares. Se configura en Ajustes.',
     'Portal del chofer: "Cómo pagar" con tu alias y CBU para copiar y el monto que tiene que pagar esa semana (en dólares y en pesos).',

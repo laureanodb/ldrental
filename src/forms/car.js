@@ -453,6 +453,7 @@ export function carForm(id) {
 
   /* ---- Contrato ---- */
   let contrato = '';
+  if (ex && c.tipo !== 'financiado' && !c.vendido) contrato += '<button class="btn sec block" style="margin-bottom:10px" onclick="simuladorFinanciacionForm(\'' + c.id + '\')">Simular financiación de este auto</button>';
   if (ex && isContract(c)) {
     const i = calc(c);
     const fin = finFinanciado(c);
