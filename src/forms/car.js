@@ -364,6 +364,10 @@ export function carForm(id) {
   '<div class="two"><label class="f"><span>Kilometraje actual</span><input id="c_km" inputmode="numeric" value="' + esc(c.km) + '"></label>' +
   '<label class="f"><span>Costo de compra</span><input id="c_costocompra" inputmode="decimal" value="' + esc(c.costoCompra || '') + '"></label></div>' +
   '<label class="f"><span>Valor de mercado actual</span><input id="c_valormercado" inputmode="decimal" value="' + esc(c.valorMercado || '') + '"></label>' +
+  '<div class="sec-t">Llaves</div>' +
+  '<label class="chk"><input type="checkbox" id="c_llaveDuplicada"' + (c.llaveDuplicada ? ' checked' : '') + '><span><b>Tiene la segunda llave (copia)</b></span></label>' +
+  '<div class="two"><label class="f"><span>Copias de llave <small>en total</small></span><input id="c_copiasLlave" inputmode="numeric" value="' + esc(c.copiasLlave || '') + '"></label>' +
+  '<label class="f"><span>Dónde está la copia</span><input id="c_llavesUbicacion" placeholder="ej: caja fuerte de la oficina" value="' + esc(c.llavesUbicacion) + '"></label></div>' +
   '<label class="f"><span>Estado</span><select id="c_tipo" data-orig="' + esc(ex ? c.tipo : '') + '" onchange="onTipo(this)">' + Object.keys(TIPOS).map(k => '<option value="' + k + '"' + (c.tipo === k ? ' selected' : '') + '>' + TIPOS[k] + '</option>').join('') + '</select></label>' +
   '<div class="sec-t">Vencimientos</div><div class="two">' + VENC.filter(v => v[0] !== 'seguro').map(v => '<label class="f"><span>' + v[1] + '</span><input id="v_' + v[0] + '" type="date" value="' + esc(c[v[0]]) + '"></label>').join('') + '</div>' +
   '<label class="chk"><input type="checkbox" id="c_form08"' + (c.form08 ? ' checked' : '') + '><span>08</span></label>' +
@@ -384,9 +388,6 @@ export function carForm(id) {
   '<label class="f"><span>Dónde se compró</span><input id="c_dondeCompro" value="' + esc(c.dondeCompro) + '"></label></div>' +
   '<div class="two"><label class="f"><span>Gastos de patentamiento <small>opcional</small></span><input id="c_gastosPatentamiento" inputmode="decimal" value="' + esc(c.gastosPatentamiento || '') + '"></label>' +
   '<label class="f"><span>Titular registral <small>si no es la empresa</small></span><input id="c_titularRegistral" value="' + esc(c.titularRegistral) + '"></label></div>' +
-  '<label class="chk"><input type="checkbox" id="c_llaveDuplicada"' + (c.llaveDuplicada ? ' checked' : '') + '><span>Tiene llave duplicada</span></label>' +
-  '<div class="two"><label class="f"><span>Copias de llave <small>en total</small></span><input id="c_copiasLlave" inputmode="numeric" value="' + esc(c.copiasLlave || '') + '"></label>' +
-  '<label class="f"><span>Dónde están</span><input id="c_llavesUbicacion" value="' + esc(c.llavesUbicacion) + '"></label></div>' +
   '<div class="two"><label class="f"><span>Última inspección mecánica general</span><input id="c_ultimaInspeccionGeneral" type="date" value="' + esc(c.ultimaInspeccionGeneral) + '"></label>' +
   '<label class="f"><span>Último lavado / detailing</span><input id="c_ultimoLavado" type="date" value="' + esc(c.ultimoLavado) + '"></label></div>' +
   '<div class="sec-t">Cumplimiento normativo para dar de alta</div>' + CUMPLIMIENTO_NORMATIVO_ITEMS.map(x => '<label class="chk"><input type="checkbox" id="cn_' + x[0] + '"' + (c.cumplimientoNormativo && c.cumplimientoNormativo[x[0]] ? ' checked' : '') + '><span>' + x[1] + '</span></label>').join('') +

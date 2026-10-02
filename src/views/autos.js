@@ -6,6 +6,7 @@ import { VENC, MOTIVOS_REEMPLAZO, TIPOS, CUMPLIMIENTO_NORMATIVO_ITEMS } from '..
 export function viewAutos() {
   const nVendidos = S.cars.filter(c => c.vendido).length;
   return '<h1>Autos</h1><p class="sub">' + S.cars.filter(c => !c.vendido).length + ' en total' + (nVendidos ? ' · <span class="tap" style="text-decoration:underline" onclick="ui.showVendidos=!ui.showVendidos;renderList()">' + (ui.showVendidos ? 'ocultar' : 'ver') + ' ' + nVendidos + ' vendidos</span>' : '') + ' · <span class="tap" style="text-decoration:underline" onclick="mapaFlotaView()">ver mapa</span></p>' +
+  (() => { const n = S.cars.filter(c => !c.vendido && !c.llaveDuplicada).length; return n || ui.filtroSinLlave ? '<div class="small" style="margin:-4px 0 10px"><span class="tap" style="text-decoration:underline" onclick="ui.filtroSinLlave=!ui.filtroSinLlave;ui.autosLimite=30;render()">' + (ui.filtroSinLlave ? 'Ver todos los autos' : n === 1 ? 'Ver el auto sin segunda llave' : 'Ver los ' + n + ' autos sin segunda llave') + '</span></div>' : ''; })() +
   (ui.filtroAutoTipo ? '<div class="card row between" style="margin-bottom:10px"><span class="small">Filtrando: ' + esc(TIPOS[ui.filtroAutoTipo] || ui.filtroAutoTipo) + '</span><span class="tap small" style="text-decoration:underline" onclick="ui.filtroAutoTipo=\'\';renderList()">Quitar filtro</span></div>' : '') +
   '<div class="bar"><input type="search" placeholder="Buscar patente, marca o chofer" value="' + esc(ui.qCars) + '" oninput="ui.qCars=this.value;ui.autosLimite=30;renderList()"><button class="btn" onclick="altaRapidaAutoForm()">Agregar</button></div>' +
   '<label class="f" style="margin-bottom:10px"><span>Ordenar por</span><select onchange="ui.ordenAutos=this.value;renderList()">' +
@@ -18,7 +19,7 @@ const valorSem = c => isContract(c) ? +c.monto || 0 : +c.valorSemanal || 0;
 export function listAutos() {
   const q = ui.qCars.trim().toLowerCase();
   const qPatente = q.replace(/[\s-]/g, '');
-  const L = S.cars.filter(c => (ui.showVendidos || !c.vendido) && (!ui.filtroAutoTipo || c.tipo === ui.filtroAutoTipo) &&
+  const L = S.cars.filter(c => (ui.showVendidos || !c.vendido) && (!ui.filtroAutoTipo || c.tipo === ui.filtroAutoTipo) && (!ui.filtroSinLlave || (!c.vendido && !c.llaveDuplicada)) &&
     (!q || [c.patente, c.marca, c.modelo, driverName(c.choferId), (c.tags || []).join(' ')].join(' ').toLowerCase().includes(q) ||
     (qPatente && String(c.patente || '').toLowerCase().replace(/[\s-]/g, '').includes(qPatente))))
     .sort((a, b) => (Boolean(b.favorito) - Boolean(a.favorito)) || (ui.ordenAutos === 'deuda' ? calc(b).debt - calc(a).debt : ui.ordenAutos === 'monto' ? valorSem(b) - valorSem(a) : String(a.patente).localeCompare(String(b.patente))));
@@ -38,6 +39,7 @@ export function listAutos() {
     if (!c.vendido && al && al.d <= 30) b += ' ' + badge(al.cls, 'Doc: ' + al.t.replace('Vence ', 'vence '));
     const serv = !c.vendido && peorItemMantenimiento(c);
     if (serv) b += ' ' + badge(serv.cls, serv.t);
+    if (!c.vendido && !c.llaveDuplicada) b += ' ' + badge('warn', 'Sin 2ª llave');
     if (c.aReemplazar) b += ' ' + badge('warn', 'A reemplazar: ' + (MOTIVOS_REEMPLAZO.find(x => x[0] === c.motivoReemplazo) || [0, 'motivo'])[1]);
     if (!c.vendido && S.siniestros.some(s => s.carId === c.id && s.estado !== 'cerrado')) b += ' ' + badge('bad', 'Siniestro abierto');
     if (c.files && c.files.length) b += ' ' + badge('mute', c.files.length + (c.files.length === 1 ? ' archivo' : ' archivos'));

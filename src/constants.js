@@ -4,6 +4,9 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-10-02', items: [
+    'Autos: sección "Llaves" arriba en la ficha para tildar si tiene la segunda llave, cuántas copias hay y dónde están. En la lista se marca "Sin 2ª llave" y hay un filtro para ver solo esos autos.',
+  ] },
   { v: '2026-10-01c', items: [
     'Simulador de financiación (Más → Herramientas, o desde la ficha del auto): elegí los plazos (6 meses a 5 años, o los meses que quieras) con su tasa, y mirá la cuota semanal en dólares y en pesos, el total, tu ganancia y el recargo. Se manda por WhatsApp, se baja en PDF o se pasa al auto con un toque.',
   ] },
