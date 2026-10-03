@@ -4,6 +4,7 @@ import { days, parse, today, iso, esc, fdate, money, moneyUSD, num1 } from './ut
 import { settings } from './settings.js';
 import { isSnoozed } from './snooze.js';
 import { isEnTramite } from './tramite.js';
+import { de, enPasada } from './memo.js';
 
 export const isContract = c => c.tipo === 'alquiler' || c.tipo === 'financiado';
 export const activeCars = () => S.cars.filter(c => !c.vendido);
@@ -24,7 +25,7 @@ export function calc(c) {
   let weeks = Math.floor(d / 7) + 1;
   const kind = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';
   if (c.tipo === 'financiado' && c.cuotas) weeks = Math.min(weeks, +c.cuotas);
-  const paid = S.payments.filter(p => p.carId === c.id && p.tipo === kind && p.fecha >= c.inicio).reduce((a, p) => a + (+p.monto || 0), 0);
+  const paid = de('payments', 'carId', c.id).filter(p => p.carId === c.id && p.tipo === kind && p.fecha >= c.inicio).reduce((a, p) => a + (+p.monto || 0), 0);
   const ajustes = (c.ajustesDeuda || []).reduce((a, x) => a + (+x.monto || 0), 0);
   const due = weeks * c.monto;
   const adelantoDisponible = c.choferId ? saldoSemanaAdelantada(c.choferId) : 0;
@@ -87,17 +88,17 @@ export function segmentoMasRentable() {
 export function cumpleCriterioDesafio(driverId, criterio) {
   const mesActual = iso(today()).slice(0, 7);
   if (criterio === 'puntual') {
-    const cars = S.cars.filter(c => c.choferId === driverId && isContract(c));
+    const cars = de('cars', 'choferId', driverId).filter(c => c.choferId === driverId && isContract(c));
     if (!cars.length) return false;
     const alDia = cars.every(c => calc(c).debt <= 0);
-    const pagoEsteMes = S.payments.some(p => p.choferId === driverId && String(p.fecha).slice(0, 7) === mesActual);
+    const pagoEsteMes = de('payments', 'choferId', driverId).some(p => p.choferId === driverId && String(p.fecha).slice(0, 7) === mesActual);
     return alDia && pagoEsteMes;
   }
   if (criterio === 'sin_siniestros') {
-    return !S.siniestros.some(s => s.choferId === driverId && String(s.fecha).slice(0, 7) === mesActual);
+    return !de('siniestros', 'choferId', driverId).some(s => s.choferId === driverId && String(s.fecha).slice(0, 7) === mesActual);
   }
   if (criterio === 'sin_multas') {
-    return !S.multas.some(m => m.choferId === driverId && String(m.fecha).slice(0, 7) === mesActual);
+    return !de('multas', 'choferId', driverId).some(m => m.choferId === driverId && String(m.fecha).slice(0, 7) === mesActual);
   }
   if (criterio === 'satisfaccion') {
     const p = promedioNpsChofer(driverId);
@@ -150,9 +151,9 @@ export function tableroSemanal() {
   const desde = new Date(hoy); desde.setDate(desde.getDate() - 7);
   const desdeIso = iso(desde), hastaIso = iso(hoy);
   return activeCars().filter(c => c.choferId && isContract(c)).map(c => {
-    const cobrado = S.payments.filter(p => p.carId === c.id && p.tipo !== 'seguro' && p.fecha >= desdeIso && p.fecha <= hastaIso).reduce((a, p) => a + (+p.monto || 0), 0);
-    const gasto = S.gastos.filter(g => g.carId === c.id && !esSeguroRecuperable(g) && g.fecha >= desdeIso && g.fecha <= hastaIso).reduce((a, g) => a + (+g.costo || 0), 0) +
-      S.mantenimientos.filter(m => m.carId === c.id && m.fecha >= desdeIso && m.fecha <= hastaIso).reduce((a, m) => a + (+m.costo || 0), 0);
+    const cobrado = de('payments', 'carId', c.id).filter(p => p.carId === c.id && p.tipo !== 'seguro' && p.fecha >= desdeIso && p.fecha <= hastaIso).reduce((a, p) => a + (+p.monto || 0), 0);
+    const gasto = de('gastos', 'carId', c.id).filter(g => g.carId === c.id && !esSeguroRecuperable(g) && g.fecha >= desdeIso && g.fecha <= hastaIso).reduce((a, g) => a + (+g.costo || 0), 0) +
+      de('mantenimientos', 'carId', c.id).filter(m => m.carId === c.id && m.fecha >= desdeIso && m.fecha <= hastaIso).reduce((a, m) => a + (+m.costo || 0), 0);
     return { c, cobrado, gasto, neto: cobrado - gasto, deuda: calc(c).debt };
   });
 }
@@ -206,8 +207,8 @@ export function estadoGeneralAuto(c) {
     if (!p.intervaloKm && !p.intervaloMeses) return;
     marcar(estadoPlanItem(c, p).cls);
   });
-  if (S.siniestros.some(s => s.carId === c.id && s.estado !== 'cerrado')) marcar('bad');
-  if (S.multas.some(m => m.carId === c.id && (m.estado === 'pendiente' || m.estado === 'vencida'))) marcar('warn');
+  if (de('siniestros', 'carId', c.id).some(s => s.carId === c.id && s.estado !== 'cerrado')) marcar('bad');
+  if (de('multas', 'carId', c.id).some(m => m.carId === c.id && (m.estado === 'pendiente' || m.estado === 'vencida'))) marcar('warn');
   return peor;
 }
 export function textoRestante(e) {
@@ -251,7 +252,7 @@ export function agendaMantenimiento() {
 }
 export function fichaTecnica(c) {
   const porItem = {};
-  S.mantenimientos.filter(m => m.carId === c.id && (m.marca || m.especificacion)).forEach(m => {
+  de('mantenimientos', 'carId', c.id).filter(m => m.carId === c.id && (m.marca || m.especificacion)).forEach(m => {
     const cur = porItem[m.item];
     if (!cur || m.fecha > cur.fecha) porItem[m.item] = m;
   });
@@ -290,7 +291,7 @@ export function rankingTalleresMantenimiento() {
     porTaller[m.proveedorId].cantidad++; porTaller[m.proveedorId].total += (+m.costo || 0);
   });
   return Object.values(porTaller).map(x => {
-    const p = S.proveedores.find(v => v.id === x.proveedorId);
+    const p = de('proveedores', 'id', x.proveedorId)[0];
     return Object.assign(x, { nombre: p ? p.nombre : 'Proveedor eliminado' });
   }).sort((a, b) => b.total - a.total);
 }
@@ -319,16 +320,16 @@ function esDeTipo(x, tipo) {
   return x.tipo === tipo;
 }
 export function saldoDeposito(driverId, tipo) {
-  return S.depositos.filter(x => x.driverId === driverId && esDeTipo(x, tipo || 'garantia')).reduce((a, x) => a + (+x.monto || 0), 0);
+  return de('depositos', 'driverId', driverId).filter(x => x.driverId === driverId && esDeTipo(x, tipo || 'garantia')).reduce((a, x) => a + (+x.monto || 0), 0);
 }
 export function depositosDeChofer(driverId, tipo) {
-  return S.depositos.filter(x => x.driverId === driverId && esDeTipo(x, tipo || 'garantia')).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  return de('depositos', 'driverId', driverId).filter(x => x.driverId === driverId && esDeTipo(x, tipo || 'garantia')).sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
 export function saldoSemanaAdelantada(driverId) {
   return saldoDeposito(driverId, 'semana_adelantada');
 }
 export function semanaAdelantadaConsumida(driverId) {
-  return S.cars.filter(c => c.choferId === driverId && isContract(c)).reduce((a, c) => a + (calc(c).adelantoAplicado || 0), 0);
+  return de('cars', 'choferId', driverId).filter(c => c.choferId === driverId && isContract(c)).reduce((a, c) => a + (calc(c).adelantoAplicado || 0), 0);
 }
 export function semanaAdelantadaDisponible(driverId) {
   return Math.max(0, saldoSemanaAdelantada(driverId) - semanaAdelantadaConsumida(driverId));
@@ -369,12 +370,12 @@ export function comprobantesPortalPendientes(d) {
   return ((d && d.comprobantesPortal) || []).filter(x => !x.revisado);
 }
 export function multasPendientesChofer(driverId) {
-  return S.multas.filter(m => m.choferId === driverId && (m.estado === 'pendiente' || m.estado === 'vencida')).reduce((a, m) => a + (+m.monto || 0), 0);
+  return de('multas', 'choferId', driverId).filter(m => m.choferId === driverId && (m.estado === 'pendiente' || m.estado === 'vencida')).reduce((a, m) => a + (+m.monto || 0), 0);
 }
 export function puntosLicencia(driverId) {
   const desde = new Date(); desde.setMonth(desde.getMonth() - (settings.puntosVigenciaMeses || 24));
   const desdeIso = iso(desde);
-  return S.multas.filter(m => m.choferId === driverId && m.fecha >= desdeIso && m.resultadoDescargo !== 'aceptado').reduce((a, m) => a + (+m.puntos || 0), 0);
+  return de('multas', 'choferId', driverId).filter(m => m.choferId === driverId && m.fecha >= desdeIso && m.resultadoDescargo !== 'aceptado').reduce((a, m) => a + (+m.puntos || 0), 0);
 }
 export function alertaFotoControl(c) {
   const fotos = (c.files || []).filter(f => !f.link && f.cat === 'fotos');
@@ -401,10 +402,11 @@ export function sugerirAptoFinanciar(driverId) {
   const hist = carHistoryForDriver(driverId);
   const desde = hist.reduce((min, h) => (!min || h.desde < min ? h.desde : min), null);
   const antiguedadDias = desde ? days(parse(desde), today()) : 0;
-  const sancionesRecientes = S.sanciones.some(s => s.driverId === driverId && days(parse(s.fecha), today()) <= 180);
+  const sancionesRecientes = de('sanciones', 'driverId', driverId).some(s => s.driverId === driverId && days(parse(s.fecha), today()) <= 180);
   return { cumple: score != null && score >= 80 && antiguedadDias >= 90 && !sancionesRecientes, score, antiguedadDias, sancionesRecientes };
 }
-export function alerts() {
+export const alerts = () => enPasada('alerts', _alerts);
+function _alerts() {
   const out = [];
   activeCars().forEach(c => VENC.forEach(([k, l]) => {
     const s = vs(c[k]); if (!s) return;
@@ -534,9 +536,9 @@ export function alerts() {
   });
   activeDrivers().forEach(d => {
     if (d.prospecto) return;
-    const cars = S.cars.filter(c => c.choferId === d.id && isContract(c) && c.inicio);
+    const cars = de('cars', 'choferId', d.id).filter(c => c.choferId === d.id && isContract(c) && c.inicio);
     if (!cars.length) return;
-    const ultimoPago = S.payments.filter(p => p.choferId === d.id).reduce((max, p) => (!max || p.fecha > max ? p.fecha : max), null);
+    const ultimoPago = de('payments', 'choferId', d.id).filter(p => p.choferId === d.id).reduce((max, p) => (!max || p.fecha > max ? p.fecha : max), null);
     const inicioMasViejo = cars.reduce((min, c) => (!min || c.inicio < min ? c.inicio : min), null);
     const desde = ultimoPago || inicioMasViejo;
     if (!desde) return;
@@ -585,7 +587,7 @@ export function alerts() {
   }
   activeCars().forEach(c => {
     if (!c.choferId || !isContract(c)) return;
-    const ultimoPago = S.payments.filter(p => p.carId === c.id).map(p => p.fecha).sort().slice(-1)[0];
+    const ultimoPago = de('payments', 'carId', c.id).filter(p => p.carId === c.id).map(p => p.fecha).sort().slice(-1)[0];
     const desde = ultimoPago || c.inicio; if (!desde) return;
     const diasSinCobro = days(parse(desde), today());
     if (diasSinCobro < 8) return;
@@ -605,7 +607,7 @@ export function alerts() {
   }).map(a => Object.assign(a, { enTramite: isEnTramite(a.key) })).sort((a, b) => a.d - b.d);
 }
 export function alertaRoturaProbable(c) {
-  const MH = S.mantenimientos.filter(m => m.carId === c.id).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const MH = de('mantenimientos', 'carId', c.id).filter(m => m.carId === c.id).sort((a, b) => a.fecha.localeCompare(b.fecha));
   if (MH.length < 3) return false;
   const ultimos = MH.slice(-3).map(m => +m.costo || 0);
   return ultimos[0] > 0 && ultimos[0] < ultimos[1] && ultimos[1] < ultimos[2];
@@ -628,17 +630,17 @@ export function diasSinCobrosGlobal() {
   return ultima ? days(parse(ultima), today()) : null;
 }
 export const urgent = () => alerts().filter(a => a.d <= settings.avisoWarn);
-export const driverName = id => { const d = S.drivers.find(x => x.id === id); return d ? d.nombre : ''; };
-export const carById = id => S.cars.find(x => x.id === id);
+export const driverName = id => { const d = de('drivers', 'id', id)[0]; return d ? d.nombre : ''; };
+export const carById = id => de('cars', 'id', id)[0];
 /* Seguro: quién lo paga ('empresa' = costo propio, 'recupera' = lo paga la empresa y se lo cobra
    al chofer en pesos, 'chofer' = el chofer lo paga por su cuenta). */
 export const seguroPaga = c => (c && c.seguroPaga) || 'empresa';
 export const esSeguroRecuperable = g => g.categoria === 'seguro' && Boolean(g.recuperaDe);
 export function seguroCargado(driverId) {
-  return S.gastos.filter(g => esSeguroRecuperable(g) && g.recuperaDe === driverId).reduce((a, g) => a + (+g.costo || 0), 0);
+  return de('gastos', 'recuperaDe', driverId).filter(g => esSeguroRecuperable(g) && g.recuperaDe === driverId).reduce((a, g) => a + (+g.costo || 0), 0);
 }
 export function seguroPagado(driverId) {
-  return S.payments.filter(p => p.tipo === 'seguro' && p.choferId === driverId).reduce((a, p) => a + (+p.monto || 0), 0);
+  return de('payments', 'choferId', driverId).filter(p => p.tipo === 'seguro' && p.choferId === driverId).reduce((a, p) => a + (+p.monto || 0), 0);
 }
 export function seguroPendiente(driverId) {
   return Math.max(0, seguroCargado(driverId) - seguroPagado(driverId));
@@ -646,16 +648,16 @@ export function seguroPendiente(driverId) {
 /* Fecha del cargo de seguro más viejo que todavía no está pagado (los pagos cubren primero lo más viejo). */
 export function seguroPendienteDesde(driverId) {
   let pagado = seguroPagado(driverId);
-  const cargos = S.gastos.filter(g => esSeguroRecuperable(g) && g.recuperaDe === driverId).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
+  const cargos = de('gastos', 'recuperaDe', driverId).filter(g => esSeguroRecuperable(g) && g.recuperaDe === driverId).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
   for (const g of cargos) { pagado -= +g.costo || 0; if (pagado < 0) return g.fecha; }
   return null;
 }
 export function saldoAdelantos(driverId) {
-  const d = S.drivers.find(x => x.id === driverId);
+  const d = de('drivers', 'id', driverId)[0];
   return ((d && d.adelantos) || []).reduce((a, x) => a + (+x.monto || 0), 0);
 }
 export function driverDebt(id) {
-  return S.cars.filter(c => c.choferId === id && isContract(c)).reduce((a, c) => a + calc(c).debt, 0) + saldoAdelantos(id);
+  return de('cars', 'choferId', id).filter(c => c.choferId === id && isContract(c)).reduce((a, c) => a + calc(c).debt, 0) + saldoAdelantos(id);
 }
 export function choferEnFecha(c, fecha) {
   const h = (c.historialChoferes || []).find(x => x.desde <= fecha && (!x.hasta || fecha <= x.hasta));
@@ -733,7 +735,7 @@ export function montoSugeridoGasto(categoria) {
   const moda = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
   return +moda || null;
 }
-export function repuestoById(id) { return S.repuestos.find(r => r.id === id); }
+export function repuestoById(id) { return de('repuestos', 'id', id)[0]; }
 export function repuestosActivos() { return S.repuestos.filter(r => !r.inactivo); }
 export function stockBajo(r) { return (+r.stockActual || 0) <= (+r.stockMinimo || 0); }
 export function repuestosBajoStock() { return repuestosActivos().filter(stockBajo).sort((a, b) => (+a.stockActual || 0) - (+b.stockActual || 0)); }
@@ -775,7 +777,7 @@ export function preciosPorProveedor(repuestoId) {
   });
   return Object.values(grupos).map(g => ({
     proveedorId: g.proveedorId,
-    proveedorNombre: (S.proveedores.find(p => p.id === g.proveedorId) || {}).nombre || 'Proveedor',
+    proveedorNombre: (de('proveedores', 'id', g.proveedorId)[0] || {}).nombre || 'Proveedor',
     precioPromedio: g.precios.reduce((a, b) => a + b, 0) / g.precios.length,
     ultimaFecha: g.ultimaFecha,
   })).sort((a, b) => a.precioPromedio - b.precioPromedio);
@@ -784,7 +786,7 @@ export function listaDeCompra() {
   const grupos = {};
   repuestosBajoStock().forEach(r => {
     const key = r.proveedorId || '';
-    if (!grupos[key]) grupos[key] = { proveedorId: key, proveedorNombre: key ? ((S.proveedores.find(p => p.id === key) || {}).nombre || 'Proveedor') : 'Sin proveedor asignado', items: [] };
+    if (!grupos[key]) grupos[key] = { proveedorId: key, proveedorNombre: key ? ((de('proveedores', 'id', key)[0] || {}).nombre || 'Proveedor') : 'Sin proveedor asignado', items: [] };
     const sugerido = Math.max((+r.stockMinimo || 0) - (+r.stockActual || 0), 0) || 1;
     grupos[key].items.push({ r, sugerido });
   });
@@ -792,7 +794,7 @@ export function listaDeCompra() {
 }
 export function montoSugeridoCobro(c) {
   const kind = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';
-  const pagos = S.payments.filter(p => p.carId === c.id && p.tipo === kind && !p.parcial).slice(-5);
+  const pagos = de('payments', 'carId', c.id).filter(p => p.carId === c.id && p.tipo === kind && !p.parcial).slice(-5);
   if (!pagos.length) return +c.monto || 0;
   const counts = {};
   pagos.forEach(p => { counts[p.monto] = (counts[p.monto] || 0) + 1; });
@@ -816,9 +818,9 @@ export function desgloseCobradoPorChofer(c) {
   if (!periodos.length) return [];
   const porChofer = {};
   periodos.forEach(p => {
-    const pagos = S.payments.filter(pay => pay.carId === c.id && pay.fecha >= p.desde && (!p.hasta || pay.fecha <= p.hasta)).reduce((a, pay) => a + (+pay.monto || 0), 0);
-    const gastos = S.gastos.filter(g => g.carId === c.id && g.fecha >= p.desde && (!p.hasta || g.fecha <= p.hasta)).reduce((a, g) => a + (+g.costo || 0), 0) +
-      S.mantenimientos.filter(m => m.carId === c.id && m.fecha >= p.desde && (!p.hasta || m.fecha <= p.hasta)).reduce((a, m) => a + (+m.costo || 0), 0);
+    const pagos = de('payments', 'carId', c.id).filter(pay => pay.carId === c.id && pay.fecha >= p.desde && (!p.hasta || pay.fecha <= p.hasta)).reduce((a, pay) => a + (+pay.monto || 0), 0);
+    const gastos = de('gastos', 'carId', c.id).filter(g => g.carId === c.id && g.fecha >= p.desde && (!p.hasta || g.fecha <= p.hasta)).reduce((a, g) => a + (+g.costo || 0), 0) +
+      de('mantenimientos', 'carId', c.id).filter(m => m.carId === c.id && m.fecha >= p.desde && (!p.hasta || m.fecha <= p.hasta)).reduce((a, m) => a + (+m.costo || 0), 0);
     if (!porChofer[p.choferId]) porChofer[p.choferId] = { choferId: p.choferId, cobrado: 0, gastos: 0 };
     porChofer[p.choferId].cobrado += pagos;
     porChofer[p.choferId].gastos += gastos;
@@ -826,11 +828,11 @@ export function desgloseCobradoPorChofer(c) {
   return Object.values(porChofer).map(x => Object.assign(x, { neta: x.cobrado - x.gastos })).sort((a, b) => b.cobrado - a.cobrado);
 }
 export function rentabilidadAuto(c) {
-  const cobrado = S.payments.filter(p => p.carId === c.id && p.tipo !== 'seguro').reduce((a, p) => a + (+p.monto || 0), 0);
-  const gastosCar = S.gastos.filter(g => g.carId === c.id && !esSeguroRecuperable(g));
+  const cobrado = de('payments', 'carId', c.id).filter(p => p.carId === c.id && p.tipo !== 'seguro').reduce((a, p) => a + (+p.monto || 0), 0);
+  const gastosCar = de('gastos', 'carId', c.id).filter(g => g.carId === c.id && !esSeguroRecuperable(g));
   const gastosFijos = gastosCar.filter(esGastoFijoAuto).reduce((a, g) => a + (+g.costo || 0), 0);
   const gastosVariables = gastosCar.filter(g => !esGastoFijoAuto(g)).reduce((a, g) => a + (+g.costo || 0), 0) +
-    S.mantenimientos.filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
+    de('mantenimientos', 'carId', c.id).filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
   const gastos = gastosFijos + gastosVariables;
   const moneda = c.tipo === 'financiado' ? 'USD' : 'ARS';
   return { cobrado, gastos, gastosFijos, gastosVariables, neta: moneda === 'USD' ? null : cobrado - gastos, netaSinFijos: moneda === 'USD' ? null : cobrado - gastosVariables, costoCompra: +c.costoCompra || 0, moneda };
@@ -843,7 +845,7 @@ export function gastosFijosFlotaMensual() {
   return activeCars().reduce((a, c) => a + gastosFijosMensuales(c).total, 0);
 }
 export function historialGastosFijos(c) {
-  return S.gastos.filter(g => g.carId === c.id && esGastoFijoAuto(g)).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  return de('gastos', 'carId', c.id).filter(g => g.carId === c.id && esGastoFijoAuto(g)).sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
 export function comparacionGastoFijo(c) {
   const H = historialGastosFijos(c);
@@ -874,36 +876,36 @@ export function puntoEquilibrio(c) {
   return { recuperado: false, falta, semanas: monto > 0 ? Math.ceil(falta / monto) : null };
 }
 export function gastoMantenimientoAuto(c) {
-  return S.mantenimientos.filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
+  return de('mantenimientos', 'carId', c.id).filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
 }
 export function lineaDeTiempoAuto(c) {
   const out = [];
   (c.historialChoferes || []).forEach(x => {
-    out.push({ fecha: x.desde, texto: 'Asignado a ' + (S.drivers.find(d => d.id === x.choferId) || {}).nombre || 'chofer eliminado' });
-    if (x.hasta) out.push({ fecha: x.hasta, texto: 'Desasignado de ' + ((S.drivers.find(d => d.id === x.choferId) || {}).nombre || 'chofer eliminado') });
+    out.push({ fecha: x.desde, texto: 'Asignado a ' + (de('drivers', 'id', x.choferId)[0] || {}).nombre || 'chofer eliminado' });
+    if (x.hasta) out.push({ fecha: x.hasta, texto: 'Desasignado de ' + ((de('drivers', 'id', x.choferId)[0] || {}).nombre || 'chofer eliminado') });
   });
   (c.montoHistorial || []).forEach(x => out.push({ fecha: x.fecha, texto: 'Monto actualizado a ' + money(x.monto) }));
   (c.vencHistorial || []).forEach(x => out.push({ fecha: x.cambiado, texto: (VENC.find(v => v[0] === x.tipo) || [0, x.tipo])[1] + ' actualizado' }));
-  S.mantenimientos.filter(m => m.carId === c.id).forEach(m => out.push({ fecha: m.fecha, texto: 'Mantenimiento: ' + (m.label || m.item) + ' — ' + money(m.costo) }));
-  S.gastos.filter(g => g.carId === c.id).forEach(g => out.push({ fecha: g.fecha, texto: 'Gasto: ' + money(g.costo) }));
-  S.multas.filter(m => m.carId === c.id).forEach(m => out.push({ fecha: m.fecha, texto: 'Multa registrada — ' + money(m.monto) }));
-  S.siniestros.filter(s => s.carId === c.id).forEach(s => out.push({ fecha: s.fecha, texto: 'Siniestro registrado' }));
-  S.inspecciones.filter(x => x.carId === c.id).forEach(x => out.push({ fecha: x.fecha, texto: (x.tipo === 'entrega' ? 'Inspección de entrega' : 'Inspección de recepción') }));
+  de('mantenimientos', 'carId', c.id).filter(m => m.carId === c.id).forEach(m => out.push({ fecha: m.fecha, texto: 'Mantenimiento: ' + (m.label || m.item) + ' — ' + money(m.costo) }));
+  de('gastos', 'carId', c.id).filter(g => g.carId === c.id).forEach(g => out.push({ fecha: g.fecha, texto: 'Gasto: ' + money(g.costo) }));
+  de('multas', 'carId', c.id).filter(m => m.carId === c.id).forEach(m => out.push({ fecha: m.fecha, texto: 'Multa registrada — ' + money(m.monto) }));
+  de('siniestros', 'carId', c.id).filter(s => s.carId === c.id).forEach(s => out.push({ fecha: s.fecha, texto: 'Siniestro registrado' }));
+  de('inspecciones', 'carId', c.id).filter(x => x.carId === c.id).forEach(x => out.push({ fecha: x.fecha, texto: (x.tipo === 'entrega' ? 'Inspección de entrega' : 'Inspección de recepción') }));
   if (c.vendido && c.fechaVenta) out.push({ fecha: c.fechaVenta, texto: 'Auto vendido' });
   return out.filter(x => x.fecha).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 25);
 }
 export function mejorPeorMesAuto(c) {
   const porMes = {};
-  S.payments.filter(p => p.carId === c.id).forEach(p => { const k = p.fecha.slice(0, 7); porMes[k] = (porMes[k] || 0) + (+p.monto || 0); });
+  de('payments', 'carId', c.id).filter(p => p.carId === c.id).forEach(p => { const k = p.fecha.slice(0, 7); porMes[k] = (porMes[k] || 0) + (+p.monto || 0); });
   const entries = Object.entries(porMes);
   if (entries.length < 2) return null;
   entries.sort((a, b) => b[1] - a[1]);
   return { mejor: entries[0], peor: entries[entries.length - 1] };
 }
 export function costoTotalAuto(c) {
-  const gastos = S.gastos.filter(g => g.carId === c.id).reduce((a, g) => a + (+g.costo || 0), 0);
-  const mant = S.mantenimientos.filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
-  const siniestros = S.siniestros.filter(s => s.carId === c.id).reduce((a, s) => a + (+s.costoTaller || 0), 0);
+  const gastos = de('gastos', 'carId', c.id).filter(g => g.carId === c.id).reduce((a, g) => a + (+g.costo || 0), 0);
+  const mant = de('mantenimientos', 'carId', c.id).filter(m => m.carId === c.id).reduce((a, m) => a + (+m.costo || 0), 0);
+  const siniestros = de('siniestros', 'carId', c.id).filter(s => s.carId === c.id).reduce((a, s) => a + (+s.costoTaller || 0), 0);
   const costoCompra = +c.costoCompra || 0;
   return { costoCompra, gastos, mant, siniestros, total: costoCompra + gastos + mant + siniestros };
 }
@@ -972,7 +974,7 @@ export function mapaCalorGastos(nMeses) {
   }
   const cars = activeCars();
   const filas = cars.map(c => {
-    const gastosAuto = S.gastos.filter(g => g.carId === c.id).concat(S.mantenimientos.filter(m => m.carId === c.id));
+    const gastosAuto = de('gastos', 'carId', c.id).filter(g => g.carId === c.id).concat(de('mantenimientos', 'carId', c.id).filter(m => m.carId === c.id));
     const valores = meses.map(m => gastosAuto.filter(g => (g.fecha || '').slice(0, 7) === m.key).reduce((a, g) => a + (+g.costo || 0), 0));
     return { c, valores, total: valores.reduce((a, v) => a + v, 0) };
   }).filter(f => f.total > 0).sort((a, b) => b.total - a.total);
@@ -989,7 +991,7 @@ export function proveedoresActivos() {
   });
 }
 export function gastoTotalProveedor(proveedorId) {
-  const p = S.proveedores.find(x => x.id === proveedorId);
+  const p = de('proveedores', 'id', proveedorId)[0];
   if (!p) return 0;
   const deGastos = S.gastos.filter(g => g.proveedor === p.nombre).reduce((a, g) => a + (+g.costo || 0), 0);
   const deMant = S.mantenimientos.filter(m => m.proveedorId === proveedorId).reduce((a, m) => a + (+m.costo || 0), 0);
@@ -997,7 +999,7 @@ export function gastoTotalProveedor(proveedorId) {
   return deGastos + deMant + deSin;
 }
 export function siniestrosDeAuto(c) {
-  return S.siniestros.filter(s => s.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  return de('siniestros', 'carId', c.id).filter(s => s.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
 export function rankingSiniestrosChoferes() {
   const porChofer = {};
@@ -1013,7 +1015,7 @@ export function comparativaChoferes() {
     const hist = carHistoryForDriver(d.id);
     const desde = hist.reduce((min, h) => (!min || h.desde < min ? h.desde : min), null);
     const antiguedadDias = desde ? days(parse(desde), today()) : 0;
-    const monedaDeuda = S.cars.some(c => c.choferId === d.id && c.tipo === 'financiado') ? 'USD' : 'ARS';
+    const monedaDeuda = de('cars', 'choferId', d.id).some(c => c.choferId === d.id && c.tipo === 'financiado') ? 'USD' : 'ARS';
     return { driverId: d.id, nombre: d.nombre, antiguedadDias, totalPagado: driverTotalPagado(d.id), deuda: driverDebt(d.id), monedaDeuda, score: driverScore(d.id) };
   });
 }
@@ -1050,7 +1052,7 @@ export function porcentajePerdidaGanancia() {
 export function saludChoferes() {
   return S.drivers.filter(d => !d.inactivo && !d.prospecto).map(d => {
     const multas = multasDeChofer(d.id).filter(m => m.estado === 'pendiente' || m.estado === 'vencida').length;
-    const siniestros = S.siniestros.filter(s => s.choferId === d.id).length;
+    const siniestros = de('siniestros', 'choferId', d.id).filter(s => s.choferId === d.id).length;
     return { driverId: d.id, nombre: d.nombre, score: driverScore(d.id), deuda: driverDebt(d.id), multas, siniestros };
   });
 }
@@ -1084,10 +1086,10 @@ export function proyeccionRentabilidadTendencia() {
   return { promedioMensual, proyeccion3: promedioMensual * 3, proyeccion6: promedioMensual * 6, proyeccion12: promedioMensual * 12 };
 }
 export function driverTotalPagado(driverId) {
-  return S.payments.filter(p => p.choferId === driverId && p.tipo !== 'cuota').reduce((a, p) => a + (+p.monto || 0), 0);
+  return de('payments', 'choferId', driverId).filter(p => p.choferId === driverId && p.tipo !== 'cuota').reduce((a, p) => a + (+p.monto || 0), 0);
 }
 export function driverWeeksInfo(driverId) {
-  const cars = S.cars.filter(c => c.choferId === driverId && isContract(c) && c.inicio);
+  const cars = de('cars', 'choferId', driverId).filter(c => c.choferId === driverId && isContract(c) && c.inicio);
   let totalWeeks = 0, lateWeeks = 0;
   cars.forEach(c => { const i = calc(c); totalWeeks += i.weeks; lateWeeks += i.late; });
   return { totalWeeks, lateWeeks, tieneCars: cars.length > 0 };
@@ -1109,7 +1111,7 @@ export function estadoGeneralChofer(d) {
   const sAnt = vs(d.antecedentesVenc); if (sAnt) marcar(sAnt.cls);
   if (driverDebt(d.id) > 0) marcar('warn');
   if (driverEnRiesgo(d.id)) marcar('bad');
-  if (S.multas.some(m => m.choferId === d.id && (m.estado === 'pendiente' || m.estado === 'vencida'))) marcar('warn');
+  if (de('multas', 'choferId', d.id).some(m => m.choferId === d.id && (m.estado === 'pendiente' || m.estado === 'vencida'))) marcar('warn');
   return peor;
 }
 export function promedioIngresos3MesesChofer(driverId) {
@@ -1118,7 +1120,7 @@ export function promedioIngresos3MesesChofer(driverId) {
   for (let i = 0; i < 3; i++) {
     const desde = iso(new Date(t.getFullYear(), t.getMonth() - i, 1));
     const hasta = iso(new Date(t.getFullYear(), t.getMonth() - i + 1, 0));
-    S.payments.filter(p => p.choferId === driverId && p.fecha >= desde && p.fecha <= hasta).forEach(p => {
+    de('payments', 'choferId', driverId).filter(p => p.choferId === driverId && p.fecha >= desde && p.fecha <= hasta).forEach(p => {
       if (p.tipo === 'cuota') totalUSD += (+p.monto || 0); else total += (+p.monto || 0);
     });
   }
@@ -1129,8 +1131,8 @@ export function rankingMensualChoferes() {
   const inicioMesIso = iso(inicioMes);
   return activeDrivers().filter(d => !d.prospecto).map(d => {
     const score = driverScore(d.id);
-    const sancionesMes = S.sanciones.filter(s => s.driverId === d.id && s.fecha >= inicioMesIso).length;
-    const siniestrosMes = S.siniestros.filter(s => s.choferId === d.id && s.fecha >= inicioMesIso).length;
+    const sancionesMes = de('sanciones', 'driverId', d.id).filter(s => s.driverId === d.id && s.fecha >= inicioMesIso).length;
+    const siniestrosMes = de('siniestros', 'choferId', d.id).filter(s => s.choferId === d.id && s.fecha >= inicioMesIso).length;
     return { driverId: d.id, nombre: d.nombre, score, sancionesMes, siniestrosMes };
   }).filter(x => x.score != null).sort((a, b) => {
     const penA = a.sancionesMes + a.siniestrosMes, penB = b.sancionesMes + b.siniestrosMes;
@@ -1164,7 +1166,7 @@ export function cobradoDelMesPorMetodo(offsetMeses) {
 }
 export function metodoPreferidoChofer(driverId) {
   const conteo = {};
-  S.payments.filter(p => p.choferId === driverId && p.metodo).forEach(p => { conteo[p.metodo] = (conteo[p.metodo] || 0) + 1; });
+  de('payments', 'choferId', driverId).filter(p => p.choferId === driverId && p.metodo).forEach(p => { conteo[p.metodo] = (conteo[p.metodo] || 0) + 1; });
   let mejor = '', max = 0;
   Object.entries(conteo).forEach(([m, n]) => { if (n > max) { max = n; mejor = m; } });
   return mejor;
@@ -1205,10 +1207,10 @@ export const badge = (cls, t) => '<span class="badge b-' + cls + '">' + esc(t) +
 export const tipoBadge = t => badge(t === 'alquiler' ? 'info' : t === 'financiado' ? 'ok' : 'mute', TIPOS[t] || t);
 export const estadoMultaCls = e => e === 'pagada' ? 'ok' : e === 'vencida' ? 'bad' : e === 'apelada' ? 'info' : 'warn';
 export function multasDeChofer(driverId) {
-  return S.multas.filter(m => m.choferId === driverId).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  return de('multas', 'choferId', driverId).filter(m => m.choferId === driverId).sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
 export function encuestasDeChofer(driverId) {
-  return S.encuestas.filter(e => e.choferId === driverId).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  return de('encuestas', 'choferId', driverId).filter(e => e.choferId === driverId).sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
 export function promedioNpsChofer(driverId) {
   const es = encuestasDeChofer(driverId);
@@ -1241,7 +1243,7 @@ export function rankingMultasChoferes() {
 /* ---------- Cuenta corriente del chofer y plan de pagos ---------- */
 // Lo que debe hoy, por concepto. Es lo mismo que muestra el resto de la app.
 export function saldosCuenta(driverId) {
-  const autos = S.cars.filter(c => c.choferId === driverId && isContract(c));
+  const autos = de('cars', 'choferId', driverId).filter(c => c.choferId === driverId && isContract(c));
   const alquiler = autos.filter(c => c.tipo !== 'financiado').reduce((a, c) => a + calc(c).debt, 0);
   const cuotas = autos.filter(c => c.tipo === 'financiado').reduce((a, c) => a + calc(c).debt, 0);
   const seguro = seguroPendiente(driverId);

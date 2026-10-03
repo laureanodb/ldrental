@@ -4,6 +4,7 @@ import { openModal, closeModal, toast } from '../modal.js';
 import { save } from '../data.js';
 import { carById } from '../calc.js';
 import { carForm } from './car.js';
+import { de } from '../memo.js';
 
 export function ajusteForm(carId) {
   const c = carById(carId);
@@ -32,7 +33,7 @@ export async function delAjuste(carId, ajusteId) {
   const ajustesDeuda = (c.ajustesDeuda || []).filter(x => x.id !== ajusteId);
   if (!(await save('cars', Object.assign({}, c, { ajustesDeuda })))) return;
   if (borrado && borrado.multaId) {
-    const m = S.multas.find(x => x.id === borrado.multaId);
+    const m = de('multas', 'id', borrado.multaId)[0];
     if (m) await save('multas', Object.assign({}, m, { descontada: false }));
   }
   toast('Ajuste eliminado'); carForm(carId);

@@ -3,10 +3,11 @@ import { val, uid, esc, iso, today, fdate } from '../utils.js';
 import { openModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
 import { canDelete } from '../roles.js';
+import { de } from '../memo.js';
 
 export function recordatoriosView(editId) {
   const R = S.recordatorios.slice().sort((a, b) => (Boolean(a.hecho) - Boolean(b.hecho)) || String(a.fecha || '').localeCompare(b.fecha || ''));
-  const ed = editId ? S.recordatorios.find(x => x.id === editId) : null;
+  const ed = editId ? de('recordatorios', 'id', editId)[0] : null;
   let h = '<h3>Recordatorios</h3><div class="small muted" style="margin-bottom:10px">Tareas manuales con fecha, como "llamar al contador" o "renovar el seguro de la oficina".</div>';
   h += R.length ? R.map(r => '<div class="card row"><div class="grow tap" onclick="recordatoriosView(\'' + r.id + '\')"><div style="' + (r.hecho ? 'text-decoration:line-through;color:var(--muted)' : '') + '">' + esc(r.texto) + '</div><div class="small muted">' + (r.fecha ? fdate(r.fecha) : 'Sin fecha') + '</div></div>' +
   '<button class="btn sec sm" onclick="event.stopPropagation();toggleHechoRecordatorio(\'' + r.id + '\')">' + (r.hecho ? 'Reabrir' : 'Hecho') + '</button></div>').join('') : '<div class="small muted" style="margin-bottom:8px">Sin recordatorios cargados.</div>';
@@ -20,12 +21,12 @@ export function recordatoriosView(editId) {
 export async function saveRecordatorio(editId) {
   const texto = val('rc_texto');
   if (!texto) { toast('Falta el texto'); return; }
-  const ex = editId ? S.recordatorios.find(x => x.id === editId) : null;
+  const ex = editId ? de('recordatorios', 'id', editId)[0] : null;
   const o = { id: editId || uid(), texto, fecha: val('rc_fecha'), hecho: (ex || {}).hecho || false };
   if (await save('recordatorios', o)) { toast('Recordatorio guardado'); recordatoriosView(); }
 }
 export async function toggleHechoRecordatorio(id) {
-  const r = S.recordatorios.find(x => x.id === id); if (!r) return;
+  const r = de('recordatorios', 'id', id)[0]; if (!r) return;
   if (await save('recordatorios', Object.assign({}, r, { hecho: !r.hecho }))) recordatoriosView();
 }
 export async function delRecordatorio(id) { if (await remove('recordatorios', id)) { toast('Recordatorio borrado'); recordatoriosView(); } }

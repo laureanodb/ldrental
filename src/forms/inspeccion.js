@@ -7,6 +7,7 @@ import { carById } from '../calc.js';
 import { carForm, actualizarKm } from './car.js';
 import { subirArchivoSuelto } from '../files.js';
 import { hydrateThumbs } from '../storage.js';
+import { de } from '../memo.js';
 
 // Fotos guiadas de la inspección que se está cargando: { paso: { id, type, size } }.
 let fotos = {}, avisoFaltanFotos = false;
@@ -38,7 +39,7 @@ export function inspeccionForm(carId) {
 }
 // Última entrega con fotos del auto, para tener de referencia en la devolución.
 function entregaDeReferencia(carId, hasta) {
-  return S.inspecciones.filter(x => x.carId === carId && x.tipo === 'entrega' && x.fotos && Object.keys(x.fotos).length && (!hasta || x.fecha <= hasta))
+  return de('inspecciones', 'carId', carId).filter(x => x.carId === carId && x.tipo === 'entrega' && x.fotos && Object.keys(x.fotos).length && (!hasta || x.fecha <= hasta))
     .sort((a, b) => b.fecha.localeCompare(a.fecha))[0] || null;
 }
 export function renderPasosFotos(carId) {
@@ -116,13 +117,13 @@ export async function saveInspeccion(carId) {
   closeModal(); toast('Inspección guardada' + (nuevas.length ? ' con ' + nuevas.length + ' fotos' : '') + (firma ? ' y firma' : ''));
 }
 export async function delInspeccion(id) {
-  const x = S.inspecciones.find(v => v.id === id);
+  const x = de('inspecciones', 'id', id)[0];
   if (await remove('inspecciones', id)) { toast('Inspección borrada'); if (x) carForm(x.carId); }
 }
 
 // Comparación lado a lado: entrega contra devolución.
 export function compararInspeccion(id) {
-  const x = S.inspecciones.find(v => v.id === id); if (!x) return;
+  const x = de('inspecciones', 'id', id)[0]; if (!x) return;
   const ent = x.tipo === 'recepcion' ? entregaDeReferencia(x.carId, x.fecha) : x;
   const dev = x.tipo === 'recepcion' ? x : null;
   const c = carById(x.carId);

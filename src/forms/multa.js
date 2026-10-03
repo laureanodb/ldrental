@@ -7,9 +7,10 @@ import { carById, driverName, choferEnFecha, isContract } from '../calc.js';
 import { settings } from '../settings.js';
 import { carForm } from './car.js';
 import { renderFiles } from '../files.js';
+import { de } from '../memo.js';
 
 export function multaForm(carId, editId) {
-  const ex = editId ? S.multas.find(x => x.id === editId) : null;
+  const ex = editId ? de('multas', 'id', editId)[0] : null;
   const cars = S.cars.filter(c => !c.vendido).slice().sort((a, b) => String(a.patente).localeCompare(String(b.patente)));
   if (!cars.length) { toast('Primero cargá un auto'); return; }
   const c = carById(carId) || cars[0];
@@ -72,9 +73,9 @@ export async function saveMulta(editId) {
     tipoInfraccion: val('mu_tipo'), organismo: val('mu_organismo'), monto,
     fechaLimitePago: fechaLimite, estado, choferId: val('mu_chofer'),
     puntos: +val('mu_puntos') || 0, fechaPago, resultadoDescargo: val('mu_resultado'), recargo,
-    notas: val('mu_notas'), descontada: (editId && (S.multas.find(x => x.id === editId) || {}).descontada) || false,
-    descontadaDeposito: (editId && (S.multas.find(x => x.id === editId) || {}).descontadaDeposito) || false,
-    files: (editId && (S.multas.find(x => x.id === editId) || {}).files) || [],
+    notas: val('mu_notas'), descontada: (editId && (de('multas', 'id', editId)[0] || {}).descontada) || false,
+    descontadaDeposito: (editId && (de('multas', 'id', editId)[0] || {}).descontadaDeposito) || false,
+    files: (editId && (de('multas', 'id', editId)[0] || {}).files) || [],
   };
   if (!(await save('multas', o))) return;
   const chk = document.getElementById('mu_descontar');
@@ -85,7 +86,7 @@ export async function saveMulta(editId) {
   else { closeModal(); toast('Multa guardada'); }
 }
 export async function descontarMultaDeDeuda(multaId) {
-  const m = S.multas.find(x => x.id === multaId);
+  const m = de('multas', 'id', multaId)[0];
   if (!m || !m.choferId) { toast('Asigná primero un chofer responsable'); return; }
   const c = carById(m.carId);
   if (!c || !isContract(c)) { toast('El auto no tiene un contrato de alquiler o financiación activo'); return; }
@@ -97,7 +98,7 @@ export async function descontarMultaDeDeuda(multaId) {
   toast('Multa sumada a la deuda del chofer');
 }
 export async function descontarMultaDeDeposito(multaId) {
-  const m = S.multas.find(x => x.id === multaId);
+  const m = de('multas', 'id', multaId)[0];
   if (!m || !m.choferId) { toast('Asigná primero un chofer responsable'); return; }
   if (m.descontadaDeposito) return;
   const o = { id: uid(), driverId: m.choferId, fecha: iso(today()), monto: -(Math.abs(m.monto) + (+m.recargo || 0)), tipo: 'descuento_multa', nota: 'Multa' + (m.numeroActa ? ' Nº ' + m.numeroActa : '') };
@@ -106,6 +107,6 @@ export async function descontarMultaDeDeposito(multaId) {
   toast('Multa descontada del depósito de garantía');
 }
 export async function delMulta(id) {
-  const m = S.multas.find(x => x.id === id);
+  const m = de('multas', 'id', id)[0];
   if (await remove('multas', id)) { toast('Multa borrada'); if (m) carForm(m.carId); }
 }

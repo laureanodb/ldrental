@@ -3,6 +3,7 @@ import { esc, money, moneyUSD } from '../utils.js';
 import { vs, driverDebt, plate, badge, isContract, driverScore, driverEnRiesgo, driverCalificaBono } from '../calc.js';
 import { DOCS, RATINGS, ETAPAS_PROSPECTO, ONBOARDING_ITEMS } from '../constants.js';
 import { copiarLinkPortal } from '../forms/driver.js';
+import { de } from '../memo.js';
 
 function linkPostulacion() { return location.origin + location.pathname + '#/postulacion'; }
 function tarjetaPostulacion() {
@@ -63,7 +64,7 @@ export function listChoferes() {
   const visibles = L.slice(0, limite);
   const restantes = L.length - visibles.length;
   return visibles.map(d => {
-    const cars = S.cars.filter(c => c.choferId === d.id);
+    const cars = de('cars', 'choferId', d.id).filter(c => c.choferId === d.id);
     const debt = driverDebt(d.id);
     const mon = cars.some(c => isContract(c) && c.tipo === 'financiado') ? moneyUSD : money;
     const got = DOCS.filter(x => d.docs && d.docs[x[0]]).length;

@@ -5,13 +5,14 @@ import { save, remove } from '../data.js';
 import { canDelete } from '../roles.js';
 import { badge, gastoTotalProveedor } from '../calc.js';
 import { RATINGS } from '../constants.js';
+import { de } from '../memo.js';
 
 const ratingLabel = r => (RATINGS.find(x => x[0] === r) || [])[1];
 const ratingCls = r => r === 'malo' ? 'bad' : r === 'regular' ? 'soft' : 'ok';
 
 export function proveedoresView(editId) {
   const P = S.proveedores.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
-  const ed = editId ? S.proveedores.find(x => x.id === editId) : null;
+  const ed = editId ? de('proveedores', 'id', editId)[0] : null;
   let h = '<h3>Proveedores y talleres</h3>';
   h += P.length ? P.map(p => {
     const total = gastoTotalProveedor(p.id);

@@ -5,6 +5,7 @@ import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
 import { repuestoById, proveedoresActivos, preciosPorProveedor } from '../calc.js';
 import { canDelete } from '../roles.js';
+import { de } from '../memo.js';
 
 const unidadLabel = k => (STOCK_UNIDADES.find(x => x[0] === k) || [0, 'Unidad'])[1];
 
@@ -38,7 +39,7 @@ function historialMovimientos(r) {
   const movs = (r.movimientos || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id.localeCompare(a.id));
   if (!movs.length) return '<div class="sec-t">Movimientos</div><div class="small muted">Todavía no hay movimientos registrados.</div>';
   return '<div class="sec-t">Movimientos</div>' + movs.map(m => {
-    const c = m.carId ? S.cars.find(x => x.id === m.carId) : null;
+    const c = m.carId ? de('cars', 'id', m.carId)[0] : null;
     return '<div class="card row between"><div><div>' + (m.tipo === 'entrada' ? '+ ' : '- ') + m.cantidad + ' ' + esc(unidadLabel(r.unidad)) + '</div>' +
     '<div class="small muted">' + esc(m.fecha) + (c ? ' · ' + esc(c.patente) : '') + (m.nota ? ' · ' + esc(m.nota) : '') + '</div></div>' +
     (canDelete() ? '<button class="btn sec sm" onclick="confirmDel(this,()=>delMovimientoStock(\'' + r.id + '\',\'' + m.id + '\'))">Borrar</button>' : '') + '</div>';

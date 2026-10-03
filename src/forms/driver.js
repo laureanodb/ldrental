@@ -11,6 +11,7 @@ import { seccionAdelantos } from './adelanto.js';
 import { valorSemanalRow } from './car.js';
 import { gruposDuplicadosLedger } from './deposito.js';
 import { settings, featureOculta } from '../settings.js';
+import { de } from '../memo.js';
 
 function telRow(t) {
   t = t || {};
@@ -37,7 +38,7 @@ function tabpanelChofer(tab, visible, content) {
 }
 
 export function driverForm(id) {
-  const ex = S.drivers.find(x => x.id === id);
+  const ex = de('drivers', 'id', id)[0];
   const d = ex || { docs: {} };
   let h = '<h3>' + (ex ? esc(d.nombre) : 'Nuevo chofer') + '</h3>';
   if (ex && d.inactivo) h += '<div class="card" style="margin-bottom:10px"><span class="badge b-mute">Inactivo</span></div>';
@@ -115,7 +116,7 @@ export function driverForm(id) {
   let financiacion = '';
   if (ex) financiacion += seccionComprobantesPortal(d);
   if (ex) {
-    const cars = S.cars.filter(c => c.choferId === d.id); const debt = driverDebt(d.id); const score = driverScore(d.id);
+    const cars = de('cars', 'choferId', d.id).filter(c => c.choferId === d.id); const debt = driverDebt(d.id); const score = driverScore(d.id);
     const mon = cars.some(c => c.tipo === 'financiado') ? moneyUSD : money;
     financiacion += '<div class="card"><div class="row between"><span class="muted">Autos</span><span>' + (cars.length ? cars.map(c => plate(c.patente)).join(' ') : 'Ninguno') + '</span></div>' +
     '<div class="row between"><span class="muted">Deuda</span><b style="color:' + (debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + mon(debt) + '</b></div>' +
@@ -172,7 +173,7 @@ export function driverForm(id) {
   /* ---- Sanciones y multas ---- */
   let sanciones = '';
   if (ex) {
-    const San = S.sanciones.filter(s => s.driverId === d.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
+    const San = de('sanciones', 'driverId', d.id).filter(s => s.driverId === d.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     sanciones += '<div class="sec-t">Sanciones</div>';
     if (San.length) sanciones += San.map(s => '<div class="card row"><div class="grow"><div class="small muted">' + fdate(s.fecha) + '</div><div>' + esc(s.motivo) + '</div></div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delSancion(\'' + s.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     else sanciones += '<div class="small muted" style="margin-bottom:8px">Sin sanciones registradas.</div>';
@@ -183,7 +184,7 @@ export function driverForm(id) {
     if (pts) sanciones += '<div class="card row between small" style="margin-bottom:8px"><span class="muted">Puntos de licencia acumulados</span><b style="color:' + (pts >= settings.puntosLimite ? 'var(--bad)' : 'inherit') + '">' + pts + ' de ' + settings.puntosLimite + '</b></div>';
     if (M.length) {
       const estLabel = e => (MULTA_ESTADOS.find(x => x[0] === e) || [0, e])[1];
-      sanciones += M.map(m => '<div class="card row tap" onclick="multaForm(\'' + m.carId + '\',\'' + m.id + '\')"><div class="grow"><div>' + money(m.monto) + (m.recargo ? ' <span class="small" style="color:var(--bad)">+' + money(m.recargo) + '</span>' : '') + ' <span class="small muted">' + fdate(m.fecha) + '</span></div><div class="small muted">' + plate((S.cars.find(x => x.id === m.carId) || {}).patente) + '</div></div>' + badge(estadoMultaCls(m.estado), estLabel(m.estado)) + '</div>').join('');
+      sanciones += M.map(m => '<div class="card row tap" onclick="multaForm(\'' + m.carId + '\',\'' + m.id + '\')"><div class="grow"><div>' + money(m.monto) + (m.recargo ? ' <span class="small" style="color:var(--bad)">+' + money(m.recargo) + '</span>' : '') + ' <span class="small muted">' + fdate(m.fecha) + '</span></div><div class="small muted">' + plate((de('cars', 'id', m.carId)[0] || {}).patente) + '</div></div>' + badge(estadoMultaCls(m.estado), estLabel(m.estado)) + '</div>').join('');
     } else sanciones += '<div class="small muted" style="margin-bottom:8px">Sin multas registradas.</div>';
   }
 
@@ -243,7 +244,7 @@ export async function saveDriver(id) {
   const otrosTelefonos = [...document.querySelectorAll('.d-tel')].map(row => ({
     etiqueta: row.querySelector('.d-tel-etq').value.trim(), tel: row.querySelector('.d-tel-num').value.trim()
   })).filter(t => t.tel);
-  const ex = S.drivers.find(x => x.id === id);
+  const ex = de('drivers', 'id', id)[0];
   // Se parte del registro guardado para no perder lo que no está en el formulario
   // (link del portal, comprobantes, comunicaciones, adelantos, etc.).
   const o = Object.assign({}, ex || {}, {
@@ -268,8 +269,8 @@ function seccionComprobantesPortal(d) {
   if (!L.length) return '';
   const pend = L.filter(x => !x.revisado).length;
   return '<div class="sec-t">Comprobantes subidos desde el portal' + (pend ? ' ' + badge('warn', pend + ' sin revisar') : '') + '</div>' + L.map(x => {
-    const car = S.cars.find(c => c.id === x.carId);
-    const pago = x.pagoId ? S.payments.find(p => p.id === x.pagoId) : null;
+    const car = de('cars', 'id', x.carId)[0];
+    const pago = x.pagoId ? de('payments', 'id', x.pagoId)[0] : null;
     const ver = 'viewFile(\'' + esc(x.id) + '\',\'comprobante\')';
     return '<div class="card"><div class="row"><img class="fthumb tap" alt="Comprobante" data-path="' + esc(x.id) + '" onclick="' + ver + '">' +
       '<div class="grow tap" onclick="' + ver + '"><div>' + (x.revisado ? badge('ok', pago ? 'Cobro registrado' : 'Revisado') : badge('warn', 'Sin revisar')) + '</div>' +
@@ -296,7 +297,7 @@ function seccionDocsPortal(d) {
   }).join('');
 }
 export async function aceptarDocPortal(id, docId) {
-  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const d = de('drivers', 'id', id)[0]; if (!d) return;
   const x = (d.docsPortal || []).find(v => v.id === docId); if (!x) return;
   const [, campo] = DOC_PORTAL[x.tipo] || [];
   const vence = val('dp_vence_' + docId.replace(/\W/g, ''));
@@ -306,34 +307,34 @@ export async function aceptarDocPortal(id, docId) {
   if (await save('drivers', Object.assign({}, d, patch))) { toast('Documento aceptado: vence el ' + fdate(vence)); driverForm(id); }
 }
 export async function rechazarDocPortal(id, docId) {
-  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const d = de('drivers', 'id', id)[0]; if (!d) return;
   const docsPortal = (d.docsPortal || []).map(v => v.id === docId ? Object.assign({}, v, { rechazado: true }) : v);
   if (await save('drivers', Object.assign({}, d, { docsPortal }))) { toast('Documento rechazado: pedile al chofer que suba otra foto'); driverForm(id); }
 }
 export async function marcarComprobantePortal(id, compId, revisado) {
-  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const d = de('drivers', 'id', id)[0]; if (!d) return;
   const comprobantesPortal = (d.comprobantesPortal || []).map(x => x.id === compId ? Object.assign({}, x, { revisado }) : x);
   if (await save('drivers', Object.assign({}, d, { comprobantesPortal }))) { toast(revisado ? 'Comprobante marcado como revisado' : 'Comprobante sin revisar'); driverForm(id); setTabChofer('financiacion'); }
 }
 export async function agregarComunicacion(id) {
-  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const d = de('drivers', 'id', id)[0]; if (!d) return;
   const notas = val('cm_notas');
   const comunicaciones = (d.comunicaciones || []).concat([{ id: uid(), tipo: val('cm_tipo'), fecha: val('cm_fecha') || iso(today()), notas }]);
   if (await save('drivers', Object.assign({}, d, { comunicaciones }))) { toast('Comunicación registrada'); driverForm(id); }
 }
 export async function borrarComunicacion(id, comId) {
-  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const d = de('drivers', 'id', id)[0]; if (!d) return;
   const comunicaciones = (d.comunicaciones || []).filter(c => c.id !== comId);
   if (await save('drivers', Object.assign({}, d, { comunicaciones }))) { toast('Borrado'); driverForm(id); }
 }
 export async function regenerarLinkPortal(id) {
-  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const d = de('drivers', 'id', id)[0]; if (!d) return;
   const token = uid() + uid();
   if (!(await save('drivers', Object.assign({}, d, { portalToken: token })))) return;
   toast('Link generado'); driverForm(id);
 }
 export async function togglePortalDesactivado(id) {
-  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const d = de('drivers', 'id', id)[0]; if (!d) return;
   if (!(await save('drivers', Object.assign({}, d, { portalDesactivado: !d.portalDesactivado })))) return;
   toast(d.portalDesactivado ? 'Portal reactivado' : 'Portal desactivado'); driverForm(id);
 }
@@ -346,20 +347,20 @@ export async function copiarLinkPortal(url) {
   }
 }
 export async function toggleFavoritoChofer(id) {
-  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const d = de('drivers', 'id', id)[0]; if (!d) return;
   await save('drivers', Object.assign({}, d, { favorito: !d.favorito }));
 }
 export async function toggleInactivo(id) {
-  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const d = de('drivers', 'id', id)[0]; if (!d) return;
   if (await save('drivers', Object.assign({}, d, { inactivo: !d.inactivo }))) { closeModal(); toast(d.inactivo ? 'Chofer reactivado' : 'Chofer marcado como inactivo'); }
 }
 export async function aprobarProspecto(id) {
-  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const d = de('drivers', 'id', id)[0]; if (!d) return;
   if (await save('drivers', Object.assign({}, d, { prospecto: false, etapaProspecto: 'aprobado' }))) { toast('Chofer dado de alta'); driverForm(id); }
 }
 export async function delDriver(id) {
-  await purgeFiles(S.drivers.find(x => x.id === id));
-  for (const c of S.cars.filter(c => c.choferId === id)) await save('cars', Object.assign({}, c, { choferId: '', tipo: 'disponible' }));
+  await purgeFiles(de('drivers', 'id', id)[0]);
+  for (const c of de('cars', 'choferId', id).filter(c => c.choferId === id)) await save('cars', Object.assign({}, c, { choferId: '', tipo: 'disponible' }));
   if (await remove('drivers', id)) { closeModal(); toast('Chofer eliminado'); }
 }
 function conceptoRow(x) {
@@ -369,7 +370,7 @@ function conceptoRow(x) {
 }
 export function addConceptoRow() { $('#lq_conceptos').insertAdjacentHTML('beforeend', conceptoRow()); }
 export function liquidacionForm(id) {
-  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const d = de('drivers', 'id', id)[0]; if (!d) return;
   const saldoDep = saldoDeposito(d.id);
   const saldoSem = semanaAdelantadaDisponible(d.id);
   const deuda = driverDebt(d.id);
@@ -404,7 +405,7 @@ async function comprobanteLiquidacion(d, r) {
   doc.save('liquidacion-' + String(d.nombre || 'chofer').replace(/\s+/g, '-') + '-' + iso(today()) + '.pdf');
 }
 export async function confirmarLiquidacion(id) {
-  const d = S.drivers.find(x => x.id === id); if (!d) return;
+  const d = de('drivers', 'id', id)[0]; if (!d) return;
   const saldoDep = saldoDeposito(d.id);
   const saldoSemTotal = saldoSemanaAdelantada(d.id);
   const saldoSem = semanaAdelantadaDisponible(d.id);
@@ -421,7 +422,7 @@ export async function confirmarLiquidacion(id) {
   if (saldoSemTotal) {
     if (!(await save('depositos', { id: uid(), driverId: id, fecha: iso(today()), monto: -saldoSemTotal, tipo: 'semana_adelantada', nota: 'Liquidación final' }))) return;
   }
-  for (const c of S.cars.filter(c => c.choferId === id)) {
+  for (const c of de('cars', 'choferId', id).filter(c => c.choferId === id)) {
     await save('cars', Object.assign({}, c, { choferId: '', tipo: 'disponible' }));
   }
   if (!(await save('drivers', Object.assign({}, d, { inactivo: true })))) return;

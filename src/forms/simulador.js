@@ -7,6 +7,7 @@ import { $, val, esc, moneyUSD, money, iso, today } from '../utils.js';
 import { openModal, toast } from '../modal.js';
 import { settings, saveSettings } from '../settings.js';
 import { cotizacion, enPesos, textoCotizacion } from '../dolar.js';
+import { de } from '../memo.js';
 
 const PRESETS = [6, 12, 18, 24, 30, 36, 42, 48, 60];
 const PLAZOS_DEFAULT = [{ meses: 12, tasa: 25 }, { meses: 24, tasa: 28 }, { meses: 36, tasa: 32 }, { meses: 48, tasa: 36 }];
@@ -40,7 +41,7 @@ export function simular({ precio, anticipo, gastos, plazos: P }) {
 let simCarId = '';
 export function simuladorFinanciacionForm(carId) {
   simCarId = carId || '';
-  const c = carId ? S.cars.find(x => x.id === carId) : null;
+  const c = carId ? de('cars', 'id', carId)[0] : null;
   plazos = plazosGuardados();
   const autos = S.cars.filter(x => !x.vendido).slice().sort((a, b) => String(a.patente).localeCompare(String(b.patente)));
   const h = '<h3>Simulador de financiación</h3>' +
@@ -92,7 +93,7 @@ export function simuladorAgregarPlazo() {
 }
 export function simuladorElegirAuto(id) {
   simCarId = id;
-  const c = S.cars.find(x => x.id === id);
+  const c = de('cars', 'id', id)[0];
   if (c && (c.valorMercado || c.costoCompra)) $('#sf_precio').value = c.valorMercado || c.costoCompra;
   simuladorCalcular();
 }
@@ -120,7 +121,7 @@ export function simuladorCalcular() {
 function textoSimulacion() {
   const e = leerEntradas();
   const R = simular(e);
-  const c = S.cars.find(x => x.id === simCarId);
+  const c = de('cars', 'id', simCarId)[0];
   const cot = cotizacion();
   return (settings.companyName || 'LD Rental') + ' — Financiación' + (c ? ' del ' + [c.marca, c.modelo, c.anio].filter(Boolean).join(' ') + (c.patente ? ' (' + c.patente + ')' : '') : '') + '\n' +
     'Precio: ' + moneyUSD(e.precio) + (e.anticipo ? ' · Anticipo: ' + moneyUSD(e.anticipo) : '') + '\n\n' +
@@ -137,7 +138,7 @@ export async function simuladorPDF() {
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const e = leerEntradas(); const R = simular(e);
-    const c = S.cars.find(x => x.id === simCarId);
+    const c = de('cars', 'id', simCarId)[0];
     const cot = cotizacion();
     const mg = 15; let y = 20;
     doc.setFontSize(15); doc.text(settings.companyName || 'LD Rental', mg, y); y += 8;

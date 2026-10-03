@@ -3,6 +3,14 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   base: './',
+  build: {
+    rollupOptions: {
+      output: {
+        // Supabase va aparte: casi nunca cambia, así el celular no lo vuelve a bajar en cada actualización.
+        manualChunks: id => (id.includes('node_modules/@supabase/') || id.includes('node_modules/iceberg-js') ? 'supabase' : undefined),
+      },
+    },
+  },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
@@ -25,9 +33,16 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        // Las librerías pesadas de PDF y Excel no se bajan al instalar: se guardan la primera vez que se usan.
+        globIgnores: ['**/xlsx-*.js', '**/jspdf*.js', '**/html2canvas*.js', '**/purify.es-*.js', '**/index.es-*.js'],
         navigateFallback: 'index.html',
         importScripts: ['push-sw.js'],
         runtimeCaching: [
+          {
+            urlPattern: ({ url }) => /\/assets\/(xlsx|jspdf|html2canvas|purify\.es|index\.es)[-.][^/]*\.js$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: { cacheName: 'librerias', expiration: { maxEntries: 20 } },
+          },
           {
             urlPattern: ({ url }) => url.origin.includes('supabase.co'),
             handler: 'NetworkOnly',

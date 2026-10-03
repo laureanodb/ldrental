@@ -3,6 +3,7 @@ import { esc, money, moneyUSD, fdate, num1, parse, today, days } from '../utils.
 import { isContract, calc, carById, badge, plate, driverName, proyeccionFlujoCaja } from '../calc.js';
 import { METODOS_PAGO } from '../constants.js';
 import { canDelete, canVerFinanzas, puedeEditarCobro } from '../roles.js';
+import { de } from '../memo.js';
 
 const metodoLabel = m => (METODOS_PAGO.find(x => x[0] === m) || [])[1];
 const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -55,7 +56,7 @@ function seccionSinDepositar() {
   return '<div class="card row between" style="margin-bottom:12px"><div><div class="muted small">Sin depositar</div><div>' + (ars ? money(ars) : '') + (ars && usd ? ' · ' : '') + (usd ? moneyUSD(usd) : '') + '</div></div><div class="small muted">' + P.length + ' cobro' + (P.length === 1 ? '' : 's') + '</div></div>';
 }
 function seccionRecordatorios(act) {
-  const items = act.map(x => ({ x, d: S.drivers.find(y => y.id === x.c.choferId) })).map(({ x, d }) => ({ c: x.c, i: x.i, d, r: recordatorioWa(x.c, x.i, d) })).filter(x => x.r);
+  const items = act.map(x => ({ x, d: de('drivers', 'id', x.c.choferId)[0] })).map(({ x, d }) => ({ c: x.c, i: x.i, d, r: recordatorioWa(x.c, x.i, d) })).filter(x => x.r);
   if (!items.length) return '';
   const mon = c => c.tipo === 'financiado' ? moneyUSD : money;
   return '<h2>Recordatorios de hoy</h2>' + items.map(x => '<div class="card row between"><div class="grow"><div>' + esc(x.d.nombre) + ' <span class="small muted">' + plate(x.c.patente) + '</span></div>' +
@@ -73,7 +74,7 @@ export function viewCobros() {
   h += '<h2>Estado de cada auto</h2>';
   if (!act.length) h += '<div class="card empty">Cuando tengas autos alquilados o financiados con chofer, van a aparecer acá.</div>';
   act.forEach(x => {
-    const c = x.c, i = x.i, d = S.drivers.find(y => y.id === c.choferId);
+    const c = x.c, i = x.i, d = de('drivers', 'id', c.choferId)[0];
     const mon = c.tipo === 'financiado' ? moneyUSD : money;
     const r = recordatorioWa(c, i, d);
     const wa = r ? r.link : '';
@@ -83,7 +84,7 @@ export function viewCobros() {
   });
   h += '<h2>Historial</h2><div class="bar"><select onchange="ui.filterCar=this.value;render()"><option value="">Todos los autos</option>' + S.cars.map(c => '<option value="' + c.id + '"' + (ui.filterCar === c.id ? ' selected' : '') + '>' + esc(c.patente) + '</option>').join('') + '</select>' +
   '<select onchange="ui.filtroCobrosMetodo=this.value;render()"><option value="">Todos los métodos</option>' + METODOS_PAGO.map(m => '<option value="' + m[0] + '"' + (ui.filtroCobrosMetodo === m[0] ? ' selected' : '') + '>' + m[1] + '</option>').join('') + '</select></div>';
-  const P = S.payments.filter(p => (!ui.filterCar || p.carId === ui.filterCar) && (!ui.filtroCobrosMetodo || p.metodo === ui.filtroCobrosMetodo)).sort((a, b) => (b.fecha + b.id).localeCompare(a.fecha + a.id));
+  const P = S.payments.filter(p => (!ui.filterCar || p.carId === ui.filterCar) && (!ui.filtroCobrosMetodo || p.metodo === ui.filtroCobrosMetodo)).sort((a, b) => (a.fecha === b.fecha ? (b.id > a.id ? 1 : b.id < a.id ? -1 : 0) : b.fecha > a.fecha ? 1 : -1));
   if (!P.length) h += '<div class="card muted">Todavía no hay cobros registrados.</div>';
   P.slice(0, 40).forEach(p => {
     const c = carById(p.carId);

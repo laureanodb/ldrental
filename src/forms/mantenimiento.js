@@ -8,13 +8,14 @@ import { carById, proveedoresActivos, repuestosActivos } from '../calc.js';
 import { carForm, actualizarKm, marcarEnTaller } from './car.js';
 import { renderFiles } from '../files.js';
 import { registrarSalidaStock } from './repuesto.js';
+import { de } from '../memo.js';
 
 const unidadLabel = k => (STOCK_UNIDADES.find(x => x[0] === k) || [0, 'Unidad'])[1];
 
 function proveedoresParaSelect(actualId) {
   const L = proveedoresActivos();
   if (actualId && !L.some(p => p.id === actualId)) {
-    const actual = S.proveedores.find(p => p.id === actualId);
+    const actual = de('proveedores', 'id', actualId)[0];
     if (actual) return [actual].concat(L);
   }
   return L;
@@ -40,7 +41,7 @@ export function mantenimientoForm(carId, editId, presetItem) {
   const cars = S.cars.filter(x => !x.vendido).slice().sort((a, b) => String(a.patente).localeCompare(String(b.patente)));
   const c = carById(carId) || (carId ? null : cars[0]);
   if (!c) { toast('Auto no encontrado'); return; }
-  const ex = editId ? S.mantenimientos.find(x => x.id === editId) : null;
+  const ex = editId ? de('mantenimientos', 'id', editId)[0] : null;
   const elegido = ex ? ex.item : (presetItem || '');
   const plan = c.mantenimientoPlan || [];
   facturaMant = null; facturaMantDatos = null;
@@ -110,7 +111,7 @@ export async function saveMantenimiento(editId) {
     proveedorId: val('m_proveedor'), costo: +val('m_costo') || 0, checklist,
     garantiaMeses: +val('m_garMeses') || 0, garantiaKm: +val('m_garKm') || 0,
     sinFactura: document.getElementById('m_sinFactura').checked,
-    notas: val('m_notas'), files: ((editId && S.mantenimientos.find(x => x.id === editId) || {}).files || []).concat(facturaMant ? [facturaMant] : []),
+    notas: val('m_notas'), files: ((editId && de('mantenimientos', 'id', editId)[0] || {}).files || []).concat(facturaMant ? [facturaMant] : []),
   };
   if (facturaMantDatos && facturaMantDatos.numero) { o.facturaNumero = facturaMantDatos.numero; o.facturaCuit = facturaMantDatos.cuit || ''; }
   if (!(await save('mantenimientos', o))) return;
@@ -131,7 +132,7 @@ export async function saveMantenimiento(editId) {
   else { closeModal(); toast('Mantenimiento guardado'); carForm(carId); }
 }
 export async function delMantenimiento(id) {
-  const m = S.mantenimientos.find(x => x.id === id);
+  const m = de('mantenimientos', 'id', id)[0];
   if (await remove('mantenimientos', id)) { toast('Mantenimiento borrado'); if (m) carForm(m.carId); }
 }
 export function editarPlanMantenimiento(carId) {

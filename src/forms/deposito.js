@@ -4,9 +4,10 @@ import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { saldoDeposito, saldoSemanaAdelantada, depositosDeChofer } from '../calc.js';
 import { driverForm } from './driver.js';
+import { de } from '../memo.js';
 
 export function depositoForm(driverId) {
-  const d = S.drivers.find(x => x.id === driverId);
+  const d = de('drivers', 'id', driverId)[0];
   if (!d) { toast('Chofer no encontrado'); return; }
   const h = '<h3>Depósito de garantía — ' + esc(d.nombre) + '</h3>' +
   '<div class="small muted" style="margin-bottom:12px">Objetivo: ' + money(d.depositoObjetivo || 0) + ' · Saldo actual: ' + money(saldoDeposito(d.id)) + '</div>' +
@@ -26,11 +27,11 @@ export async function saveDeposito(driverId) {
   if (await save('depositos', o)) { closeModal(); toast('Registrado'); driverForm(driverId); }
 }
 export async function delDeposito(id) {
-  const dep = S.depositos.find(x => x.id === id);
+  const dep = de('depositos', 'id', id)[0];
   if (await remove('depositos', id)) { toast('Pago borrado'); if (dep) driverForm(dep.driverId); }
 }
 export function semanaAdelantadaForm(driverId) {
-  const d = S.drivers.find(x => x.id === driverId);
+  const d = de('drivers', 'id', driverId)[0];
   if (!d) { toast('Chofer no encontrado'); return; }
   const h = '<h3>Semana adelantada — ' + esc(d.nombre) + '</h3>' +
   '<div class="small muted" style="margin-bottom:12px">Plata que el chofer pagó de más, para cubrir semanas futuras. Se descuenta automáticamente de la deuda semanal hasta consumirse. Saldo actual: ' + money(saldoSemanaAdelantada(d.id)) + '</div>' +
@@ -48,7 +49,7 @@ export async function guardarSemanaAdelantada(driverId) {
   if (await save('depositos', o)) { closeModal(); toast('Registrado'); driverForm(driverId); }
 }
 export function confirmarBorrarSemanaAdelantada(id) {
-  const dep = S.depositos.find(x => x.id === id);
+  const dep = de('depositos', 'id', id)[0];
   if (!dep) return;
   const h = '<h3>Borrar movimiento de semana adelantada</h3>' +
   '<div class="small muted" style="margin-bottom:14px">Esto va a borrar el movimiento de ' + money(Math.abs(dep.monto)) + ' del ' + esc(dep.fecha) + '. No se puede deshacer.</div>' +
@@ -56,7 +57,7 @@ export function confirmarBorrarSemanaAdelantada(id) {
   openModal(h);
 }
 export async function delSemanaAdelantada(id) {
-  const dep = S.depositos.find(x => x.id === id);
+  const dep = de('depositos', 'id', id)[0];
   if (await remove('depositos', id)) { toast('Borrado'); if (dep) driverForm(dep.driverId); }
 }
 export function gruposDuplicadosLedger(driverId, tipo) {

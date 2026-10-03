@@ -6,6 +6,7 @@ import { save, remove } from '../data.js';
 import { carById, proveedoresActivos } from '../calc.js';
 import { carForm } from './car.js';
 import { subirYLeerFactura, resumenFactura, opcionParecida } from '../factura.js';
+import { de } from '../memo.js';
 
 export function gastoForm(carId) {
   const c = carById(carId);
@@ -65,7 +66,7 @@ export async function saveGasto(carId, btn) {
   const fecha = val('g_fecha') || iso(today());
   if (fecha > iso(today())) { toast('La fecha del gasto no puede ser futura'); return; }
   const categoria = val('g_cat');
-  const dup = S.gastos.some(g => g.carId === carId && g.fecha === fecha && +g.costo === costo && g.categoria === categoria);
+  const dup = de('gastos', 'carId', carId).some(g => g.carId === carId && g.fecha === fecha && +g.costo === costo && g.categoria === categoria);
   if (dup && gastoDupArmed !== btn) {
     gastoDupArmed = btn;
     toast('Ya existe un gasto igual ese día para este auto. Tocá Guardar de nuevo para confirmar');
@@ -81,14 +82,14 @@ export async function saveGasto(carId, btn) {
   // Seguro de un auto cuyo seguro se le cobra al chofer: queda a su cargo.
   const car = carById(carId);
   if (categoria === 'seguro' && car && car.seguroPaga === 'recupera' && car.choferId) o.recuperaDe = car.choferId;
-  if (await save('gastos', o)) { facturaGasto = null; facturaDatos = null; closeModal(); toast(o.recuperaDe ? 'Gasto registrado y sumado al seguro que debe ' + (S.drivers.find(d => d.id === car.choferId) || {}).nombre : 'Gasto registrado'); }
+  if (await save('gastos', o)) { facturaGasto = null; facturaDatos = null; closeModal(); toast(o.recuperaDe ? 'Gasto registrado y sumado al seguro que debe ' + (de('drivers', 'id', car.choferId)[0] || {}).nombre : 'Gasto registrado'); }
 }
 export async function delGasto(id) {
-  const g = S.gastos.find(x => x.id === id);
+  const g = de('gastos', 'id', id)[0];
   if (await remove('gastos', id)) { toast('Gasto borrado'); if (g) carForm(g.carId); }
 }
 export function reclamoSeguroForm(gastoId) {
-  const g = S.gastos.find(x => x.id === gastoId);
+  const g = de('gastos', 'id', gastoId)[0];
   if (!g) { toast('Gasto no encontrado'); return; }
   const h = '<h3>Reclamo al seguro</h3>' +
   '<div class="small muted" style="margin-bottom:10px">' + esc(g.descripcion || g.categoria) + ' · ' + esc(g.fecha) + '</div>' +
@@ -97,7 +98,7 @@ export function reclamoSeguroForm(gastoId) {
   openModal(h);
 }
 export async function guardarReclamoSeguro(gastoId) {
-  const g = S.gastos.find(x => x.id === gastoId);
+  const g = de('gastos', 'id', gastoId)[0];
   if (!g) return;
   if (await save('gastos', Object.assign({}, g, { reclamoEstado: val('rs_estado') }))) { toast('Guardado'); carForm(g.carId); }
 }

@@ -2,6 +2,7 @@ import { S, ui } from '../state.js';
 import { esc, money, fdate, today, iso } from '../utils.js';
 import { carById, activeCars, garantiasPorVencer, rankingTalleresMantenimiento, rankingItemsMantenimiento, proporcionMantenimiento, gastoMantenimientoDelMes, badge, textoRestante, agendaMantenimiento, autosConGastoExcesivo } from '../calc.js';
 import { render } from '../nav.js';
+import { de } from '../memo.js';
 
 export function mantenimientosFiltrados() {
   const q = (ui.qMant || '').trim().toLowerCase();
@@ -139,7 +140,7 @@ export function viewMantenimiento() {
 export function listMantenimiento() {
   const L = mantenimientosFiltrados();
   if (!L.length) return '<div class="card empty">' + (S.mantenimientos.length ? 'Ningún mantenimiento coincide con el filtro.' : 'Todavía no hay mantenimientos registrados.') + '</div>';
-  const provName = id => { const p = S.proveedores.find(x => x.id === id); return p ? p.nombre : ''; };
+  const provName = id => { const p = de('proveedores', 'id', id)[0]; return p ? p.nombre : ''; };
   return L.map(m => {
     const c = carById(m.carId);
     return '<div class="card tap" onclick="mantenimientoForm(\'' + m.carId + '\',\'' + m.id + '\')"><div class="row between"><div>' + money(m.costo) + ' <span class="small muted">' + esc(m.label || m.item) + (m.tipo === 'correctivo' ? ' · correctivo' : '') + '</span></div><div class="small muted">' + fdate(m.fecha) + '</div></div>' +

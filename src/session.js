@@ -3,8 +3,8 @@ import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { S, sb, setSb, setAs, configured } from './state.js';
 import { $, val } from './utils.js';
 import { COLS } from './constants.js';
-import { load, flushQueue } from './data.js';
-import { readCachedCollection } from './offline.js';
+import { load, flushQueue, aplicarCambios } from './data.js';
+import { readCachedCollections } from './offline.js';
 import { render } from './nav.js';
 import { makeStorage } from './storage.js';
 import { loadOwnProfile } from './roles.js';
@@ -14,6 +14,7 @@ import { generarGastosRecurrentes } from './recurrentes.js';
 import { checkChangelog } from './changelog.js';
 import { cargarDolar } from './dolar.js';
 import { biometricRegistrado } from './biometric.js';
+import { tocarDatos } from './memo.js';
 
 export function viewSetup() {
   return '<div class="login">' + brandH1() + '<div class="card"><b>Falta configurar la conexión</b><p class="small muted">Completá VITE_SUPABASE_URL y VITE_SUPABASE_KEY en el archivo .env, con los datos de tu proyecto de Supabase.</p></div></div>';
@@ -40,7 +41,10 @@ export async function logout() {
 const PRIORITY_COLS = ['cars', 'drivers', 'payments'];
 export async function start() {
   S.ready = false;
-  COLS.forEach(c => { const cached = readCachedCollection(c); if (cached) S[c] = cached; });
+  render();
+  const cache = await readCachedCollections(COLS);
+  COLS.forEach(c => { if (cache[c]) S[c] = cache[c]; });
+  tocarDatos();
   if (PRIORITY_COLS.every(c => S[c].length)) S.ready = true;
   render();
   await flushQueue();
@@ -54,12 +58,39 @@ export async function start() {
   Promise.all(resto.map(load)).then(() => { render(); generarGastosRecurrentes(); });
   if (!S.chan) {
     S.chan = sb.channel('flota');
-    const timers = {};
-    COLS.forEach(c => S.chan.on('postgres_changes', { event: '*', schema: 'public', table: c }, () => {
-      clearTimeout(timers[c]); timers[c] = setTimeout(async () => { await load(c); render(); }, 300);
+    // Los cambios en vivo se juntan unos milisegundos y se aplican directo,
+    // sin volver a descargar la tabla entera (salvo que el aviso venga incompleto).
+    const cola = {}; let timer = null;
+    const procesar = async () => {
+      timer = null;
+      const lotes = Object.assign({}, cola); Object.keys(cola).forEach(k => delete cola[k]);
+      let redibujar = false;
+      for (const c of Object.keys(lotes)) {
+        const r = aplicarCambios(c, lotes[c]);
+        if (r === 'recargar') { await load(c); redibujar = true; } else if (r) redibujar = true;
+      }
+      if (redibujar && S.chan) render();
+    };
+    COLS.forEach(c => S.chan.on('postgres_changes', { event: '*', schema: 'public', table: c }, payload => {
+      (cola[c] = cola[c] || []).push(payload);
+      if (!timer) timer = setTimeout(procesar, 250);
     }));
     S.chan.subscribe();
   }
+  vigilarVuelta();
+}
+/* Con el celular bloqueado se pueden perder avisos en vivo: si la app estuvo
+   más de 2 minutos en segundo plano, al volver se actualiza todo por detrás. */
+let vigilando = false, ocultaDesde = 0;
+function vigilarVuelta() {
+  if (vigilando) return;
+  vigilando = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { ocultaDesde = Date.now(); return; }
+    if (!ocultaDesde || Date.now() - ocultaDesde < 120000 || !S.user || !S.ready || !navigator.onLine) return;
+    ocultaDesde = 0;
+    flushQueue().then(() => Promise.all(COLS.map(load))).then(() => render());
+  });
 }
 export function stop() {
   if (S.chan) { try { sb.removeChannel(S.chan); } catch (e) {} S.chan = null; }

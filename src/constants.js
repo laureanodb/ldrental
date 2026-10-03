@@ -4,6 +4,9 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-10-03', items: [
+    'La app es mucho más rápida: las pantallas se dibujan entre 4 y 10 veces más rápido, los cambios de otros celulares llegan al instante sin volver a bajar todo, los datos se descargan en paralelo y la copia guardada en el celular tiene mucho más espacio. El portal del chofer abre casi al instante porque ya no baja la app completa.',
+  ] },
   { v: '2026-10-02', items: [
     'Autos: sección "Llaves" arriba en la ficha para tildar si tiene la segunda llave, cuántas copias hay y dónde están. En la lista se marca "Sin 2ª llave" y hay un filtro para ver solo esos autos.',
   ] },

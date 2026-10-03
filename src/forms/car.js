@@ -12,6 +12,7 @@ import { settings, featureOculta } from '../settings.js';
 import { leerDocumento, archivoADataUrl } from '../ia.js';
 import { tarjetaFirmaRemota } from '../contrato.js';
 import { cotizacion, enPesos, textoCotizacion } from '../dolar.js';
+import { de } from '../memo.js';
 
 const gastoCatLabel = k => (GASTO_CATS.find(x => x[0] === k) || [0, 'Gasto'])[1];
 const unidadLabel = k => (STOCK_UNIDADES.find(x => x[0] === k) || [0, 'Unidad'])[1];
@@ -44,13 +45,13 @@ export function ayudaSeguroPaga(v) {
 async function pasarSeguroDelMesAlChofer(c) {
   if (!c.choferId) return;
   const desde = iso(today()).slice(0, 8) + '01';
-  for (const g of S.gastos.filter(x => x.carId === c.id && x.categoria === 'seguro' && !x.recuperaDe && (x.fecha || '') >= desde)) {
+  for (const g of de('gastos', 'carId', c.id).filter(x => x.carId === c.id && x.categoria === 'seguro' && !x.recuperaDe && (x.fecha || '') >= desde)) {
     await save('gastos', Object.assign({}, g, { recuperaDe: c.choferId }));
   }
 }
 function tarjetaSeguroRecupera(c) {
   const mes = iso(today()).slice(0, 7);
-  const delMes = S.gastos.filter(g => g.carId === c.id && g.categoria === 'seguro' && g.recuperaDe && (g.fecha || '').slice(0, 7) === mes);
+  const delMes = de('gastos', 'carId', c.id).filter(g => g.carId === c.id && g.categoria === 'seguro' && g.recuperaDe && (g.fecha || '').slice(0, 7) === mes);
   const pend = c.choferId ? seguroPendiente(c.choferId) : 0;
   const desde = c.choferId ? seguroPendienteDesde(c.choferId) : null;
   return '<div class="sec-t">Seguro a cobrar al chofer</div><div class="card">' +
@@ -81,7 +82,7 @@ function seguroDocsHtml(c) {
 }
 export function renderSeguroDocs(carId) {
   const el = document.getElementById('segDocs');
-  const c = S.cars.find(x => x.id === carId);
+  const c = de('cars', 'id', carId)[0];
   if (el && c) el.innerHTML = seguroDocsHtml(c);
 }
 export async function subirDocSeguro(carId, cat) {
@@ -92,8 +93,8 @@ export async function subirDocSeguro(carId, cat) {
 export function costoSeguroUltimoAnio(c) {
   const desde = new Date(today()); desde.setFullYear(desde.getFullYear() - 1);
   const d = iso(desde);
-  const pagado = S.gastos.filter(g => g.carId === c.id && g.categoria === 'seguro' && g.fecha >= d).reduce((a, g) => a + (+g.costo || 0), 0);
-  const recuperado = S.payments.filter(p => p.carId === c.id && p.tipo === 'seguro' && p.fecha >= d).reduce((a, p) => a + (+p.monto || 0), 0);
+  const pagado = de('gastos', 'carId', c.id).filter(g => g.carId === c.id && g.categoria === 'seguro' && g.fecha >= d).reduce((a, g) => a + (+g.costo || 0), 0);
+  const recuperado = de('payments', 'carId', c.id).filter(p => p.carId === c.id && p.tipo === 'seguro' && p.fecha >= d).reduce((a, p) => a + (+p.monto || 0), 0);
   return { pagado, recuperado };
 }
 function renovacionSeguroHtml(c) {
@@ -130,7 +131,7 @@ function renovacionSeguroHtml(c) {
   return h + '</div>';
 }
 function renderRenovacionSeguro(carId) {
-  const el = document.getElementById('segRenov'); const c = S.cars.find(x => x.id === carId);
+  const el = document.getElementById('segRenov'); const c = de('cars', 'id', carId)[0];
   if (el && c) el.innerHTML = renovacionSeguroHtml(c);
 }
 export async function leerCotizacionSeguro() {
@@ -152,7 +153,7 @@ export async function leerCotizacionSeguro() {
   st.style.color = 'var(--ok)'; st.textContent = '✓ Completé lo que leí. Revisá y tocá "Agregar cotización".' + (d.observaciones ? ' ⚠ ' + d.observaciones : '');
 }
 export async function agregarCotizacionSeguro(carId) {
-  const c = S.cars.find(x => x.id === carId); if (!c) return;
+  const c = de('cars', 'id', carId)[0]; if (!c) return;
   const monto = +val('cq_monto');
   if (!monto || monto <= 0) { toast('Poné el monto por mes de la cotización'); return; }
   const q = { id: uid(), aseguradora: val('cq_aseguradora').trim(), montoMensual: monto, cobertura: val('cq_cobertura'), franquicia: +val('cq_franquicia') || 0, nota: val('cq_nota').trim(), fecha: iso(today()) };
@@ -160,13 +161,13 @@ export async function agregarCotizacionSeguro(carId) {
   renderRenovacionSeguro(carId); toast('Cotización agregada');
 }
 export async function quitarCotizacionSeguro(carId, qid) {
-  const c = S.cars.find(x => x.id === carId); if (!c) return;
+  const c = de('cars', 'id', carId)[0]; if (!c) return;
   if (!(await save('cars', Object.assign({}, c, { cotizacionesSeguro: (c.cotizacionesSeguro || []).filter(q => q.id !== qid) })))) return;
   renderRenovacionSeguro(carId);
 }
 // Pasa los datos de la cotización a la ficha abierta; el usuario pone el nuevo vencimiento y guarda.
 export async function elegirCotizacionSeguro(carId, qid) {
-  const c = S.cars.find(x => x.id === carId); const q = c && (c.cotizacionesSeguro || []).find(x => x.id === qid); if (!q) return;
+  const c = de('cars', 'id', carId)[0]; const q = c && (c.cotizacionesSeguro || []).find(x => x.id === qid); if (!q) return;
   const poner = (id, v) => { const el = document.getElementById(id); if (!el || el.disabled || v === '' || v == null) return; el.value = v; el.dispatchEvent(new Event('change')); el.style.outline = '2px solid var(--ok)'; };
   const aseg = aseguradoraDeLista(q.aseguradora);
   if (aseg) { poner('c_aseguradora', aseg); if (aseg === 'Otro') poner('c_aseguradoraOtro', q.aseguradora); }
@@ -194,7 +195,7 @@ export async function completarSeguroConIA(carId, path) {
   const j = await leerDocumento('poliza', { path });
   if (!st()) return;
   if (!j.ok) { msg('No se pudo leer con IA: ' + esc(j.error) + '.', 'var(--bad)'); return; }
-  const d = j.datos, c = S.cars.find(x => x.id === carId) || {};
+  const d = j.datos, c = de('cars', 'id', carId)[0] || {};
   const cambios = [], avisos = [];
   const poner = (id, valor, etiqueta, mostrar) => {
     const el = document.getElementById(id);
@@ -222,8 +223,8 @@ export async function completarSeguroConIA(carId, path) {
   msg('✓ Completé con IA (marcado en verde): ' + esc(cambios.join(' · ')) + '. Revisá y tocá <b>Guardar</b>.' + av, 'var(--ok)');
 }
 export function corregirSeguroForm(gastoId) {
-  const g = S.gastos.find(x => x.id === gastoId); if (!g) return;
-  const c = S.cars.find(x => x.id === g.carId);
+  const g = de('gastos', 'id', gastoId)[0]; if (!g) return;
+  const c = de('cars', 'id', g.carId)[0];
   openModal('<h3>Seguro de ' + esc(c ? c.patente : 'auto') + '</h3>' +
     '<div class="small muted" style="margin-bottom:10px">Poné lo que te cobró la aseguradora este mes. Es lo que se le cobra al chofer.</div>' +
     '<label class="f"><span>Monto del mes</span><input id="cs_monto" inputmode="decimal" value="' + esc(g.costo || '') + '"></label>' +
@@ -231,11 +232,11 @@ export function corregirSeguroForm(gastoId) {
     '<div class="row" style="margin-top:14px"><button class="btn grow" onclick="guardarCorreccionSeguro(\'' + g.id + '\')">Guardar</button><button class="btn sec" onclick="carForm(\'' + g.carId + '\')">Cancelar</button></div>');
 }
 export async function guardarCorreccionSeguro(gastoId) {
-  const g = S.gastos.find(x => x.id === gastoId); if (!g) return;
+  const g = de('gastos', 'id', gastoId)[0]; if (!g) return;
   const monto = +val('cs_monto') || 0;
   if (!monto) { toast('Poné el monto'); return; }
   if (!(await save('gastos', Object.assign({}, g, { costo: monto })))) return;
-  const c = S.cars.find(x => x.id === g.carId);
+  const c = de('cars', 'id', g.carId)[0];
   if (c && document.getElementById('cs_default').checked) await save('cars', Object.assign({}, c, { seguroMensual: monto }));
   toast('Seguro corregido'); carForm(g.carId); setTabAuto('seguro');
 }
@@ -253,7 +254,7 @@ function semanasCorridas(c) {
   return d < 0 ? 0 : Math.floor(d / 7) + 1;
 }
 export function valorSemanalForm(carId, volver) {
-  const c = S.cars.find(x => x.id === carId); if (!c) return;
+  const c = de('cars', 'id', carId)[0]; if (!c) return;
   const alq = c.tipo === 'alquiler';
   const semanas = semanasCorridas(c);
   openModal('<h3>Valor semanal — ' + esc(c.patente) + '</h3>' +
@@ -270,7 +271,7 @@ export function volverDeValorSemanal(carId, volver) {
   if (volver === 'auto') carForm(carId); else window.driverForm(volver);
 }
 export async function guardarValorSemanal(carId, volver) {
-  const c = S.cars.find(x => x.id === carId); if (!c) return;
+  const c = de('cars', 'id', carId)[0]; if (!c) return;
   const nuevo = +val('vs_monto') || 0;
   if (!nuevo) { toast('Cargá el valor semanal'); return; }
   let o;
@@ -321,7 +322,7 @@ function tabpanel(tab, visible, content) {
 }
 
 export function carForm(id) {
-  const ex = S.cars.find(x => x.id === id);
+  const ex = de('cars', 'id', id)[0];
   const c = ex || { tipo: 'disponible', inicio: iso(today()) };
   let h = '<h3>' + (ex ? 'Auto ' + esc(c.patente) : 'Nuevo auto') + '</h3>';
   if (ex && c.vendido) h += '<div class="card" style="margin-bottom:10px"><span class="badge b-mute">Vendido</span></div>';
@@ -511,7 +512,7 @@ export function carForm(id) {
   (ex && isContract(c) && c.tipo !== 'financiado' && c.inicio && c.monto ? '<button type="button" class="btn sec sm" style="margin:-4px 0 12px" onclick="sugerirAjusteInflacion(\'' + c.id + '\')">Sugerir ajuste por inflación</button>' : '') +
   '<div class="small muted" style="margin:-4px 0 12px">Si cambia el chofer o pasa de alquiler a financiación, poné la fecha nueva de inicio. La deuda se cuenta desde ahí.</div></div>';
   if (ex) {
-    const P = S.payments.filter(p => p.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5);
+    const P = de('payments', 'carId', c.id).filter(p => p.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5);
     if (P.length) contrato += '<div class="sec-t">Últimos cobros</div>' + P.map(p => '<div class="row between small"><span class="muted">' + fdate(p.fecha) + '</span><span>' + (p.tipo === 'cuota' ? moneyUSD(p.monto) : money(p.monto)) + '</span></div>').join('');
   }
 
@@ -520,7 +521,7 @@ export function carForm(id) {
     /* ---- Mantenimiento ---- */
     const diasTaller = diasEnTaller(c);
     const plan = (c.mantenimientoPlan || []).filter(p => p.intervaloKm || p.intervaloMeses);
-    const MH = S.mantenimientos.filter(m => m.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
+    const MH = de('mantenimientos', 'carId', c.id).filter(m => m.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     const totalMant = MH.reduce((a, m) => a + (+m.costo || 0), 0);
     const FT = fichaTecnica(c);
     if (FT.length) {
@@ -531,7 +532,7 @@ export function carForm(id) {
     mant += '<div class="sec-t row between">Mantenimiento<span class="small muted">' + money(totalMant) + ' en total' + (diasTaller ? ' · ' + diasTaller + ' días parado' : '') + '</span></div>';
     if (c.tipo === 'taller') {
       if (c.reemplazoTemporalActivo) {
-        const temp = S.cars.find(x => x.id === c.reemplazoTemporalCarId);
+        const temp = de('cars', 'id', c.reemplazoTemporalCarId)[0];
         mant += '<div class="card" style="margin-bottom:10px"><div class="small muted">Reemplazo temporal activo</div><div>' + esc(driverName(c.reemplazoTemporalChoferId)) + ' está manejando ' + (temp ? esc(temp.patente) : 'un auto') + '</div>' +
         '<button class="btn sec block" style="margin-top:8px" onclick="finalizarReemplazoTemporal(\'' + c.id + '\');carForm(\'' + c.id + '\')">Finalizar reemplazo temporal</button></div>';
       } else if (c.choferId) {
@@ -576,18 +577,18 @@ export function carForm(id) {
     }
 
     /* ---- Gastos (incluye multas y siniestros) ---- */
-    const G = S.gastos.filter(g => g.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
+    const G = de('gastos', 'carId', c.id).filter(g => g.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     const totalGastos = G.reduce((a, g) => a + (+g.costo || 0), 0);
     gastos += '<div class="sec-t row between">Gastos<span class="small muted">' + money(totalGastos) + ' en total</span></div>';
     if (G.length) gastos += G.map(g => '<div class="card row"><div class="grow tap" onclick="' + (g.reclamoSeguro ? "reclamoSeguroForm('" + g.id + "')" : '') + '"><div>' + money(g.costo) + ' <span class="small muted">' + esc(gastoCatLabel(g.categoria)) + (g.sinFactura ? ' · sin factura' : '') + '</span></div><div class="small muted">' + fdate(g.fecha) + (g.proveedor ? ' · ' + esc(g.proveedor) : '') + (g.descripcion ? ' · ' + esc(g.descripcion) : '') + (g.files || []).filter(f => f.cat === 'factura').map(f => ' · <a class="tap" style="text-decoration:underline" onclick="event.stopPropagation();viewFile(\'' + esc(f.id) + '\',\'' + esc(f.name || 'factura') + '\')">ver factura</a>').join('') + '</div>' + (g.reclamoSeguro ? badge(g.reclamoEstado === 'aprobado' ? 'ok' : g.reclamoEstado === 'rechazado' ? 'bad' : 'warn', 'Seguro: ' + (RECLAMO_SEGURO_ESTADOS.find(x => x[0] === g.reclamoEstado) || [0, g.reclamoEstado])[1]) : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="event.stopPropagation();confirmDel(this,()=>delGasto(\'' + g.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     gastos += '<button class="btn sec block" style="margin:8px 0 20px" onclick="gastoForm(\'' + c.id + '\')">+ Agregar gasto</button>';
-    const MU = S.multas.filter(m => m.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
+    const MU = de('multas', 'carId', c.id).filter(m => m.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     const estLabel = e => (MULTA_ESTADOS.find(x => x[0] === e) || [0, e])[1];
     gastos += '<div class="sec-t">Multas</div>';
     if (MU.length) gastos += MU.map(m => '<div class="card row tap" onclick="multaForm(\'' + c.id + '\',\'' + m.id + '\')"><div class="grow"><div>' + money(m.monto) + ' <span class="small muted">' + fdate(m.fecha) + '</span></div><div class="small muted">' + esc(m.choferId ? driverName(m.choferId) : 'Sin asignar') + '</div></div>' + badge(estadoMultaCls(m.estado), estLabel(m.estado)) + (canDelete() ? '<button class="btn danger sm" onclick="event.stopPropagation();confirmDel(this,()=>delMulta(\'' + m.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     else gastos += '<div class="small muted" style="margin-bottom:8px">Sin multas registradas.</div>';
     gastos += '<button class="btn sec block" style="margin:8px 0 20px" onclick="multaForm(\'' + c.id + '\')">+ Registrar multa</button>';
-    const SI = S.siniestros.filter(x => x.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
+    const SI = de('siniestros', 'carId', c.id).filter(x => x.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     const estSinLabel = e => (SINIESTRO_ESTADOS.find(x => x[0] === e) || [0, e])[1];
     const tipoSinLabel = t => (TIPOS_SINIESTRO.find(x => x[0] === t) || [0, t])[1];
     gastos += '<div class="sec-t">Siniestros</div>';
@@ -612,7 +613,7 @@ export function carForm(id) {
       hist += '<div class="sec-t" style="margin-top:0">Línea de tiempo</div><div class="card">' +
       LT.map(x => '<div class="row between small" style="padding:3px 0"><span>' + esc(x.texto) + '</span><span class="muted">' + fdate(x.fecha) + '</span></div>').join('') + '</div>';
     }
-    const I = S.inspecciones.filter(x => x.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
+    const I = de('inspecciones', 'carId', c.id).filter(x => x.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     hist += '<div class="sec-t">Inspecciones de entrega/recepción</div>';
     if (I.length) hist += I.map(x => '<div class="card row"><div class="grow"><div>' + (x.tipo === 'entrega' ? 'Entrega' : 'Recepción') + ' <span class="small muted">' + fdate(x.fecha) + (x.km ? ' · ' + x.km + ' km' : '') + (x.firma ? ' · firmado' : '') + (x.fotos && Object.keys(x.fotos).length ? ' · ' + Object.keys(x.fotos).length + ' fotos' : '') + '</span></div>' + (x.notas ? '<div class="small muted">' + esc(x.notas) + '</div>' : '') +
       (x.fotos && Object.keys(x.fotos).length ? '<button class="btn sec sm" style="margin-top:4px" onclick="compararInspeccion(\'' + x.id + '\')">' + (x.tipo === 'recepcion' ? 'Comparar con la entrega' : 'Ver fotos') + '</button>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delInspeccion(\'' + x.id + '\'))">Borrar</button>' : '') + '</div>').join('');
@@ -621,7 +622,7 @@ export function carForm(id) {
     hist += '<button class="btn sec block" style="margin-bottom:20px" onclick="traspasoForm(\'' + c.id + '\')">Traspaso (cambiar chofer con checklist)</button>';
     const H = (c.historialChoferes || []).slice().sort((a, b) => b.desde.localeCompare(a.desde));
     if (H.length) {
-      const totalHistorico = isAdmin() ? S.payments.filter(p => p.carId === c.id).reduce((a, p) => a + (+p.monto || 0), 0) : null;
+      const totalHistorico = isAdmin() ? de('payments', 'carId', c.id).filter(p => p.carId === c.id).reduce((a, p) => a + (+p.monto || 0), 0) : null;
       hist += '<div class="sec-t row between">Historial de choferes' + (totalHistorico != null ? '<span class="small muted">Total cobrado en este auto: ' + (c.tipo === 'financiado' ? moneyUSD(totalHistorico) : money(totalHistorico)) + '</span>' : '') + '</div>' +
       H.map(x => '<div class="row between small" style="padding:4px 0"><span>' + esc(driverName(x.choferId) || 'Chofer eliminado') + '</span><span class="muted">' + fdate(x.desde) + ' – ' + (x.hasta ? fdate(x.hasta) : 'actual') + '</span></div>').join('');
       if (isAdmin() && c.tipo !== 'financiado') {
@@ -653,8 +654,8 @@ export function carForm(id) {
     accionesRow += '<div class="row" style="margin-top:8px"><button class="btn sec grow" onclick="silenciarAlertasAuto(\'' + c.id + '\')">Silenciar alertas 30 días</button></div>';
   }
   if (ex && canDelete()) {
-    const nPagos = S.payments.filter(p => p.carId === c.id).length;
-    const nOtros = S.gastos.filter(g => g.carId === c.id).length + S.mantenimientos.filter(m => m.carId === c.id).length + S.multas.filter(m => m.carId === c.id).length;
+    const nPagos = de('payments', 'carId', c.id).filter(p => p.carId === c.id).length;
+    const nOtros = de('gastos', 'carId', c.id).filter(g => g.carId === c.id).length + de('mantenimientos', 'carId', c.id).filter(m => m.carId === c.id).length + de('multas', 'carId', c.id).filter(m => m.carId === c.id).length;
     const avisoHist = (nPagos || nOtros) ? '<div class="small muted" style="margin:8px 0 4px">Este auto tiene ' + [nPagos ? nPagos + ' cobro' + (nPagos === 1 ? '' : 's') : '', nOtros ? nOtros + ' registro' + (nOtros === 1 ? '' : 's') + ' de gastos/mantenimiento/multas' : ''].filter(Boolean).join(' y ') + '. Al eliminar el auto se borran los cobros' + (nOtros ? '; el resto queda sin auto asociado' : '') + '.</div>' : '';
     accionesRow += '<div style="margin-top:8px">' + avisoHist + '<button class="btn danger block" onclick="confirmDel(this,()=>delCar(\'' + c.id + '\'))">Eliminar auto</button></div>';
   }
@@ -709,7 +710,7 @@ export async function saveCar(btn, id) {
   const vin = val('c_vin').trim();
   if (vin && S.cars.some(x => x.id !== id && String(x.vin || '').trim().toUpperCase() === vin.toUpperCase())) { toast('Ya existe un auto con ese VIN/chasis'); return; }
   const tipo = val('c_tipo'), con = tipo === 'alquiler' || tipo === 'financiado';
-  const ex = S.cars.find(x => x.id === id);
+  const ex = de('cars', 'id', id)[0];
   const hoy = iso(today());
   const avisos = [];
   if (con && val('c_inicio') && val('c_inicio') > hoy) avisos.push('el inicio del contrato es una fecha futura');
@@ -805,15 +806,15 @@ export async function saveCar(btn, id) {
   closeModal(); toast('Auto guardado');
 }
 export async function toggleFavoritoAuto(id) {
-  const c = S.cars.find(x => x.id === id); if (!c) return;
+  const c = de('cars', 'id', id)[0]; if (!c) return;
   await save('cars', Object.assign({}, c, { favorito: !c.favorito }));
 }
 export async function toggleVendido(id) {
-  const c = S.cars.find(x => x.id === id); if (!c) return;
+  const c = de('cars', 'id', id)[0]; if (!c) return;
   if (await save('cars', Object.assign({}, c, { vendido: !c.vendido }))) { closeModal(); toast(c.vendido ? 'Auto restaurado' : 'Auto marcado como vendido'); }
 }
 export function venderAutoForm(id) {
-  const c = S.cars.find(x => x.id === id); if (!c) return;
+  const c = de('cars', 'id', id)[0]; if (!c) return;
   const h = '<h3>Marcar como vendido — ' + esc(c.patente) + '</h3>' +
   '<label class="f"><span>Precio de venta</span><input id="cv_precio" inputmode="decimal"></label>' +
   '<div class="two"><label class="f"><span>Fecha de venta</span><input id="cv_fecha" type="date" value="' + iso(today()) + '"></label>' +
@@ -822,7 +823,7 @@ export function venderAutoForm(id) {
   openModal(h);
 }
 export async function confirmarVenta(id) {
-  const c = S.cars.find(x => x.id === id); if (!c) return;
+  const c = de('cars', 'id', id)[0]; if (!c) return;
   const precioVenta = +val('cv_precio') || 0;
   const fechaVenta = val('cv_fecha') || iso(today());
   const kmVenta = +val('cv_km') || 0;
@@ -833,7 +834,7 @@ export async function confirmarVenta(id) {
   }
 }
 export function cronogramaCuotasForm(id) {
-  const c = S.cars.find(x => x.id === id); if (!c) return;
+  const c = de('cars', 'id', id)[0]; if (!c) return;
   const cron = cronogramaCuotas(c);
   const cls = { pagada: 'ok', parcial: 'warn', atrasada: 'bad', pendiente: 'mute' };
   const etiqueta = { pagada: 'Paga', parcial: 'Parcial', atrasada: 'Atrasada', pendiente: 'Pendiente' };
@@ -844,12 +845,12 @@ export function cronogramaCuotasForm(id) {
   openModal(h);
 }
 export async function delCar(id) {
-  await purgeFiles(S.cars.find(x => x.id === id));
-  for (const p of S.payments.filter(p => p.carId === id)) await remove('payments', p.id);
+  await purgeFiles(de('cars', 'id', id)[0]);
+  for (const p of de('payments', 'carId', id).filter(p => p.carId === id)) await remove('payments', p.id);
   if (await remove('cars', id)) { closeModal(); toast('Auto eliminado'); }
 }
 export function accesorioForm(carId, idx) {
-  const c = S.cars.find(x => x.id === carId); if (!c) return;
+  const c = de('cars', 'id', carId)[0]; if (!c) return;
   const a = idx != null ? (c.accesorios || [])[idx] : null;
   const h = '<h3>' + (a ? 'Editar accesorio' : 'Nuevo accesorio') + ' — ' + esc(c.patente) + '</h3>' +
   '<label class="f"><span>Nombre</span><input id="ac_nombre" placeholder="GPS, cámara, alarma..." value="' + esc(a ? a.nombre : '') + '"></label>' +
@@ -861,7 +862,7 @@ export function accesorioForm(carId, idx) {
   openModal(h);
 }
 export async function saveAccesorio(carId, idx) {
-  const c = S.cars.find(x => x.id === carId); if (!c) return;
+  const c = de('cars', 'id', carId)[0]; if (!c) return;
   const nombre = val('ac_nombre');
   if (!nombre) { toast('Poné un nombre'); return; }
   const o = { nombre, fecha: val('ac_fecha') || iso(today()), garantiaMeses: +val('ac_garantia') || 0, notas: val('ac_notas') };
@@ -870,12 +871,12 @@ export async function saveAccesorio(carId, idx) {
   if (await save('cars', Object.assign({}, c, { accesorios }))) { toast('Accesorio guardado'); carForm(carId); }
 }
 export async function delAccesorio(carId, idx) {
-  const c = S.cars.find(x => x.id === carId); if (!c) return;
+  const c = de('cars', 'id', carId)[0]; if (!c) return;
   const accesorios = (c.accesorios || []).slice(); accesorios.splice(idx, 1);
   if (await save('cars', Object.assign({}, c, { accesorios }))) { toast('Accesorio eliminado'); carForm(carId); }
 }
 export function qrAutoForm(id) {
-  const c = S.cars.find(x => x.id === id); if (!c) return;
+  const c = de('cars', 'id', id)[0]; if (!c) return;
   const tel = (settings.companyPhone || '').replace(/\D/g, '');
   if (!tel) { toast('Cargá el teléfono de la empresa en Ajustes primero'); return; }
   const msg = 'Reporto un problema con el auto ' + (c.patente || '');
@@ -891,30 +892,30 @@ export function qrAutoForm(id) {
    Nunca retrocede el km ni interrumpe el flujo del formulario que la llama. */
 export async function actualizarKm(carId, km) {
   const k = +km || 0;
-  const c = S.cars.find(x => x.id === carId);
+  const c = de('cars', 'id', carId)[0];
   if (!c || !k || k <= (+c.km || 0)) return;
   const kmHistorial = (c.kmHistorial || []).concat([{ fecha: iso(today()), km: k }]);
   await save('cars', Object.assign({}, c, { km: k, kmHistorial }));
 }
 export async function marcarEnTaller(id) {
-  const c = S.cars.find(x => x.id === id);
+  const c = de('cars', 'id', id)[0];
   if (!c || c.tipo === 'taller') return;
   const historialTaller = actualizarHistorialTaller(c, 'taller');
   await save('cars', Object.assign({}, c, { tipo: 'taller', tipoPrevioTaller: c.tipo, historialTaller }));
 }
 export async function sacarDeTaller(id) {
-  const c = S.cars.find(x => x.id === id);
+  const c = de('cars', 'id', id)[0];
   if (!c || c.tipo !== 'taller') return;
   const nuevoTipo = c.tipoPrevioTaller || 'disponible';
   const historialTaller = actualizarHistorialTaller(c, nuevoTipo);
   if (c.reemplazoTemporalActivo) {
-    const temp = S.cars.find(x => x.id === c.reemplazoTemporalCarId);
+    const temp = de('cars', 'id', c.reemplazoTemporalCarId)[0];
     if (temp) await save('cars', Object.assign({}, temp, { tipo: 'disponible', choferId: '', esReemplazoTemporalDe: '' }));
   }
   if (await save('cars', Object.assign({}, c, { tipo: nuevoTipo, tipoPrevioTaller: '', historialTaller, reemplazoTemporalActivo: false, reemplazoTemporalCarId: '', reemplazoTemporalChoferId: '', reemplazoTemporalDesde: '' }))) { closeModal(); toast('Auto sacado de taller'); }
 }
 export function simularAumentoForm(id) {
-  const c = S.cars.find(x => x.id === id); if (!c) return;
+  const c = de('cars', 'id', id)[0]; if (!c) return;
   const h = '<h3>Simular aumento — ' + esc(c.patente) + '</h3>' +
   '<div class="small muted" style="margin-bottom:10px">Monto actual: ' + money(c.monto || 0) + ' por semana.</div>' +
   '<div class="two"><label class="f"><span>Monto nuevo</span><input id="sa_nuevo" inputmode="decimal" value="' + (c.monto || 0) + '" oninput="calcularSimulacionAumento(\'' + c.id + '\')"></label>' +
@@ -925,7 +926,7 @@ export function simularAumentoForm(id) {
   calcularSimulacionAumento(id);
 }
 export function calcularSimulacionAumento(id) {
-  const c = S.cars.find(x => x.id === id); if (!c) return;
+  const c = de('cars', 'id', id)[0]; if (!c) return;
   const el = document.getElementById('sa_resultado'); if (!el) return;
   const actual = +c.monto || 0;
   const nuevo = +val('sa_nuevo') || 0;
@@ -938,7 +939,7 @@ export function calcularSimulacionAumento(id) {
   (actual ? '<div class="small muted" style="margin-top:6px">Eso es un ' + (dif >= 0 ? '+' : '') + Math.round(dif / actual * 100) + '% respecto del monto actual.</div>' : '');
 }
 export async function sugerirAjusteInflacion(id) {
-  const c = S.cars.find(x => x.id === id);
+  const c = de('cars', 'id', id)[0];
   if (!c || !c.inicio || !c.monto) return;
   toast('Consultando índice de inflación…');
   try {

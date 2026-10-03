@@ -6,6 +6,7 @@ import { GASTO_CATS, CANALES_PROSPECTO, MOTIVOS_REEMPLAZO } from '../constants.j
 import { saldoAutoseguro } from '../autoseguro.js';
 import { settings, saveSettings } from '../settings.js';
 import { modoConsultaActivo } from '../consulta.js';
+import { de } from '../memo.js';
 
 function cobrosPorMes(n) {
   const t = today();
@@ -219,7 +220,7 @@ function seccionReclamosSeguro() {
   if (!G.length) return '';
   const cls = e => e === 'presentado' ? 'info' : 'warn';
   return '<h2>Reclamos al seguro pendientes</h2>' + G.map(g => {
-    const c = S.cars.find(x => x.id === g.carId);
+    const c = de('cars', 'id', g.carId)[0];
     return '<div class="card row tap" onclick="reclamoSeguroForm(\'' + g.id + '\')"><div class="grow"><div>' + money(g.costo) + ' <span class="small muted">' + (c ? plate(c.patente) : '') + '</span></div><div class="small muted">' + fdate(g.fecha) + (g.descripcion ? ' · ' + esc(g.descripcion) : '') + '</div></div>' + badge(cls(g.reclamoEstado), g.reclamoEstado === 'presentado' ? 'Presentado' : 'Pendiente') + '</div>';
   }).join('');
 }

@@ -2,6 +2,7 @@ import { S, ui } from '../state.js';
 import { esc, money, moneyUSD } from '../utils.js';
 import { isContract, calc, vs, driverName, plate, tipoBadge, badge, peorItemMantenimiento, estadoGeneralAuto } from '../calc.js';
 import { VENC, MOTIVOS_REEMPLAZO, TIPOS, CUMPLIMIENTO_NORMATIVO_ITEMS } from '../constants.js';
+import { de } from '../memo.js';
 
 export function viewAutos() {
   const nVendidos = S.cars.filter(c => c.vendido).length;
@@ -41,7 +42,7 @@ export function listAutos() {
     if (serv) b += ' ' + badge(serv.cls, serv.t);
     if (!c.vendido && !c.llaveDuplicada) b += ' ' + badge('warn', 'Sin 2ª llave');
     if (c.aReemplazar) b += ' ' + badge('warn', 'A reemplazar: ' + (MOTIVOS_REEMPLAZO.find(x => x[0] === c.motivoReemplazo) || [0, 'motivo'])[1]);
-    if (!c.vendido && S.siniestros.some(s => s.carId === c.id && s.estado !== 'cerrado')) b += ' ' + badge('bad', 'Siniestro abierto');
+    if (!c.vendido && de('siniestros', 'carId', c.id).some(s => s.carId === c.id && s.estado !== 'cerrado')) b += ' ' + badge('bad', 'Siniestro abierto');
     if (c.files && c.files.length) b += ' ' + badge('mute', c.files.length + (c.files.length === 1 ? ' archivo' : ' archivos'));
     if (!c.vendido) {
       const gotCn = CUMPLIMIENTO_NORMATIVO_ITEMS.filter(x => c.cumplimientoNormativo && c.cumplimientoNormativo[x[0]]).length;

@@ -7,6 +7,7 @@ import { esc, money, fdate, iso, today, uid } from './utils.js';
 import { settings } from './settings.js';
 import { toast, openModal } from './modal.js';
 import { save } from './data.js';
+import { de } from './memo.js';
 
 const PLANTILLAS = [
   ['intimacion_pago', 'Intimación de pago', d => 'Por medio de la presente, se intima a Ud. a regularizar en el plazo de 48 (cuarenta y ocho) horas la deuda que mantiene por el uso del vehículo asignado, la cual asciende a ' + money(driverDebt(d.id)) + ' a la fecha. Vencido dicho plazo sin que se verifique el pago, se procederá conforme a las cláusulas del contrato suscripto, incluyendo la eventual recuperación del vehículo y las acciones legales que correspondan.'],
@@ -23,7 +24,7 @@ function textoBase(tipo, d) {
 }
 
 export function plantillaForm(driverId) {
-  const d = S.drivers.find(x => x.id === driverId);
+  const d = de('drivers', 'id', driverId)[0];
   if (!d) { toast('Chofer no encontrado'); return; }
   const tipoInicial = PLANTILLAS[0][0];
   const h = '<h3>Carta documento — ' + esc(d.nombre) + '</h3>' +
@@ -36,7 +37,7 @@ export function plantillaForm(driverId) {
   openModal(h);
 }
 export function onPlantillaTipo(driverId) {
-  const d = S.drivers.find(x => x.id === driverId);
+  const d = de('drivers', 'id', driverId)[0];
   const tipoSel = document.getElementById('pl_tipo');
   const textoEl = document.getElementById('pl_texto');
   if (!d || !tipoSel || !textoEl) return;
@@ -44,7 +45,7 @@ export function onPlantillaTipo(driverId) {
 }
 
 export async function generarPlantilla(driverId) {
-  const d = S.drivers.find(x => x.id === driverId);
+  const d = de('drivers', 'id', driverId)[0];
   if (!d) { toast('Chofer no encontrado'); return; }
   const tipoSel = document.getElementById('pl_tipo');
   const textoEl = document.getElementById('pl_texto');
@@ -94,7 +95,7 @@ function seccionCartas(d) {
 }
 export async function marcarCartaEnviada(driverId, cartaId, medio) {
   if (!medio) return;
-  const d = S.drivers.find(x => x.id === driverId); if (!d) return;
+  const d = de('drivers', 'id', driverId)[0]; if (!d) return;
   const cartasHistorial = (d.cartasHistorial || []).map(c => c.id === cartaId ? Object.assign({}, c, { enviada: true, medio }) : c);
   if (await save('drivers', Object.assign({}, d, { cartasHistorial }))) { toast('Marcada como enviada'); plantillaForm(driverId); }
 }

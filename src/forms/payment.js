@@ -8,6 +8,7 @@ import { actualizarKm } from './car.js';
 import { leerDocumento } from '../ia.js';
 import { cotizacion, textoCotizacion } from '../dolar.js';
 import { subirArchivoSuelto } from '../files.js';
+import { de } from '../memo.js';
 
 // Comprobante que se adjunta al próximo cobro guardado: el que subió el chofer
 // desde el portal (trae driverId) o una foto/PDF que se sube desde el formulario.
@@ -181,7 +182,7 @@ export async function savePay(btn) {
   if (!(await save('payments', o))) return;
   comprobantePortal = null; comprobanteRef = '';
   if (comp && comp.driverId) {
-    const dr = S.drivers.find(x => x.id === comp.driverId);
+    const dr = de('drivers', 'id', comp.driverId)[0];
     if (dr) await save('drivers', Object.assign({}, dr, { comprobantesPortal: (dr.comprobantesPortal || []).map(x => x.id === comp.id ? Object.assign({}, x, { revisado: true, pagoId: o.id }) : x) }));
   }
   if (excedente > 0) {
@@ -190,7 +191,7 @@ export async function savePay(btn) {
   if (km) await actualizarKm(c.id, km);
   const mon2 = c.tipo === 'financiado' ? moneyUSD : money;
   const msgOk = excedente > 0 ? 'Cobro registrado y ' + mon2(excedente) + ' quedaron como semana adelantada' : 'Cobro registrado';
-  const d = S.drivers.find(x => x.id === c.choferId);
+  const d = de('drivers', 'id', c.choferId)[0];
   if (d && d.tel) {
     const wa = 'https://wa.me/' + d.tel.replace(/\D/g, '') + '?text=' + encodeURIComponent('Hola ' + (d.nombre || '').split(' ')[0] + ', te confirmamos que registramos tu pago de ' + mon2(montoPago) + ' del ' + val('p_fecha') + '. ¡Gracias!');
     openModal('<h3>Cobro registrado</h3><div class="small muted" style="margin-bottom:14px">' + esc(msgOk) + '.</div>' +
@@ -201,7 +202,7 @@ export async function savePay(btn) {
   }
 }
 export function cobrarComprobantePortal(driverId, compId) {
-  const d = S.drivers.find(x => x.id === driverId);
+  const d = de('drivers', 'id', driverId)[0];
   const comp = d && (d.comprobantesPortal || []).find(x => x.id === compId);
   if (!comp) { toast('No se encontró el comprobante'); return; }
   const carId = comp.carId || (S.cars.find(c => c.choferId === driverId && isContract(c)) || {}).id;
@@ -209,6 +210,6 @@ export function cobrarComprobantePortal(driverId, compId) {
 }
 export async function delPay(id) { if (await remove('payments', id)) toast('Cobro borrado'); }
 export async function toggleDepositado(id) {
-  const p = S.payments.find(x => x.id === id); if (!p) return;
+  const p = de('payments', 'id', id)[0]; if (!p) return;
   await save('payments', Object.assign({}, p, { depositado: !p.depositado }));
 }

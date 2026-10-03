@@ -6,6 +6,7 @@ import { settings } from './settings.js';
 import { toast, openModal } from './modal.js';
 import { TIPOS } from './constants.js';
 import { save } from './data.js';
+import { de } from './memo.js';
 
 let renovando = false;
 
@@ -29,7 +30,7 @@ export async function generarConstanciaCesion(carId) {
   const c = carById(carId);
   if (!c) { toast('Auto no encontrado'); return; }
   if (!c.choferId) { toast('Asigná un chofer al auto antes de generar la constancia'); return; }
-  const d = S.drivers.find(x => x.id === c.choferId);
+  const d = de('drivers', 'id', c.choferId)[0];
   if (!d) { toast('Chofer no encontrado'); return; }
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -62,7 +63,7 @@ function contratoFormInterno(carId) {
   const c = carById(carId);
   if (!c) { toast('Auto no encontrado'); return; }
   if (!c.choferId) { toast('Asigná un chofer al auto antes de generar el contrato'); return; }
-  const d = S.drivers.find(x => x.id === c.choferId);
+  const d = de('drivers', 'id', c.choferId)[0];
   if (!d) { toast('Chofer no encontrado'); return; }
   const mon = c.tipo === 'financiado' ? moneyUSD : money;
   const h = '<h3>' + (renovando ? 'Renovar contrato — ' : 'Contrato — ') + esc(c.patente) + '</h3>' +
@@ -164,7 +165,7 @@ async function pdfContrato(titulo, parrafos, fecha, firmaData, pie) {
 async function construirContrato(carId) {
   const c = carById(carId);
   if (!c || !c.choferId) { toast('Auto no encontrado'); return null; }
-  const d = S.drivers.find(x => x.id === c.choferId);
+  const d = de('drivers', 'id', c.choferId)[0];
   if (!d) { toast('Chofer no encontrado'); return null; }
   const cv = document.getElementById('ct_firma');
   if (!cv || !firmaTrazada) { toast('Falta la firma del chofer'); return null; }
@@ -214,7 +215,7 @@ function linkPortal(d) {
 }
 export async function mandarContratoAFirmar(carId) {
   const c = carById(carId); if (!c || !c.choferId) { toast('Asigná un chofer al auto primero'); return; }
-  const d = S.drivers.find(x => x.id === c.choferId); if (!d) { toast('Chofer no encontrado'); return; }
+  const d = de('drivers', 'id', c.choferId)[0]; if (!d) { toast('Chofer no encontrado'); return; }
   if (!d.portalToken) { toast('Primero generá el link del portal en la ficha del chofer (solapa Datos)'); return; }
   const t = textoContrato(c, d);
   const firmaRemota = { id: uid(), estado: 'pendiente', creado: new Date().toISOString(), choferId: d.id, titulo: t.titulo, parrafos: t.parrafos, renovacion: renovando, tipo: c.tipo, monto: +c.monto || 0, cuotas: c.cuotas || null, total: c.total || null };
@@ -223,7 +224,7 @@ export async function mandarContratoAFirmar(carId) {
   avisoFirmaRemota(carId);
 }
 export function avisoFirmaRemota(carId) {
-  const c = carById(carId); const d = c && S.drivers.find(x => x.id === c.choferId); if (!d) return;
+  const c = carById(carId); const d = c && de('drivers', 'id', c.choferId)[0]; if (!d) return;
   const url = linkPortal(d);
   const msg = 'Hola ' + (d.nombre || '').split(' ')[0] + ', te mandé el contrato del auto ' + c.patente + ' para que lo leas y lo firmes desde tu portal: ' + url;
   openModal('<h3>Contrato enviado a firmar</h3>' +
@@ -233,7 +234,7 @@ export function avisoFirmaRemota(carId) {
     '<button class="btn sec block" onclick="carForm(\'' + c.id + '\');setTabAuto(\'contrato\')">Volver al auto</button>');
 }
 export async function copiarLinkFirma(carId) {
-  const c = carById(carId); const d = c && S.drivers.find(x => x.id === c.choferId); if (!d) return;
+  const c = carById(carId); const d = c && de('drivers', 'id', c.choferId)[0]; if (!d) return;
   try { await navigator.clipboard.writeText(linkPortal(d)); toast('Link copiado'); } catch (e) { toast('No se pudo copiar: ' + linkPortal(d)); }
 }
 export async function cancelarFirmaRemota(carId) {

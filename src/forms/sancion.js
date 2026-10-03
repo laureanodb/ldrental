@@ -3,9 +3,10 @@ import { S } from '../state.js';
 import { openModal, closeModal, toast } from '../modal.js';
 import { save, remove } from '../data.js';
 import { driverForm } from './driver.js';
+import { de } from '../memo.js';
 
 export function sancionForm(driverId) {
-  const d = S.drivers.find(x => x.id === driverId);
+  const d = de('drivers', 'id', driverId)[0];
   if (!d) { toast('Chofer no encontrado'); return; }
   const h = '<h3>Nueva sanción — ' + esc(d.nombre) + '</h3>' +
   '<label class="f"><span>Fecha</span><input id="s_fecha" type="date" value="' + iso(today()) + '"></label>' +
@@ -20,6 +21,6 @@ export async function saveSancion(driverId) {
   if (await save('sanciones', o)) { closeModal(); toast('Sanción registrada'); }
 }
 export async function delSancion(id) {
-  const s = S.sanciones.find(x => x.id === id);
+  const s = de('sanciones', 'id', id)[0];
   if (await remove('sanciones', id)) { toast('Sanción borrada'); if (s) driverForm(s.driverId); }
 }

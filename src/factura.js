@@ -4,6 +4,7 @@ import { S } from './state.js';
 import { esc, money, fdate, iso, today } from './utils.js';
 import { leerDocumento } from './ia.js';
 import { subirArchivoSuelto } from './files.js';
+import { de } from './memo.js';
 
 const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 // Busca en un <select> la opción cuyo texto se parece al nombre leído.
@@ -33,7 +34,7 @@ export async function subirYLeerFactura(inputId, statusId) {
 // Texto de lo leído + avisos (patente distinta, factura repetida, no parece una factura).
 export function resumenFactura(d, carId, statusId) {
   const el = document.getElementById(statusId); if (!el) return;
-  const c = S.cars.find(x => x.id === carId);
+  const c = de('cars', 'id', carId)[0];
   const avisos = [];
   if (!d.esFactura) avisos.push('La IA no reconoce esto como una factura o ticket. Revisalo.');
   const pat = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');

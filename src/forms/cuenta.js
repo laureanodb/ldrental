@@ -12,13 +12,14 @@ import { save } from '../data.js';
 import { canVerFinanzas } from '../roles.js';
 import { settings } from '../settings.js';
 import { cotizacion, enPesos, textoCotizacion } from '../dolar.js';
+import { de } from '../memo.js';
 
 const metodoLabel = m => (METODOS_PAGO.find(x => x[0] === m) || [0, ''])[1];
 const mon = (m, n) => (m === 'USD' ? moneyUSD(n) : money(n));
 
 export function movimientosCuenta(driverId) {
   const M = [];
-  const autos = S.cars.filter(c => c.choferId === driverId && isContract(c));
+  const autos = de('cars', 'choferId', driverId).filter(c => c.choferId === driverId && isContract(c));
   autos.forEach(c => {
     const moneda = c.tipo === 'financiado' ? 'USD' : 'ARS';
     const kind = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';
@@ -31,23 +32,23 @@ export function movimientosCuenta(driverId) {
       const m = +a.monto || 0; if (!m) return;
       M.push({ fecha: a.fecha || c.inicio, concepto: m > 0 ? 'Ajuste / descuento' : 'Ajuste', detalle: a.motivo || '', cargo: m < 0 ? -m : 0, abono: m > 0 ? m : 0, moneda });
     });
-    S.payments.filter(p => p.carId === c.id && p.tipo === kind && p.fecha >= c.inicio).forEach(p => {
+    de('payments', 'carId', c.id).filter(p => p.carId === c.id && p.tipo === kind && p.fecha >= c.inicio).forEach(p => {
       M.push({ fecha: p.fecha, concepto: 'Pago', detalle: [metodoLabel(p.metodo), c.patente].filter(Boolean).join(' · '), cargo: 0, abono: +p.monto || 0, moneda });
     });
     if (i.adelantoAplicado) M.push({ fecha: iso(today()), concepto: 'Cubierto con semana adelantada', detalle: c.patente || '', cargo: 0, abono: i.adelantoAplicado, moneda });
   });
-  S.gastos.filter(g => esSeguroRecuperable(g) && g.recuperaDe === driverId).forEach(g => {
-    const c = S.cars.find(x => x.id === g.carId);
+  de('gastos', 'recuperaDe', driverId).filter(g => esSeguroRecuperable(g) && g.recuperaDe === driverId).forEach(g => {
+    const c = de('cars', 'id', g.carId)[0];
     M.push({ fecha: g.fecha, concepto: 'Seguro', detalle: (c ? c.patente : '') + (g.fecha ? ' · ' + g.fecha.slice(5, 7) + '/' + g.fecha.slice(0, 4) : ''), cargo: +g.costo || 0, abono: 0, moneda: 'ARS' });
   });
-  S.payments.filter(p => p.choferId === driverId && p.tipo === 'seguro').forEach(p => {
+  de('payments', 'choferId', driverId).filter(p => p.choferId === driverId && p.tipo === 'seguro').forEach(p => {
     M.push({ fecha: p.fecha, concepto: 'Pago de seguro', detalle: metodoLabel(p.metodo), cargo: 0, abono: +p.monto || 0, moneda: 'ARS' });
   });
-  S.multas.filter(m => m.choferId === driverId && (m.estado === 'pendiente' || m.estado === 'vencida')).forEach(m => {
-    const c = S.cars.find(x => x.id === m.carId);
+  de('multas', 'choferId', driverId).filter(m => m.choferId === driverId && (m.estado === 'pendiente' || m.estado === 'vencida')).forEach(m => {
+    const c = de('cars', 'id', m.carId)[0];
     M.push({ fecha: m.fecha, concepto: 'Multa', detalle: [m.numeroActa ? 'Acta ' + m.numeroActa : '', c ? c.patente : ''].filter(Boolean).join(' · '), cargo: +m.monto || 0, abono: 0, moneda: 'ARS' });
   });
-  const d = S.drivers.find(x => x.id === driverId);
+  const d = de('drivers', 'id', driverId)[0];
   ((d && d.adelantos) || []).forEach(a => {
     const m = +a.monto || 0; if (!m) return;
     M.push({ fecha: a.fecha, concepto: m > 0 ? 'Adelanto' : 'Devolución de adelanto', detalle: a.motivo || '', cargo: m > 0 ? m : 0, abono: m < 0 ? -m : 0, moneda: 'ARS' });
@@ -79,14 +80,14 @@ function tarjetaPlan(d) {
 /* ---------- Pantalla ---------- */
 const LIMITE = 40;
 export function cuentaCorrienteView(driverId, todo) {
-  const d = S.drivers.find(x => x.id === driverId); if (!d) return;
+  const d = de('drivers', 'id', driverId)[0]; if (!d) return;
   const s = saldosCuenta(driverId);
   const M = movimientosCuenta(driverId);
   const linea = (l, n, m, color) => n ? '<div class="row between small"><span class="muted">' + l + '</span><span' + (color ? ' style="color:' + color + '"' : '') + '>' + mon(m || 'ARS', n) + '</span></div>' : '';
   let h = '<h3>Cuenta corriente · ' + esc(d.nombre) + '</h3>' +
     '<div class="card"><div class="row between"><span class="muted">Debe en pesos</span><b style="font-size:18px;color:' + (s.ars > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(s.ars) + '</b></div>' +
     linea('Alquiler', s.alquiler) + linea('Seguro', s.seguro) + linea('Multas', s.multas) + linea(s.adelantos >= 0 ? 'Adelantos' : 'Adelantos (a favor)', Math.abs(s.adelantos)) +
-    (s.usd || S.cars.some(c => c.choferId === driverId && c.tipo === 'financiado') ? '<div class="row between" style="margin-top:6px"><span class="muted">Debe en dólares (cuotas)</span><b style="font-size:18px;color:' + (s.usd > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + moneyUSD(s.usd) + '</b></div>' +
+    (s.usd || de('cars', 'choferId', driverId).some(c => c.choferId === driverId && c.tipo === 'financiado') ? '<div class="row between" style="margin-top:6px"><span class="muted">Debe en dólares (cuotas)</span><b style="font-size:18px;color:' + (s.usd > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + moneyUSD(s.usd) + '</b></div>' +
       (s.usd > 0 && cotizacion() ? '<div class="row between small muted"><span>En pesos hoy (' + esc(textoCotizacion()) + ')</span><span>' + money(enPesos(s.usd)) + '</span></div>' : '') : '') +
     (s.deposito || s.semanaAdelantada ? '<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:6px">' + linea('Depósito de garantía (a favor)', s.deposito, 'ARS', 'var(--ok)') + linea('Semana adelantada sin usar (a favor)', s.semanaAdelantada, 'ARS', 'var(--ok)') + '</div>' : '') +
     '</div>';
@@ -106,7 +107,7 @@ export function cuentaCorrienteView(driverId, todo) {
 
 let planDriverId = '';
 export function planPagosForm(driverId) {
-  const d = S.drivers.find(x => x.id === driverId); if (!d) return;
+  const d = de('drivers', 'id', driverId)[0]; if (!d) return;
   planDriverId = driverId;
   const s = saldosCuenta(driverId);
   const moneda = s.ars > 0 || !s.usd ? 'ARS' : 'USD';
@@ -130,7 +131,7 @@ export function planPagosRecalcular(soloCuota) {
   document.getElementById('pp_cuota').value = Math.ceil(total / n * 100) / 100;
 }
 export async function guardarPlanPagos(driverId) {
-  const d = S.drivers.find(x => x.id === driverId); if (!d) return;
+  const d = de('drivers', 'id', driverId)[0]; if (!d) return;
   const total = +val('pp_total'), cuotas = Math.round(+val('pp_cuotas')), montoCuota = +val('pp_cuota');
   if (!total || total <= 0) { toast('Poné el monto total'); return; }
   if (!cuotas || cuotas < 1) { toast('Poné la cantidad de semanas'); return; }
@@ -143,7 +144,7 @@ export async function guardarPlanPagos(driverId) {
   cuentaCorrienteView(driverId);
 }
 export async function cerrarPlanPagos(driverId) {
-  const d = S.drivers.find(x => x.id === driverId); if (!d || !d.planPagos) return;
+  const d = de('drivers', 'id', driverId)[0]; if (!d || !d.planPagos) return;
   const e = estadoPlan(d);
   const cerrado = Object.assign({}, d.planPagos, { activo: false, cerrado: iso(today()), resultado: e && e.cumplido ? 'cumplido' : 'cancelado' });
   if (!(await save('drivers', Object.assign({}, d, { planPagos: null, historialPlanes: (d.historialPlanes || []).concat([cerrado]) })))) return;
@@ -153,7 +154,7 @@ export async function cerrarPlanPagos(driverId) {
 
 export async function cuentaCorrientePDF(driverId) {
   try {
-    const d = S.drivers.find(x => x.id === driverId); if (!d) return;
+    const d = de('drivers', 'id', driverId)[0]; if (!d) return;
     const s = saldosCuenta(driverId);
     const M = movimientosCuenta(driverId);
     const { jsPDF } = await import('jspdf');

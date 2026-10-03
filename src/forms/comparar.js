@@ -3,6 +3,7 @@ import { esc, money, moneyUSD, val } from '../utils.js';
 import { activeCars, calc, isContract, rentabilidadAuto, estadoGeneralAuto, diasEnTaller, gastoMantenimientoAuto, driverName, plate } from '../calc.js';
 import { openModal } from '../modal.js';
 import { canVerFinanzas } from '../roles.js';
+import { de } from '../memo.js';
 
 function selectAuto(id, sel) {
   return '<select id="' + id + '" onchange="renderComparacionAutos()"><option value="">Elegir auto…</option>' +
@@ -30,7 +31,7 @@ export function compararAutosForm() {
 export function renderComparacionAutos() {
   const el = document.getElementById('cmp_resultado'); if (!el) return;
   const idA = val('cmp_a'), idB = val('cmp_b');
-  const a = S.cars.find(c => c.id === idA), b = S.cars.find(c => c.id === idB);
+  const a = de('cars', 'id', idA)[0], b = de('cars', 'id', idB)[0];
   if (!a || !b) { el.innerHTML = ''; return; }
   const estLabel = { ok: 'Todo al día', soft: 'Todo al día', warn: 'Algo pendiente', bad: 'Vencido / atención' };
   const monA = a.tipo === 'financiado' ? moneyUSD : money, monB = b.tipo === 'financiado' ? moneyUSD : money;

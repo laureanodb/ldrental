@@ -7,17 +7,18 @@ import { carById, choferEnFecha, driverName, proveedoresActivos, isContract } fr
 import { carForm } from './car.js';
 import { renderFiles } from '../files.js';
 import { registrarPagoAutoseguro, saldoAutoseguro } from '../autoseguro.js';
+import { de } from '../memo.js';
 
 function proveedoresParaSelect(actualId) {
   const L = proveedoresActivos();
   if (actualId && !L.some(p => p.id === actualId)) {
-    const actual = S.proveedores.find(p => p.id === actualId);
+    const actual = de('proveedores', 'id', actualId)[0];
     if (actual) return [actual].concat(L);
   }
   return L;
 }
 export function siniestroForm(carId, editId) {
-  const ex = editId ? S.siniestros.find(x => x.id === editId) : null;
+  const ex = editId ? de('siniestros', 'id', editId)[0] : null;
   const cars = S.cars.filter(c => !c.vendido).slice().sort((a, b) => String(a.patente).localeCompare(String(b.patente)));
   if (!cars.length) { toast('Primero cargá un auto'); return; }
   const c = carById(carId) || cars[0];
@@ -76,7 +77,7 @@ export async function saveSiniestro(editId) {
   const carId = val('si_carid');
   const c = carById(carId);
   if (!c) { toast('Elegí el auto'); return; }
-  const ex = editId ? S.siniestros.find(x => x.id === editId) : null;
+  const ex = editId ? de('siniestros', 'id', editId)[0] : null;
   const o = {
     id: editId || uid(), carId, tipo: val('si_tipo'), fecha: val('si_fecha') || iso(today()),
     lugar: val('si_lugar'), choferId: val('si_chofer'), descripcion: val('si_desc'),
@@ -105,7 +106,7 @@ export async function saveSiniestro(editId) {
   else { closeModal(); toast('Siniestro guardado'); }
 }
 export async function generarGastoSiniestro(siniestroId) {
-  const s = S.siniestros.find(x => x.id === siniestroId);
+  const s = de('siniestros', 'id', siniestroId)[0];
   if (!s || s.gastoGenerado) return;
   const neto = Math.max(0, (+s.costoTaller || 0) - (+s.montoSeguro || 0));
   if (!neto) { toast('No hay costo neto para registrar (el seguro cubrió todo)'); return; }
@@ -115,7 +116,7 @@ export async function generarGastoSiniestro(siniestroId) {
   toast('Costo neto del siniestro registrado como gasto');
 }
 export async function descontarSiniestroDeDeuda(siniestroId) {
-  const s = S.siniestros.find(x => x.id === siniestroId);
+  const s = de('siniestros', 'id', siniestroId)[0];
   if (!s || !s.choferId) { toast('Asigná primero un chofer'); return; }
   const c = carById(s.carId);
   if (!c || !isContract(c)) { toast('El auto no tiene un contrato de alquiler o financiación activo'); return; }
@@ -129,7 +130,7 @@ export async function descontarSiniestroDeDeuda(siniestroId) {
   toast('Costo neto sumado a la deuda del chofer');
 }
 export async function descontarSiniestroDeDeposito(siniestroId) {
-  const s = S.siniestros.find(x => x.id === siniestroId);
+  const s = de('siniestros', 'id', siniestroId)[0];
   if (!s || !s.choferId) { toast('Asigná primero un chofer'); return; }
   if (s.costoDescontadoDeposito) return;
   const neto = Math.max(0, (+s.costoTaller || 0) - (+s.montoSeguro || 0));
@@ -140,7 +141,7 @@ export async function descontarSiniestroDeDeposito(siniestroId) {
   toast('Costo neto descontado del depósito de garantía');
 }
 export async function pagarSiniestroDesdeAutoseguro(siniestroId) {
-  const s = S.siniestros.find(x => x.id === siniestroId);
+  const s = de('siniestros', 'id', siniestroId)[0];
   if (!s || s.pagadoAutoseguro) return;
   const neto = Math.max(0, (+s.costoTaller || 0) - (+s.montoSeguro || 0));
   if (!neto) { toast('No hay costo neto para pagar (el seguro cubrió todo)'); return; }
@@ -150,6 +151,6 @@ export async function pagarSiniestroDesdeAutoseguro(siniestroId) {
   toast('Costo neto pagado desde el fondo de autoseguro');
 }
 export async function delSiniestro(id) {
-  const s = S.siniestros.find(x => x.id === id);
+  const s = de('siniestros', 'id', id)[0];
   if (await remove('siniestros', id)) { toast('Siniestro borrado'); if (s) carForm(s.carId); }
 }

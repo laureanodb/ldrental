@@ -1,7 +1,7 @@
 import { esc } from './utils.js';
 import { sb } from './state.js';
 import { modoConsultaActivo } from './consulta.js';
-import { toast } from './modal.js';
+import { toast } from './toast.js';
 
 const KEY = 'flota-settings';
 const PORTAL_KEYS = ['companyName', 'companyLogo', 'companyPhone', 'telefonoEmergencia', 'protocoloEmergencia', 'anuncios', 'tipoDolar', 'dolarPrecio', 'dolarManual', 'pagoAlias', 'pagoCbu', 'pagoTitular', 'pagoCuit', 'pagoBanco', 'pagoNota'];

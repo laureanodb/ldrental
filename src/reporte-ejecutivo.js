@@ -4,6 +4,7 @@ import { settings } from './settings.js';
 import { toast } from './modal.js';
 import { resumenGeneral, resumenAnual, rankingRoiAutos, porcentajePerdidaGanancia, alertasTendencia, proyeccionRentabilidadTendencia, saludChoferes, activeCars, valorStock, repuestosBajoStock } from './calc.js';
 import { saldoAutoseguro } from './autoseguro.js';
+import { de } from './memo.js';
 
 export async function descargarReporteEjecutivo() {
   const { jsPDF } = await import('jspdf');
@@ -50,7 +51,7 @@ export async function descargarReporteEjecutivo() {
     if (pg.perdida) linea('En pérdida', pg.perdida + ' de ' + pg.total);
   }
 
-  const totalesAuto = activeCars().map(c => ({ c, total: S.payments.filter(p => p.carId === c.id).reduce((a, p) => a + (+p.monto || 0), 0) })).filter(x => x.total > 0).sort((a, b) => b.total - a.total).slice(0, 10);
+  const totalesAuto = activeCars().map(c => ({ c, total: de('payments', 'carId', c.id).filter(p => p.carId === c.id).reduce((a, p) => a + (+p.monto || 0), 0) })).filter(x => x.total > 0).sort((a, b) => b.total - a.total).slice(0, 10);
   if (totalesAuto.length) {
     titulo('Total histórico cobrado por auto (todos los choferes)');
     totalesAuto.forEach(x => linea(x.c.patente || 'Auto', money(x.total)));

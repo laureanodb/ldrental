@@ -5,6 +5,7 @@ import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
 import { proveedoresActivos, badge, montoSugeridoGasto } from '../calc.js';
 import { canDelete } from '../roles.js';
+import { de } from '../memo.js';
 
 const catLabel = k => (GASTO_CATS.find(x => x[0] === k) || [0, 'Gasto'])[1];
 
@@ -31,7 +32,7 @@ export function gastosGeneralesView() {
   openModal(h);
 }
 export function gastoGeneralForm(editId) {
-  const ex = editId ? S.gastos.find(x => x.id === editId) : null;
+  const ex = editId ? de('gastos', 'id', editId)[0] : null;
   const sugerido = ex ? null : montoSugeridoGasto(GASTO_CATS[0][0]);
   const h = '<h3>' + (ex ? 'Editar gasto general' : 'Nuevo gasto general') + '</h3>' +
   '<div class="two"><label class="f"><span>Categoría</span><select id="gg_cat" onchange="onGastoGeneralCat()">' + GASTO_CATS.map(x => '<option value="' + x[0] + '"' + (ex && ex.categoria === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
@@ -56,7 +57,7 @@ export async function saveGastoGeneral(editId) {
   if (!costo || costo <= 0) { toast('Poné el costo del gasto'); return; }
   const selProveedor = val('gg_proveedorSel');
   const proveedor = selProveedor === '__otro__' ? val('gg_proveedorOtro') : selProveedor;
-  const ex = editId ? S.gastos.find(x => x.id === editId) : null;
+  const ex = editId ? de('gastos', 'id', editId)[0] : null;
   const o = {
     id: editId || uid(), carId: '', categoria: val('gg_cat'), fecha: val('gg_fecha') || iso(today()), costo,
     proveedor, descripcion: val('gg_desc'), sinFactura: document.getElementById('gg_sinFactura').checked,
@@ -68,7 +69,7 @@ export async function delGastoGeneral(id) {
   if (await remove('gastos', id)) { toast('Gasto borrado'); gastosGeneralesView(); }
 }
 export function gastoRecurrenteForm(editId) {
-  const ex = editId ? S.gastosrecurrentes.find(x => x.id === editId) : null;
+  const ex = editId ? de('gastosrecurrentes', 'id', editId)[0] : null;
   const h = '<h3>' + (ex ? 'Editar gasto recurrente' : 'Nuevo gasto recurrente') + '</h3>' +
   '<div class="small muted" style="margin-bottom:10px">Se genera solo un gasto general por mes con este monto, mientras esté activo.</div>' +
   '<label class="f"><span>Nombre</span><input id="gr_nombre" placeholder="ej: Alquiler del depósito" value="' + esc(ex ? ex.nombre : '') + '"></label>' +

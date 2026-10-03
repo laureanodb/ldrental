@@ -5,6 +5,7 @@ import { carById, driverName } from '../calc.js';
 import { openModal, toast } from '../modal.js';
 import { carForm, actualizarHistorialChoferes, actualizarHistorialMonto } from './car.js';
 import { driverForm } from './driver.js';
+import { de } from '../memo.js';
 
 function campos(prefix, tipo, c) {
   return '<label class="f"><span>Tipo</span><select id="' + prefix + '_tipo" onchange="onAsignacionTipo(\'' + prefix + '\')"><option value="alquiler"' + (tipo === 'alquiler' ? ' selected' : '') + '>Alquiler</option><option value="financiado"' + (tipo === 'financiado' ? ' selected' : '') + '>Financiado</option></select></label>' +
@@ -66,7 +67,7 @@ export async function quitarChofer(carId) {
 }
 
 export function asignarAutoForm(driverId) {
-  const d = S.drivers.find(x => x.id === driverId);
+  const d = de('drivers', 'id', driverId)[0];
   if (!d) { toast('Chofer no encontrado'); return; }
   const disponibles = S.cars.filter(c => c.tipo === 'disponible' && !c.vendido).sort((a, b) => String(a.patente).localeCompare(String(b.patente)));
   if (!disponibles.length) { toast('No hay autos disponibles para asignar'); return; }
@@ -85,7 +86,7 @@ export function onAsignarAutoElegido() {
 export async function guardarAsignacionAuto(driverId) {
   const carId = val('aa_auto');
   if (!carId) { toast('Elegí un auto'); return; }
-  const c = S.cars.find(x => x.id === carId); if (!c) return;
+  const c = de('cars', 'id', carId)[0]; if (!c) return;
   const anterior = S.cars.find(x => x.choferId === driverId && !x.vendido && x.id !== carId);
   if (anterior) await liberarAuto(anterior);
   const tipo = val('aa_tipo');
@@ -102,6 +103,6 @@ export async function guardarAsignacionAuto(driverId) {
   if (await save('cars', o)) { toast('Auto asignado: ' + (c.patente || '')); driverForm(driverId); }
 }
 export async function quitarAutoDeChofer(driverId, carId) {
-  const c = S.cars.find(x => x.id === carId); if (!c) return;
+  const c = de('cars', 'id', carId)[0]; if (!c) return;
   if (await liberarAuto(c)) { toast('Auto desasignado'); driverForm(driverId); }
 }

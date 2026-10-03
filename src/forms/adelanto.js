@@ -5,9 +5,10 @@ import { save } from '../data.js';
 import { saldoAdelantos, cronogramaCuotas } from '../calc.js';
 import { canDelete } from '../roles.js';
 import { driverForm } from './driver.js';
+import { de } from '../memo.js';
 
 function cuotasVinculables(driverId) {
-  const cars = S.cars.filter(c => c.choferId === driverId && c.tipo === 'financiado');
+  const cars = de('cars', 'choferId', driverId).filter(c => c.choferId === driverId && c.tipo === 'financiado');
   const out = [];
   cars.forEach(c => {
     cronogramaCuotas(c).filter(cu => cu.estado === 'pendiente' || cu.estado === 'atrasada' || cu.estado === 'parcial').forEach(cu => {
@@ -17,7 +18,7 @@ function cuotasVinculables(driverId) {
   return out;
 }
 export function adelantoForm(driverId) {
-  const d = S.drivers.find(x => x.id === driverId);
+  const d = de('drivers', 'id', driverId)[0];
   if (!d) { toast('Chofer no encontrado'); return; }
   const cuotas = cuotasVinculables(driverId);
   const h = '<h3>Adelanto — ' + esc(d.nombre) + '</h3>' +
@@ -35,7 +36,7 @@ export async function guardarAdelanto(driverId) {
   const montoAbs = +val('ad_monto');
   if (!montoAbs || montoAbs <= 0) { toast('Poné el monto'); return; }
   const monto = tipo === 'devolucion' ? -montoAbs : montoAbs;
-  const d = S.drivers.find(x => x.id === driverId); if (!d) return;
+  const d = de('drivers', 'id', driverId)[0]; if (!d) return;
   const adelanto = { id: uid(), fecha: val('ad_fecha') || iso(today()), monto, motivo: val('ad_motivo') };
   const cuotaVal = document.getElementById('ad_cuota') ? val('ad_cuota') : '';
   if (cuotaVal) {
@@ -46,7 +47,7 @@ export async function guardarAdelanto(driverId) {
   if (await save('drivers', Object.assign({}, d, { adelantos }))) { closeModal(); toast('Registrado'); }
 }
 export async function borrarAdelanto(driverId, adelantoId) {
-  const d = S.drivers.find(x => x.id === driverId); if (!d) return;
+  const d = de('drivers', 'id', driverId)[0]; if (!d) return;
   const adelantos = (d.adelantos || []).filter(x => x.id !== adelantoId);
   if (await save('drivers', Object.assign({}, d, { adelantos }))) { toast('Borrado'); driverForm(driverId); }
 }
@@ -55,7 +56,7 @@ export function seccionAdelantos(d) {
   const saldo = saldoAdelantos(d.id);
   let h = '<div class="sec-t row between">Adelantos<span class="small muted">' + (saldo > 0 ? 'Debe ' + money(saldo) : saldo < 0 ? 'A favor ' + money(-saldo) : 'Sin saldo') + '</span></div>';
   if (A.length) h += A.map(a => {
-    const c = a.cuotaVinculada ? S.cars.find(x => x.id === a.cuotaVinculada.carId) : null;
+    const c = a.cuotaVinculada ? de('cars', 'id', a.cuotaVinculada.carId)[0] : null;
     return '<div class="card row"><div class="grow"><div>' + (a.monto >= 0 ? '+' + money(a.monto) : '-' + money(-a.monto)) + ' <span class="small muted">' + a.fecha + '</span></div>' + (a.motivo ? '<div class="small muted">' + esc(a.motivo) + '</div>' : '') + (c ? '<div class="small muted">Vinculado a cuota Nº ' + a.cuotaVinculada.numero + ' · ' + esc(c.patente) + '</div>' : '') + '</div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>borrarAdelanto(\'' + d.id + '\',\'' + a.id + '\'))">Borrar</button>' : '') + '</div>';
   }).join('');
   else h += '<div class="small muted" style="margin-bottom:8px">Sin adelantos registrados.</div>';

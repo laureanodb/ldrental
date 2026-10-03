@@ -4,11 +4,12 @@ import { money, moneyUSD, fdate, iso, today } from './utils.js';
 import { settings } from './settings.js';
 import { toast } from './modal.js';
 import { METODOS_PAGO } from './constants.js';
+import { de } from './memo.js';
 
 const metodoLabel = m => ((METODOS_PAGO.find(x => x[0] === m) || [])[1]) || '';
 
 async function construirRecibo(paymentId) {
-  const p = S.payments.find(x => x.id === paymentId);
+  const p = de('payments', 'id', paymentId)[0];
   if (!p) { toast('Cobro no encontrado'); return null; }
   const c = carById(p.carId);
   const chofer = driverName(p.choferId);
@@ -47,12 +48,12 @@ export async function reciboPDF(paymentId) {
 }
 export async function estadoCuentaPDF(driverId) {
   try {
-    const d = S.drivers.find(x => x.id === driverId);
+    const d = de('drivers', 'id', driverId)[0];
     if (!d) { toast('Chofer no encontrado'); return; }
     const t0 = today();
     const desde = iso(new Date(t0.getFullYear(), t0.getMonth(), 1));
     const hasta = iso(t0);
-    const pagos = S.payments.filter(p => p.choferId === driverId && p.fecha >= desde && p.fecha <= hasta).sort((a, b) => a.fecha.localeCompare(b.fecha));
+    const pagos = de('payments', 'choferId', driverId).filter(p => p.choferId === driverId && p.fecha >= desde && p.fecha <= hasta).sort((a, b) => a.fecha.localeCompare(b.fecha));
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const margin = 15, width = 210 - margin * 2;
@@ -78,7 +79,7 @@ export async function estadoCuentaPDF(driverId) {
       doc.setFontSize(11); doc.text('Total pagado en el período: ' + money(totalARS) + (totalUSD ? ' + ' + moneyUSD(totalUSD) : ''), margin, y); y += 8;
     }
     // Deuda separada por moneda: alquiler en pesos, cuotas de financiación en dólares y seguro en pesos.
-    const autos = S.cars.filter(c => c.choferId === driverId && isContract(c));
+    const autos = de('cars', 'choferId', driverId).filter(c => c.choferId === driverId && isContract(c));
     const debtUSD = autos.filter(c => c.tipo === 'financiado').reduce((a, c) => a + calc(c).debt, 0);
     const debtARS = autos.filter(c => c.tipo !== 'financiado').reduce((a, c) => a + calc(c).debt, 0) + saldoAdelantos(driverId);
     const seguro = seguroPendiente(driverId);

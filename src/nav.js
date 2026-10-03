@@ -16,6 +16,7 @@ import { listTablero } from './views/tablero.js';
 import { queueLength } from './offline.js';
 import { settings, featureOculta } from './settings.js';
 import { modoConsultaActivo, modoConsultaHasta } from './consulta.js';
+import { nuevaPasada } from './memo.js';
 
 const ICONS = {
   panel: '<path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-4H4zM14 8h6V4h-6z"/>',
@@ -86,6 +87,7 @@ function bindFabScroll() {
   }, { passive: true });
 }
 export function render() {
+  nuevaPasada();
   renderNav();
   const app = $('#app');
   if (!configured()) { app.innerHTML = viewSetup(); return; }

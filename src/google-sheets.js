@@ -4,6 +4,7 @@ import { carById, driverName } from './calc.js';
 import { TIPOS_INFRACCION, MULTA_ESTADOS } from './constants.js';
 import { toast } from './modal.js';
 import { mantenimientosFiltrados } from './views/mantenimiento.js';
+import { de } from './memo.js';
 
 const SHEET_ID_KEY = 'flota-sheet-id';
 const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
@@ -78,7 +79,7 @@ export async function syncMantenimientoSheetsUI() {
   try {
     const id = await obtenerOCrearPlanilla();
     await asegurarHoja(id, 'Mantenimiento');
-    const provName = pid => { const p = S.proveedores.find(x => x.id === pid); return p ? p.nombre : ''; };
+    const provName = pid => { const p = de('proveedores', 'id', pid)[0]; return p ? p.nombre : ''; };
     const rows = [['Fecha', 'Patente', 'Ítem', 'Tipo', 'Km', 'Costo', 'Taller', 'Notas']];
     mantenimientosFiltrados().slice().sort((a, b) => a.fecha.localeCompare(b.fecha)).forEach(m => {
       const c = carById(m.carId);
