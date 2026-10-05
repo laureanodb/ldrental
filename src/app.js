@@ -14,12 +14,12 @@ import { reportePersonalizadoForm, toggleColumnaReporte, renderReportePersonaliz
 import { traspasoForm, saveTraspaso } from './forms/traspaso.js';
 import { reemplazoTemporalForm, saveReemplazoTemporal, finalizarReemplazoTemporal } from './forms/reemplazo-temporal.js';
 import { mantenimientoLoteForm, marcarTodosLote, saveMantenimientoLote } from './forms/mantenimiento-lote.js';
-import { mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, addRepuestoMantRow, leerFacturaMant } from './forms/mantenimiento.js';
+import { mantenimientoForm, onMantCar, onMantItem, saveMantenimiento, delMantenimiento, editarPlanMantenimiento, guardarPlanMantenimiento, addRepuestoMantRow, leerFacturaMant, cargarKitMant } from './forms/mantenimiento.js';
 import { mantAtajoFecha } from './views/mantenimiento.js';
-import { listaDeCompraForm } from './views/stock.js';
+import { listaDeCompraForm, guardarCoberturaPanol } from './views/stock.js';
 import { multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta } from './forms/multa.js';
 import { siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro } from './forms/siniestro.js';
-import { repuestoForm, saveRepuesto, delRepuesto, movimientoStockForm, guardarMovimientoStock, delMovimientoStock } from './forms/repuesto.js';
+import { repuestoForm, saveRepuesto, delRepuesto, movimientoStockForm, guardarMovimientoStock, delMovimientoStock, onRepuestoCat, prestarHerramientaForm, guardarPrestamo, devolverHerramienta, inventarioPanolForm, guardarInventarioPanol, inventariosAnteriores, verInventario, kitsPanolView, kitPanolForm, addKitRow, guardarKitPanol, borrarKitPanol, usarKitForm, guardarUsoKit, exportarPanolExcel } from './forms/repuesto.js';
 import { reciboPDF, reciboCompartir, estadoCuentaPDF } from './recibo.js';
 import { descargarReporteEjecutivo } from './reporte-ejecutivo.js';
 import { contratoForm, renovarContratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion, mandarContratoAFirmar, avisoFirmaRemota, cancelarFirmaRemota, descargarContratoFirmado, copiarLinkFirma } from './contrato.js';
@@ -82,6 +82,8 @@ Object.assign(window, {
   multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta,
   siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro,
   repuestoForm, saveRepuesto, delRepuesto, movimientoStockForm, guardarMovimientoStock, delMovimientoStock,
+  onRepuestoCat, prestarHerramientaForm, guardarPrestamo, devolverHerramienta, inventarioPanolForm, guardarInventarioPanol, inventariosAnteriores, verInventario,
+  kitsPanolView, kitPanolForm, addKitRow, guardarKitPanol, borrarKitPanol, usarKitForm, guardarUsoKit, exportarPanolExcel, guardarCoberturaPanol, cargarKitMant,
   reciboPDF, reciboCompartir, estadoCuentaPDF, descargarReporteEjecutivo, exportarExcel, activarPush, desactivarPush, guardarHorarioPush, guardarPreferenciasPush,
   contratoForm, renovarContratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion, plantillaForm, onPlantillaTipo, generarPlantilla, marcarCartaEnviada,
   driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, togglePortalDesactivado, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion,

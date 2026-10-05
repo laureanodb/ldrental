@@ -5,6 +5,7 @@ import { settings } from './settings.js';
 import { isSnoozed } from './snooze.js';
 import { isEnTramite } from './tramite.js';
 import { de, enPasada } from './memo.js';
+import { stockBajoPanol, tipoDe } from './panol.js';
 
 export const isContract = c => c.tipo === 'alquiler' || c.tipo === 'financiado';
 export const activeCars = () => S.cars.filter(c => !c.vendido);
@@ -737,7 +738,7 @@ export function montoSugeridoGasto(categoria) {
 }
 export function repuestoById(id) { return de('repuestos', 'id', id)[0]; }
 export function repuestosActivos() { return S.repuestos.filter(r => !r.inactivo); }
-export function stockBajo(r) { return (+r.stockActual || 0) <= (+r.stockMinimo || 0); }
+export const stockBajo = stockBajoPanol;
 export function repuestosBajoStock() { return repuestosActivos().filter(stockBajo).sort((a, b) => (+a.stockActual || 0) - (+b.stockActual || 0)); }
 export function valorStock() { return repuestosActivos().reduce((a, r) => a + (+r.stockActual || 0) * (+r.costoUnitario || 0), 0); }
 export function movimientosSalidaPorAuto(carId) {
@@ -746,7 +747,7 @@ export function movimientosSalidaPorAuto(carId) {
   return out.sort((a, b) => b.m.fecha.localeCompare(a.m.fecha));
 }
 export function gastosRepuestosPorAuto(carId) {
-  return movimientosSalidaPorAuto(carId).reduce((a, x) => a + (+x.m.cantidad || 0) * (+x.r.costoUnitario || 0), 0);
+  return movimientosSalidaPorAuto(carId).reduce((a, x) => a + (+x.m.cantidad || 0) * (+x.m.costoUnitario || +x.r.costoUnitario || 0), 0);
 }
 export function rankingGastoRepuestosPorAuto() {
   return activeCars().map(c => ({ c, gasto: gastosRepuestosPorAuto(c.id) })).filter(x => x.gasto > 0).sort((a, b) => b.gasto - a.gasto);
@@ -758,7 +759,7 @@ export function fechaReferenciaStock(r) {
 export function repuestosStockQuieto(diasUmbral) {
   const umbral = diasUmbral || 90;
   const hoy = today();
-  return repuestosActivos().filter(r => (+r.stockActual || 0) > 0).map(r => {
+  return repuestosActivos().filter(r => (+r.stockActual || 0) > 0 && tipoDe(r) !== 'herramienta').map(r => {
     const fref = fechaReferenciaStock(r);
     if (!fref) return null;
     const d = days(parse(fref), hoy);

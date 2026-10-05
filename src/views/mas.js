@@ -39,7 +39,7 @@ export function viewMas() {
   if (v === 'reportes') return backBar('Reportes') + viewReportes();
   if (v === 'multas') return backBar('Multas') + viewMultas();
   if (v === 'siniestros') return backBar('Siniestros') + viewSiniestros();
-  if (v === 'stock') return backBar('Stock de repuestos') + viewStock();
+  if (v === 'stock') return backBar('Pañol') + viewStock();
   if (v === 'tablero') return backBar('Tablero semanal') + viewTablero();
   if (v === 'ajustes') return backBar('Ajustes') + ajustesCard();
   if (v === 'backup') return backBar('Copia de seguridad') + backupCard();
@@ -52,7 +52,7 @@ export function viewMas() {
     ['Mantenimiento', "goMas('mantenimiento')"],
     ['Multas', "goMas('multas')"],
     ['Siniestros', "goMas('siniestros')"],
-    ['Stock de repuestos', "goMas('stock')"],
+    ['Pañol (repuestos, insumos y herramientas)', "goMas('stock')"],
     ['Gastos generales', 'gastosGeneralesView()'],
     ['Proveedores y talleres', 'proveedoresView()'],
     ['Mapa de flota', 'mapaFlotaView()'],

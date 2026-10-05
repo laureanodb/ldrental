@@ -4,6 +4,10 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-10-05', items: [
+    'Pañol (Más → Pañol): cada ítem es consumible, repuesto o herramienta, y ves cuánta plata tenés en cada uno, valuado a lo que te costó (costo promedio) o a lo que sale hoy. Te dice en qué categorías y estantes está la plata, cuánto se gasta por mes y qué está parado hace meses.',
+    'Pañol: ubicación, código y modelos compatibles en cada ítem; quién retiró cada cosa; cuántos días te alcanza el stock; lista de compra según lo que consumís; kits de service para descontar todo de un toque (también desde el service del auto); préstamo de herramientas; inventario físico con faltantes en pesos; y Excel valorizado.',
+  ] },
   { v: '2026-10-03', items: [
     'La app es mucho más rápida: las pantallas se dibujan entre 4 y 10 veces más rápido, los cambios de otros celulares llegan al instante sin volver a bajar todo, los datos se descargan en paralelo y la copia guardada en el celular tiene mucho más espacio. El portal del chofer abre casi al instante porque ya no baja la app completa.',
   ] },
@@ -64,8 +68,14 @@ export const COMBUSTIBLES = [['nafta', 'Nafta'], ['diesel', 'Diésel'], ['gnc', 
 export const RATINGS = [['bueno', 'Cumplidor'], ['regular', 'Regular'], ['malo', 'Problemático']];
 export const METODOS_PAGO = [['efectivo', 'Efectivo'], ['transferencia', 'Transferencia'], ['mercadopago', 'MercadoPago'], ['credito', 'Tarjeta de crédito'], ['otro', 'Otro']];
 export const GASTO_CATS = [['service', 'Service / mantenimiento'], ['siniestro', 'Siniestro / choque'], ['multa', 'Multa'], ['combustible', 'Combustible'], ['seguro', 'Seguro (cuota)'], ['patente', 'Patente / impuesto automotor'], ['repuestos', 'Repuestos y consumibles'], ['otro', 'Otro gasto']];
-export const STOCK_CATEGORIAS = [['aceite', 'Aceite'], ['filtros', 'Filtros'], ['bujias', 'Bujías'], ['frenos', 'Frenos (pastillas, discos)'], ['neumaticos', 'Neumáticos'], ['bateria', 'Batería'], ['liquidos', 'Líquidos (freno, refrigerante)'], ['correas', 'Correas / cadenas'], ['otro', 'Otro']];
-export const STOCK_UNIDADES = [['unidad', 'Unidad'], ['litro', 'Litro'], ['kg', 'Kilogramo'], ['juego', 'Juego']];
+/* Pañol: cada categoría trae el tipo que se le asigna por defecto (se puede cambiar en cada ítem). */
+export const PANOL_TIPOS = [
+  ['consumible', 'Consumible', 'Se gasta en cada service: aceite, filtros, líquidos, lamparitas.'],
+  ['repuesto', 'Repuesto', 'Piezas que se cambian cuando se rompen o se gastan: pastillas, amortiguadores, batería.'],
+  ['herramienta', 'Herramienta', 'Herramientas y equipos del pañol: no se gastan, se prestan y se devuelven.'],
+];
+export const STOCK_CATEGORIAS = [['aceite', 'Aceite', 'consumible'], ['filtros', 'Filtros', 'consumible'], ['liquidos', 'Líquidos (freno, refrigerante)', 'consumible'], ['bujias', 'Bujías', 'consumible'], ['lamparas', 'Lámparas y fusibles', 'consumible'], ['limpieza', 'Limpieza y lubricantes', 'consumible'], ['frenos', 'Frenos (pastillas, discos)', 'repuesto'], ['neumaticos', 'Neumáticos', 'repuesto'], ['bateria', 'Batería', 'repuesto'], ['correas', 'Correas / cadenas', 'repuesto'], ['suspension', 'Suspensión y tren delantero', 'repuesto'], ['motor', 'Motor y distribución', 'repuesto'], ['electrico', 'Eléctrico y encendido', 'repuesto'], ['carroceria', 'Carrocería, vidrios y espejos', 'repuesto'], ['herramientas', 'Herramientas y equipos', 'herramienta'], ['otro', 'Otro', 'repuesto']];
+export const STOCK_UNIDADES = [['unidad', 'Unidad'], ['litro', 'Litro'], ['kg', 'Kilogramo'], ['juego', 'Juego'], ['par', 'Par'], ['caja', 'Caja'], ['metro', 'Metro']];
 export const MOTIVOS_REEMPLAZO = [['km', 'Mucho kilometraje'], ['gasto', 'Mucho gasto de mantenimiento'], ['antiguedad', 'Muy viejo'], ['otro', 'Otro motivo']];
 // Fotos guiadas de la entrega y la devolución, en el orden en que se recorre el auto.
 export const PASOS_FOTOS = [['frente', 'Frente'], ['izquierdo', 'Lado izquierdo'], ['trasera', 'Trasera'], ['derecho', 'Lado derecho'], ['interiorDel', 'Interior adelante'], ['interiorTras', 'Interior atrás'], ['tablero', 'Tablero (km y nafta)'], ['baul', 'Baúl y rueda de auxilio']];

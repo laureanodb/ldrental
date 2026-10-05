@@ -7,7 +7,9 @@ import { save, remove } from '../data.js';
 import { carById, proveedoresActivos, repuestosActivos } from '../calc.js';
 import { carForm, actualizarKm, marcarEnTaller } from './car.js';
 import { renderFiles } from '../files.js';
-import { registrarSalidaStock } from './repuesto.js';
+import { registrarSalidaStock, itemsDeKit } from './repuesto.js';
+import { tipoDe } from '../panol.js';
+import { settings } from '../settings.js';
 import { de } from '../memo.js';
 
 const unidadLabel = k => (STOCK_UNIDADES.find(x => x[0] === k) || [0, 'Unidad'])[1];
@@ -68,7 +70,7 @@ export function mantenimientoForm(carId, editId, presetItem) {
   '<label class="f"><span>Garantía <small>km</small></span><input id="m_garKm" inputmode="numeric" value="' + esc(ex ? ex.garantiaKm || '' : '') + '"></label></div>' +
   (c.tipo !== 'taller' ? '<label class="chk"><input type="checkbox" id="m_taller"><span>El auto queda parado en el taller</span></label>' : '') +
   '<label class="chk"><input type="checkbox" id="m_sinFactura"' + (ex && ex.sinFactura ? ' checked' : '') + '><span>Sin factura</span></label>' +
-  (!ex && repuestosActivos().length ? '<div class="sec-t">Repuestos usados <small>opcional, descuenta del stock</small></div><div id="mnt_repuestos"></div><button type="button" class="btn sec sm" style="margin-bottom:14px" onclick="addRepuestoMantRow()">+ Agregar repuesto</button>' : '') +
+  (!ex && repuestosActivos().length ? '<div class="sec-t">Del pañol <small>opcional, descuenta del stock</small></div><div id="mnt_repuestos"></div><div class="row" style="margin-bottom:14px"><button type="button" class="btn sec sm" onclick="addRepuestoMantRow()">+ Agregar ítem</button>' + ((settings.kitsPanol || []).length ? '<select id="mnt_kit" onchange="cargarKitMant(this.value)" style="flex:1"><option value="">Cargar un kit…</option>' + settings.kitsPanol.map(k => '<option value="' + k.id + '">' + esc(k.nombre) + '</option>').join('') + '</select>' : '') + '</div>' : '') +
   '<label class="f"><span>Notas</span><textarea id="m_notas">' + esc(ex ? ex.notas : '') + '</textarea></label>' +
   '<div class="sec-t">Archivos</div><div id="files"></div><div id="fstatus" class="small" style="margin:-4px 0 12px;overflow-wrap:anywhere"></div>' +
   '<div class="row"><button class="btn grow" onclick="saveMantenimiento(' + (ex ? "'" + ex.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="' + (carId ? "carForm('" + c.id + "')" : 'closeModal()') + '">Cancelar</button></div>';
@@ -81,11 +83,17 @@ export function onMantItem() {
   const sel = $('#m_item'); if (!sel) return;
   const box = $('#m_custom'); if (box) box.style.display = sel.value === '__custom__' ? '' : 'none';
 }
-function repuestoRowMant() {
-  return '<div class="two mnt-rep"><select class="mnt-rep-id">' + repuestosActivos().map(r => '<option value="' + r.id + '">' + esc(r.nombre) + ' (' + (r.stockActual || 0) + ' ' + esc(unidadLabel(r.unidad)) + ')</option>').join('') + '</select>' +
-  '<div class="row"><input class="mnt-rep-cant grow" inputmode="decimal" placeholder="Cantidad" value="1"><button type="button" class="btn danger sm" onclick="this.closest(\'.mnt-rep\').remove()">✕</button></div></div>';
+function repuestoRowMant(rid, cantidad) {
+  return '<div class="two mnt-rep"><select class="mnt-rep-id">' + repuestosActivos().filter(r => tipoDe(r) !== 'herramienta').map(r => '<option value="' + r.id + '"' + (r.id === rid ? ' selected' : '') + '>' + esc(r.nombre) + ' (' + (r.stockActual || 0) + ' ' + esc(unidadLabel(r.unidad)) + ')</option>').join('') + '</select>' +
+  '<div class="row"><input class="mnt-rep-cant grow" inputmode="decimal" placeholder="Cantidad" value="' + (cantidad || 1) + '"><button type="button" class="btn danger sm" onclick="this.closest(\'.mnt-rep\').remove()">✕</button></div></div>';
 }
 export function addRepuestoMantRow() { const el = $('#mnt_repuestos'); if (el) el.insertAdjacentHTML('beforeend', repuestoRowMant()); }
+// Agrega de una todas las filas de un kit del pañol.
+export function cargarKitMant(id) {
+  const el = $('#mnt_repuestos'); if (!el || !id) return;
+  itemsDeKit(id).forEach(x => el.insertAdjacentHTML('beforeend', repuestoRowMant(x.rid, x.cant)));
+  const sel = $('#mnt_kit'); if (sel) sel.value = '';
+}
 export async function saveMantenimiento(editId) {
   const carId = val('m_carid');
   const c = carById(carId);
