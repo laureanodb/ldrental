@@ -50,6 +50,7 @@ export function viewMas() {
   let h = '<h1>Más</h1>';
   h += grupo('Flota', [
     ['Mantenimiento', "goMas('mantenimiento')"],
+    ['Órdenes de trabajo del taller', 'ordenesView()'],
     ['Multas', "goMas('multas')"],
     ['Siniestros', "goMas('siniestros')"],
     ['Pañol (repuestos, insumos y herramientas)', "goMas('stock')"],

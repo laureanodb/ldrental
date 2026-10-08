@@ -2,6 +2,7 @@ import { S } from '../state.js';
 import { $, val, uid, iso, today, esc, fdate, money, moneyUSD, parse, days } from '../utils.js';
 import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS, MOTIVOS_REEMPLAZO, TIPOS_SINIESTRO, SINIESTRO_ESTADOS, ASEGURADORAS, TRANSMISIONES, COBERTURAS_SEGURO, ELEMENTOS_SEGURIDAD, CUMPLIMIENTO_NORMATIVO_ITEMS, RECLAMO_SEGURO_ESTADOS, STOCK_UNIDADES } from '../constants.js';
 import { seguroPaga, seguroPendiente, seguroPendienteDesde, isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas, estadoGeneralAuto, mejorPeorMesAuto, lineaDeTiempoAuto, contratoVencimiento, vs, gastosFijosMensuales, historialGastosFijos, comparacionGastoFijo, desgloseCobradoPorChofer, movimientosSalidaPorAuto, gastosRepuestosPorAuto } from '../calc.js';
+import { seccionOrdenes } from './ordenes.js';
 import { seccionPapeles, seccionCedulas, seccionVtv, seccionBateria, seccionCubiertas, seccionValorMercado, campoSeguroApps, seccionCodigosFalla, badgeAutoProblema, completarAuto } from './auto-extra.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
@@ -545,7 +546,7 @@ export function carForm(id) {
     }
     if (plan.length) mant += plan.map(p => { const e = estadoPlanItem(c, p); return '<div class="row between small" style="padding:4px 0"><span>' + esc(p.label || p.item) + '</span><span>' + badge(e.cls, textoRestante(e)) + '</span></div>'; }).join('');
     mant += '<div class="row" style="margin:8px 0"><button class="btn sec grow" onclick="mantenimientoForm(\'' + c.id + '\')">+ Registrar mantenimiento</button>' + (plan.length ? '<button class="btn sec" onclick="editarPlanMantenimiento(\'' + c.id + '\')">Editar plan</button>' : '') + '</div>';
-    mant += seccionCodigosFalla(c);
+    mant += seccionOrdenes(c) + seccionCodigosFalla(c);
     if (MH.length) mant += '<div class="sec-t">Historial de mantenimiento</div>' + MH.map(m => '<div class="card row"><div class="grow tap" onclick="mantenimientoForm(\'' + c.id + '\',\'' + m.id + '\')"><div>' + money(m.costo) + ' <span class="small muted">' + esc(m.label || m.item) + (m.tipo === 'correctivo' ? ' · correctivo' : '') + (m.sinFactura ? ' · sin factura' : '') + '</span></div><div class="small muted">' + fdate(m.fecha) + (m.km ? ' · ' + (+m.km).toLocaleString('es-AR') + ' km' : '') + ([m.marca, m.especificacion].filter(Boolean).length ? ' · ' + esc([m.marca, m.especificacion].filter(Boolean).join(' · ')) : '') + '</div></div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delMantenimiento(\'' + m.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     const MR = MH.filter(m => m.marca || m.especificacion);
     if (MR.length) mant += '<div class="sec-t">Historial de repuestos</div>' + MR.map(m => '<div class="row between small" style="padding:4px 0"><span>' + esc(m.label || m.item) + ': ' + esc([m.marca, m.especificacion].filter(Boolean).join(' · ')) + '</span><span class="muted">' + fdate(m.fecha) + '</span></div>').join('');

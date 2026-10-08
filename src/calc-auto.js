@@ -159,6 +159,11 @@ export function alertasAuto() {
     // Auto problema
     const p = autoProblema(c);
     if (p) push(c, 'car:' + c.id + ':problema', 'Auto problema', 'warn', p.visitas + ' visitas al taller en 6 meses (' + String(p.promedio).replace('.', ',') + ' en promedio ' + p.comparado + ')', 20);
+    // Fallas reportadas por el chofer desde el portal y órdenes listas para retirar
+    (c.ordenes || []).forEach(o => {
+      if (o.estado === 'reportada') { const k = 'car:' + c.id + ':ot:' + o.id; if (!isSnoozed(k)) out.push({ who: c.patente || 'Auto', sub: 'Falla reportada por el chofer', kind: 'car', id: c.id, key: k, d: 0, cls: 'warn', t: o.titulo || 'Ver detalle', accion: "otForm('" + c.id + "','" + o.id + "')" }); }
+      if (o.estado === 'lista') { const k = 'car:' + c.id + ':otlista:' + o.id; if (!isSnoozed(k)) out.push({ who: c.patente || 'Auto', sub: 'Auto listo en el taller', kind: 'car', id: c.id, key: k, d: 3, cls: 'info', t: 'OT ' + o.numero + ': ' + (o.titulo || ''), accion: "otForm('" + c.id + "','" + o.id + "')" }); }
+    });
     // Códigos de falla sin resolver
     const cf = (c.codigosFalla || []).filter(x => !x.resuelto);
     if (cf.length) push(c, 'car:' + c.id + ':codigos', 'Códigos de falla sin resolver', 'warn', cf.map(x => x.codigo).join(', '), 10);

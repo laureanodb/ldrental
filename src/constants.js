@@ -120,7 +120,7 @@ export function normCar(c) {
 
 export const DCATS = [...DOCS.map(x => [x[0], x[1].replace(/ \(.*\)/, '')]), ['otro', 'Otro']];
 export const CCATS = [['cedula', 'Cédula / tarjeta'], ['titulo', 'Título / boleto de compra'], ['seguro', 'Póliza de seguro'], ['seguroCredencial', 'Credencial de circulación del seguro'], ['seguroCertificado', 'Certificado de cobertura del seguro'], ['vtv', 'VTV'], ['patente', 'Comprobante de impuesto automotor'], ['contrato', 'Contrato'], ['manual', 'Manual del auto'], ['fotos', 'Fotos del auto'], ['otro', 'Otro']];
-export const MCATS = [['factura', 'Factura del taller'], ['foto', 'Foto del trabajo'], ['otro', 'Otro']];
+export const MCATS = [['factura', 'Factura del taller'], ['foto', 'Foto del trabajo'], ['otro', 'Otro'], ['antes', 'Foto de antes'], ['despues', 'Foto de después']];
 export const TCATS = [['acta', 'Foto del acta/infracción'], ['comprobante', 'Comprobante de pago'], ['otro', 'Otro']];
 export const ACCEPT = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 
