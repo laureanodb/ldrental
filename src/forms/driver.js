@@ -12,6 +12,7 @@ import { valorSemanalRow } from './car.js';
 import { gruposDuplicadosLedger } from './deposito.js';
 import { settings, featureOculta } from '../settings.js';
 import { de } from '../memo.js';
+import { seccionCambiosDatos } from './portal-pedidos.js';
 
 function telRow(t) {
   t = t || {};
@@ -41,6 +42,7 @@ export function driverForm(id) {
   const ex = de('drivers', 'id', id)[0];
   const d = ex || { docs: {} };
   let h = '<h3>' + (ex ? esc(d.nombre) : 'Nuevo chofer') + '</h3>';
+  if (ex) h += seccionCambiosDatos(d);
   if (ex && d.inactivo) h += '<div class="card" style="margin-bottom:10px"><span class="badge b-mute">Inactivo</span></div>';
   if (ex && d.prospecto) h += '<div class="card row between" style="margin-bottom:10px"><span class="badge b-info">Prospecto · ' + esc((ETAPAS_PROSPECTO.find(x => x[0] === d.etapaProspecto) || [0, 'Contacto inicial'])[1]) + '</span><button class="btn sm" onclick="aprobarProspecto(\'' + d.id + '\')">Aprobar y dar de alta</button></div>';
   if (ex && !d.inactivo && !d.prospecto) {

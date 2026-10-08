@@ -107,7 +107,8 @@ export function otForm(carId, otId) {
   let h = '<h3>OT ' + o.numero + ' · ' + esc(c.patente) + '</h3>' +
     '<div class="row between" style="margin-bottom:10px">' + badge(estadoCls(o.estado), estadoLabel(o.estado)) + '<span class="small muted">' + fdate(o.fecha) + (o.km ? ' · ' + Number(o.km).toLocaleString('es-AR') + ' km' : '') + ' · ' + (prov ? esc(prov.nombre) : 'taller propio') + '</span></div>';
   if (o.origen === 'portal') h += '<div class="card small" style="margin-bottom:10px">La reportó ' + esc(o.reportadoPor || 'el chofer') + ' desde el portal.</div>';
-  if (o.opinionChofer) h += '<div class="card small" style="margin-bottom:10px">Opinión del chofer (' + fdate(o.opinionChofer.fecha) + '): <b>' + (o.opinionChofer.resultado === 'bien' ? 'quedó bien' : 'sigue fallando') + '</b>' + (o.opinionChofer.comentario ? ' · ' + esc(o.opinionChofer.comentario) : '') + '</div>';
+  if (o.opinionChofer) h += '<div class="card small" style="margin-bottom:10px">Opinión del chofer (' + fdate(o.opinionChofer.fecha) + '): <b>' + (o.opinionChofer.resultado === 'bien' ? 'quedó bien' : 'sigue fallando') + '</b>' + (o.opinionChofer.comentario ? ' · ' + esc(o.opinionChofer.comentario) : '') +
+    (o.opinionChofer.resultado !== 'bien' && !o.opinionAtendida ? '<div class="row" style="margin-top:6px"><button class="btn sm grow" onclick="reabrirOT(\'' + c.id + '\',\'' + o.id + '\')">Abrir otra orden</button><button class="btn sec sm" onclick="atenderOpinionOT(\'' + c.id + '\',\'' + o.id + '\')">Ya lo resolví</button></div>' : '') + '</div>';
 
   h += '<label class="f"><span>Qué hay que hacer</span><input id="otf_titulo" value="' + esc(o.titulo) + '"' + (abierta ? '' : ' disabled') + '></label>' +
     '<label class="f"><span>Detalle</span><textarea id="otf_desc"' + (abierta ? '' : ' disabled') + '>' + esc(o.descripcion || '') + '</textarea></label>' +
@@ -267,4 +268,16 @@ export function ordenesView() {
   h += vis.length ? vis.slice(0, 80).map(x => filaOT(x.c, x.o, true)).join('') : '<div class="card empty">No hay órdenes acá.</div>';
   h += '<div class="row" style="margin-top:10px"><button class="btn grow" onclick="nuevaOTForm()">+ Nueva orden</button><button class="btn sec" onclick="closeModal()">Cerrar</button></div>';
   openModal(h);
+}
+
+// El chofer dijo que sigue fallando: se abre una orden nueva vinculada, o se marca como resuelto.
+export async function atenderOpinionOT(carId, otId) {
+  const { c, o } = buscar(carId, otId); if (!o) return;
+  if (await guardarOT(c, Object.assign({}, o, { opinionAtendida: iso(today()) }), 'Listo')) otForm(carId, otId);
+}
+export async function reabrirOT(carId, otId) {
+  const { c, o } = buscar(carId, otId); if (!o) return;
+  const nueva = { id: uid(), numero: proximoNumero(), fecha: iso(today()), estado: 'abierta', origen: 'app', tipo: 'correctivo', titulo: 'Sigue fallando: ' + o.titulo, descripcion: (o.opinionChofer && o.opinionChofer.comentario) || '', km: +c.km || 0, proveedorId: o.proveedorId || '', mecanico: o.mecanico || '', tareas: [], repuestos: [], horas: [], fotosAntes: [], fotosDespues: [], otAnterior: o.id };
+  const ordenes = (c.ordenes || []).map(x => (x.id === o.id ? Object.assign({}, x, { opinionAtendida: iso(today()) }) : x)).concat([nueva]);
+  if (await save('cars', Object.assign({}, c, { ordenes }))) { toast('Orden ' + nueva.numero + ' abierta'); otForm(carId, nueva.id); }
 }

@@ -4,6 +4,12 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-10-08', items: [
+    'Órdenes de trabajo del taller (Más → Órdenes de trabajo o desde la ficha del auto): tareas, repuestos del pañol, horas del mecánico, fotos de antes y después; al cerrarla descuenta el pañol y queda en el historial.',
+    'Ficha del auto: semáforo de papeles, cédulas de autorizado a conducir, turno de VTV, mediciones de batería y cubiertas (con estimación por foto), códigos de falla con escáner Bluetooth y aviso de "auto problema". Valores de mercado de toda la flota en Más.',
+    'Control: aprobación de gastos grandes cargados por el equipo, bitácora de decisiones, metas de la flota en el Panel y venta de repuestos desde el pañol.',
+    'Portal del chofer: botón de auxilio con ubicación, reporte de fallas con fotos que abre una orden, estado del auto en el taller, plan de service, km con foto del tablero, turnos de service, opinión sobre cada arreglo, actualización de datos y recorrido de bienvenida.',
+  ] },
   { v: '2026-10-05', items: [
     'Pañol (Más → Pañol): cada ítem es consumible, repuesto o herramienta, y ves cuánta plata tenés en cada uno, valuado a lo que te costó (costo promedio) o a lo que sale hoy. Te dice en qué categorías y estantes está la plata, cuánto se gasta por mes y qué está parado hace meses.',
     'Pañol: ubicación, código y modelos compatibles en cada ítem; quién retiró cada cosa; cuántos días te alcanza el stock; lista de compra según lo que consumís; kits de service para descontar todo de un toque (también desde el service del auto); préstamo de herramientas; inventario físico con faltantes en pesos; y Excel valorizado.',

@@ -107,6 +107,26 @@ function renderPortal(app, j) {
   if (companyPhone) {
     h += '<a class="btn block" style="margin-bottom:14px" target="_blank" href="https://wa.me/' + esc(companyPhone.replace(/\D/g, '')) + '?text=' + encodeURIComponent('Hola, soy ' + (j.nombre || '') + '.') + '">Contactar por WhatsApp</a>';
   }
+  const mis = j.misAutos || [];
+  if (mis.length) {
+    h += '<div class="card" id="aux_card" style="margin-bottom:14px;border-color:var(--bad)"><button class="btn danger block" id="aux_btn">🆘 Necesito auxilio</button>' +
+      '<div class="small muted" style="margin-top:6px">Le manda tu ubicación a la empresa para que te ayuden (auto roto, choque, problema en la calle).</div>' +
+      '<div id="aux_form" hidden><label class="f" style="margin-top:8px"><span>Auto</span><select id="aux_car">' + mis.map(a => '<option value="' + esc(a.id) + '">' + esc(a.patente) + '</option>').join('') + '</select></label>' +
+      '<label class="f"><span>¿Qué pasó? <small>opcional</small></span><input id="aux_msg" placeholder="ej: no arranca, pinché una goma"></label>' +
+      '<button class="btn danger block" id="aux_enviar">Enviar mi ubicación</button></div>' +
+      '<div class="small" id="aux_status" style="margin-top:6px"></div></div>';
+  }
+  const taller = j.taller || [];
+  if (taller.length) {
+    h += '<div class="sec-t">Tu auto en el taller</div>' + taller.map(t => '<div class="card"><div class="row between"><b>' + esc(t.patente) + (t.numero ? ' · Orden ' + esc(t.numero) : '') + '</b><span class="small" style="font-weight:600;color:' + (t.estado === 'lista' ? 'var(--ok)' : t.estado === 'reportada' || t.estado === 'esperando_repuesto' ? 'var(--warn)' : 'var(--muted)') + '">' + esc(t.estadoTexto) + '</span></div>' +
+      '<div class="small muted">' + esc(t.titulo) + (t.fecha ? ' · desde el ' + fdate(t.fecha) : '') + (t.tareasTotal ? ' · ' + t.tareasHechas + ' de ' + t.tareasTotal + ' tareas hechas' : '') + '</div>' +
+      (t.tareasTotal ? '<div style="background:var(--soft);border-radius:6px;height:6px;overflow:hidden;margin-top:6px"><div style="width:' + Math.round(t.tareasHechas / t.tareasTotal * 100) + '%;height:100%;background:var(--ok)"></div></div>' : '') + '</div>').join('');
+  }
+  (j.arreglos || []).forEach((x, i) => {
+    h += '<div class="card" data-arreglo="' + i + '" style="margin-bottom:10px"><b>¿Quedó bien el arreglo?</b><div class="small muted">' + esc(x.patente) + ' · ' + esc(x.titulo) + ' · ' + fdate(x.fecha) + '</div>' +
+      '<input class="arr_com" placeholder="Comentario (opcional)" style="margin:8px 0">' +
+      '<div class="row"><button class="btn sm grow arr_si">Sí, quedó bien</button><button class="btn sec sm grow arr_no">Sigue fallando</button></div><div class="small muted arr_st" style="margin-top:4px"></div></div>';
+  });
   (j.contratosPendientes || []).forEach((k, i) => {
     h += '<div class="sec-t">Contrato para firmar</div><div class="card" id="fc_card_' + i + '" style="border-color:var(--warn);margin-bottom:14px">' +
       '<b>' + esc(k.titulo) + (k.patente ? ' · ' + esc(k.patente) : '') + '</b>' +
@@ -183,6 +203,7 @@ function renderPortal(app, j) {
       (a.docsSeguro && a.docsSeguro.length ? '<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><div class="small muted">Papeles del seguro' + (a.aseguradora ? ' · ' + esc(a.aseguradora) : '') + (a.polizaNumero ? ' · Póliza ' + esc(a.polizaNumero) : '') + '</div>' +
         a.docsSeguro.map(d => '<a class="btn sec block" style="margin-top:6px" target="_blank" rel="noopener" href="' + esc(d.url) + '">Descargar ' + esc(d.label.toLowerCase()) + '</a>').join('') +
         '<div class="small muted" style="margin-top:4px">Tenelos a mano por si te paran. Si el link no abre, recargá la página.</div></div>' : '') +
+      planServiceHtml((j.misAutos || []).find(m => m.id === a.id)) +
       '</div>';
     });
   }
@@ -195,18 +216,32 @@ function renderPortal(app, j) {
     h += '<div class="sec-t">Historial de pagos</div>' + pagos.map((p, i) => '<div class="card row between"><div><div>' + fdate(p.fecha) + '</div><div class="small muted">' + (p.tipo === 'seguro' ? 'Seguro · ' : '') + esc(p.metodoLabel || '') + (p.patente ? ' · ' + esc(p.patente) : '') + '</div></div>' +
     '<div class="row" style="align-items:center;gap:8px"><b>' + (p.tipo === 'cuota' ? moneyUSD(p.monto) : money(p.monto)) + '</b><button class="btn sec sm" data-recibo="' + i + '">Recibo</button></div></div>').join('');
   }
-  if (autos.length) {
-    h += '<div class="sec-t">Pedir turno de service</div><div class="card">' +
-    '<label class="f"><span>Auto</span><select id="pt_patente">' + autos.map(a => '<option value="' + esc(a.patente) + '">' + esc(a.patente) + '</option>').join('') + '</select></label>' +
+  if (mis.length) {
+    const turnos = mis.flatMap(m => (m.turnos || []).map(t => Object.assign({ patente: m.patente }, t)));
+    h += '<div class="sec-t">Pedir turno de service</div><div class="card" id="tour_service">' +
+    (turnos.length ? turnos.map(t => '<div class="row between small" style="padding:3px 0"><span>' + esc(t.patente) + ' · ' + esc(t.motivo || 'Service') + (t.fecha ? ' · ' + fdate(t.fecha) + (t.hora ? ' ' + esc(t.hora) : '') : '') + '</span><b style="color:' + (t.estado === 'confirmado' ? 'var(--ok)' : t.estado === 'rechazado' ? 'var(--bad)' : 'var(--warn)') + '">' + (t.estado === 'confirmado' ? 'Confirmado' : t.estado === 'rechazado' ? 'No disponible' : 'Pedido') + '</b></div>' + (t.nota ? '<div class="small muted">' + esc(t.nota) + '</div>' : '')).join('') + '<div style="border-top:1px solid var(--line);margin:8px 0"></div>' : '') +
+    '<label class="f"><span>Auto</span><select id="pt_car">' + mis.map(a => '<option value="' + esc(a.id) + '">' + esc(a.patente) + '</option>').join('') + '</select></label>' +
+    '<div class="two"><label class="f"><span>Día que te queda bien</span><input id="pt_fecha" type="date"></label><label class="f"><span>Hora</span><input id="pt_hora" type="time"></label></div>' +
     '<label class="f"><span>Motivo</span><textarea id="pt_motivo" placeholder="ej: cambio de aceite, revisión programada..."></textarea></label>' +
     '<button class="btn sec block" id="pt_btn">Pedir turno</button>' +
     '<div class="small muted" id="pt_status" style="margin-top:6px"></div></div>';
-    h += '<div class="sec-t">Reportar un problema</div><div class="card">' +
-    '<label class="f"><span>Auto</span><select id="pr_patente">' + autos.map(a => '<option value="' + esc(a.patente) + '">' + esc(a.patente) + '</option>').join('') + '</select></label>' +
+    h += '<div class="sec-t">Reportar un problema</div><div class="card" id="tour_problema">' +
+    '<label class="f"><span>Auto</span><select id="pr_car">' + mis.map(a => '<option value="' + esc(a.id) + '">' + esc(a.patente) + '</option>').join('') + '</select></label>' +
     '<label class="f"><span>¿Qué pasó?</span><textarea id="pr_descripcion" placeholder="ej: ruido en el freno, luz de motor encendida..."></textarea></label>' +
+    '<label class="btn sec block filebtn">Agregar fotos o un video corto <small>(hasta 3 fotos)</small><input id="pr_fotos" type="file" accept="image/*" capture="environment" multiple></label>' +
+    '<div class="small muted" id="pr_fotos_txt" style="margin:4px 0"></div>' +
     '<label class="chk"><input type="checkbox" id="pr_urgente"><span>Es urgente, no puedo seguir manejando</span></label>' +
     '<button class="btn danger block" id="pr_btn" style="margin-top:8px">Reportar problema</button>' +
     '<div class="small muted" id="pr_status" style="margin-top:6px"></div></div>';
+    h += '<div class="sec-t">Cargar kilometraje</div><div class="card" id="tour_km">' +
+    '<div class="small muted" style="margin-bottom:8px">Sacale una foto al tablero con el auto en contacto. La leemos y vos confirmás el número.</div>' +
+    '<label class="f"><span>Auto</span><select id="km_car">' + mis.map(a => '<option value="' + esc(a.id) + '">' + esc(a.patente) + (a.km ? ' (último: ' + Number(a.km).toLocaleString('es-AR') + ' km)' : '') + '</option>').join('') + '</select></label>' +
+    '<label class="btn sec block filebtn">Sacar foto del tablero<input id="km_file" type="file" accept="image/*" capture="environment"></label>' +
+    '<div id="km_res" hidden><label class="f" style="margin-top:8px"><span>Kilometraje</span><input id="km_valor" inputmode="numeric"></label><div class="small muted" id="km_extra"></div>' +
+    '<button class="btn block" id="km_btn" style="margin-top:8px">Confirmar kilometraje</button></div>' +
+    '<div class="small muted" id="km_status" style="margin-top:6px"></div></div>';
+  }
+  if (autos.length) {
     h += '<div class="sec-t">Subir una foto del auto</div><div class="card">' +
     '<label class="f"><span>Auto</span><select id="ph_car">' + autos.map(a => '<option value="' + esc(a.id) + '">' + esc(a.patente) + '</option>').join('') + '</select></label>' +
     '<label class="btn sec block filebtn">Elegir foto<input id="ph_file" type="file" accept="image/*" capture="environment"></label>' +
@@ -233,10 +268,13 @@ function renderPortal(app, j) {
     }).join('');
   }
   h += '<div class="sec-t">Actualizar mis datos</div><div class="card">' +
+  (j.cambiosPendientes ? '<div class="small" style="color:var(--warn);margin-bottom:8px">Ya mandaste cambios el ' + fdate(j.cambiosPendientes.fecha) + ' y la empresa los está revisando.</div>' : '') +
   '<label class="f"><span>Teléfono nuevo</span><input id="ad_tel" type="tel"></label>' +
   '<label class="f"><span>Domicilio nuevo</span><input id="ad_domicilio"></label>' +
+  '<label class="f"><span>Email</span><input id="ad_email" type="email"></label>' +
   '<button class="btn sec block" id="ad_btn">Enviar</button>' +
   '<div class="small muted" id="ad_status" style="margin-top:6px"></div></div>';
+  h += '<div style="text-align:center;margin:18px 0 6px"><a class="small muted tap" style="text-decoration:underline" id="tour_ver">Ver cómo usar esta página</a></div>';
   const wrap = app.querySelector('.login');
   wrap.insertAdjacentHTML('beforeend', h);
   wrap.querySelectorAll('[data-recibo]').forEach(btn => {
@@ -277,21 +315,16 @@ function renderPortal(app, j) {
       else { st.textContent = r.error || 'No se pudo enviar, probá de nuevo.'; btn.disabled = false; }
     });
   });
-  const ptBtn = wrap.querySelector('#pt_btn');
-  if (ptBtn) ptBtn.addEventListener('click', () => enviarAccionPortal(
-    { accion: 'service', patente: wrap.querySelector('#pt_patente').value, motivo: wrap.querySelector('#pt_motivo').value },
-    wrap.querySelector('#pt_status'), ptBtn
-  ));
-  const prBtn = wrap.querySelector('#pr_btn');
-  if (prBtn) prBtn.addEventListener('click', () => enviarAccionPortal(
-    { accion: 'problema', patente: wrap.querySelector('#pr_patente').value, descripcion: wrap.querySelector('#pr_descripcion').value, urgente: wrap.querySelector('#pr_urgente').checked },
-    wrap.querySelector('#pr_status'), prBtn
-  ));
+  conectarNuevos(wrap, j);
   const adBtn = wrap.querySelector('#ad_btn');
-  if (adBtn) adBtn.addEventListener('click', () => {
-    const tel = wrap.querySelector('#ad_tel').value.trim(), domicilio = wrap.querySelector('#ad_domicilio').value.trim();
-    if (!tel && !domicilio) { wrap.querySelector('#ad_status').textContent = 'Completá al menos un dato'; return; }
-    enviarAccionPortal({ accion: 'actualizar_datos', tel, domicilio }, wrap.querySelector('#ad_status'), adBtn);
+  if (adBtn) adBtn.addEventListener('click', async () => {
+    const tel = wrap.querySelector('#ad_tel').value.trim(), domicilio = wrap.querySelector('#ad_domicilio').value.trim(), email = wrap.querySelector('#ad_email').value.trim();
+    const st = wrap.querySelector('#ad_status');
+    if (!tel && !domicilio && !email) { st.textContent = 'Completá al menos un dato'; return; }
+    adBtn.disabled = true; st.textContent = 'Enviando…';
+    const r = await postPortal({ accion: 'actualizar_datos', tel, domicilio, email });
+    st.textContent = r.ok ? '✓ Enviado. La empresa lo va a revisar.' : (r.error || 'No se pudo enviar, probá de nuevo.');
+    adBtn.disabled = false;
   });
   const phBtn = wrap.querySelector('#ph_btn');
   if (phBtn) phBtn.addEventListener('click', async () => {
@@ -374,4 +407,145 @@ async function descargarReciboPortal(j, p) {
   y += 14;
   doc.setFontSize(8); doc.setTextColor(140); doc.text('Comprobante generado por ' + (settings.companyName || 'LD Rental'), 12, y);
   doc.save('recibo-' + (p.patente || 'auto') + '-' + p.fecha + '.pdf');
+}
+
+/* ---------- Partes nuevas del portal ---------- */
+function planServiceHtml(m) {
+  if (!m || !(m.planService || []).length) return '';
+  const L = m.planService.slice(0, 5);
+  const col = e => (e === 'vencido' ? 'var(--bad)' : e === 'pronto' ? 'var(--warn)' : 'var(--muted)');
+  return '<details style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><summary class="small muted" style="cursor:pointer">Plan de service del auto' + (L.some(x => x.estado !== 'ok') ? ' · <b style="color:' + col(L.some(x => x.estado === 'vencido') ? 'vencido' : 'pronto') + '">hay algo por hacer</b>' : '') + '</summary>' +
+    L.map(x => '<div class="row between small" style="padding:3px 0"><span>' + esc(x.label) + '</span><span style="color:' + col(x.estado) + '">' +
+      (x.estado === 'vencido' ? 'Ya toca' : [x.faltanKm != null ? 'en ' + Number(Math.max(0, x.faltanKm)).toLocaleString('es-AR') + ' km' : '', x.proxFecha ? 'antes del ' + fdate(x.proxFecha) : ''].filter(Boolean).join(' o ')) + '</span></div>').join('') +
+    '<div class="small muted" style="margin-top:4px">Si te toca algo, pedí turno más abajo.</div></details>';
+}
+async function aDataUrls(files, max) {
+  const out = [];
+  for (const f of [...(files || [])].slice(0, max)) { if ((f.type || '').startsWith('image/')) out.push(await comprimirImagen(f)); }
+  return out;
+}
+function conectarNuevos(wrap, j) {
+  const $w = s => wrap.querySelector(s);
+  // Turno de service
+  const ptBtn = $w('#pt_btn');
+  if (ptBtn) ptBtn.addEventListener('click', async () => {
+    const st = $w('#pt_status');
+    ptBtn.disabled = true; st.textContent = 'Enviando…';
+    const r = await postPortal({ accion: 'service', carId: $w('#pt_car').value, fecha: $w('#pt_fecha').value, hora: $w('#pt_hora').value, motivo: $w('#pt_motivo').value });
+    st.textContent = r.ok ? '✓ Pedido. Te avisamos cuando la empresa lo confirme (lo ves acá mismo).' : (r.error || 'No se pudo enviar, probá de nuevo.');
+    ptBtn.disabled = false;
+  });
+  // Problema con fotos
+  const prFotos = $w('#pr_fotos');
+  if (prFotos) prFotos.addEventListener('change', () => { const n = prFotos.files.length; $w('#pr_fotos_txt').textContent = n ? n + ' foto' + (n === 1 ? '' : 's') + (n > 3 ? ' (se mandan las primeras 3)' : '') : ''; });
+  const prBtn = $w('#pr_btn');
+  if (prBtn) prBtn.addEventListener('click', async () => {
+    const st = $w('#pr_status');
+    const descripcion = $w('#pr_descripcion').value.trim();
+    if (!descripcion) { st.textContent = 'Contá qué pasó'; return; }
+    prBtn.disabled = true; st.textContent = 'Preparando…';
+    let fotos = [];
+    try { fotos = await aDataUrls(prFotos && prFotos.files, 3); } catch (e) { st.textContent = 'No se pudo procesar una foto'; prBtn.disabled = false; return; }
+    st.textContent = 'Enviando…';
+    const r = await postPortal({ accion: 'problema', carId: $w('#pr_car').value, descripcion, urgente: $w('#pr_urgente').checked, fotos });
+    if (r.ok) { st.textContent = '✓ Listo, la empresa ya lo recibió' + (r.numero ? ' (orden ' + r.numero + ')' : '') + '. Vas a ver el avance en "Tu auto en el taller".'; $w('#pr_descripcion').value = ''; if (prFotos) prFotos.value = ''; $w('#pr_fotos_txt').textContent = ''; }
+    else st.textContent = r.error || 'No se pudo enviar, probá de nuevo.';
+    prBtn.disabled = false;
+  });
+  // Km con foto del tablero
+  const kmFile = $w('#km_file');
+  let kmPath = '', kmLectura = null;
+  if (kmFile) kmFile.addEventListener('change', async () => {
+    const f = kmFile.files && kmFile.files[0]; if (!f) return;
+    const st = $w('#km_status');
+    st.textContent = 'Leyendo la foto…'; $w('#km_res').hidden = true;
+    let imagen;
+    try { imagen = await comprimirImagen(f); } catch (e) { st.textContent = 'No se pudo procesar la foto'; return; }
+    const r = await postPortal({ accion: 'tablero', carId: $w('#km_car').value, imagen });
+    kmFile.value = '';
+    if (!r.ok) { st.textContent = r.error || 'No se pudo enviar, probá de nuevo.'; return; }
+    kmPath = r.path || ''; kmLectura = r.lectura;
+    const L = r.lectura;
+    $w('#km_res').hidden = false;
+    $w('#km_valor').value = L && L.esTablero && L.km ? L.km : '';
+    $w('#km_extra').textContent = !L ? 'No pudimos leer la foto: escribí el número que marca el tablero.' : !L.esTablero || !L.km ? 'No se ve bien el número: escribilo vos.' :
+      'Leímos ' + Number(L.km).toLocaleString('es-AR') + ' km' + (L.combustiblePct != null ? ' y ' + L.combustiblePct + '% de combustible' : '') + '. Revisá que esté bien.' + (L.testigos && L.testigos.length ? ' Vemos encendido: ' + L.testigos.join(', ') + '.' : '');
+    st.textContent = '';
+  });
+  const kmBtn = $w('#km_btn');
+  if (kmBtn) kmBtn.addEventListener('click', async () => {
+    const st = $w('#km_status');
+    const km = +String($w('#km_valor').value).replace(/\D/g, '');
+    if (!km) { st.textContent = 'Escribí el kilometraje'; return; }
+    kmBtn.disabled = true; st.textContent = 'Guardando…';
+    const r = await postPortal({ accion: 'km', carId: $w('#km_car').value, km, path: kmPath, combustiblePct: kmLectura && kmLectura.combustiblePct, testigos: (kmLectura && kmLectura.testigos) || [] });
+    if (r.ok) { $w('#km_res').hidden = true; st.textContent = '✓ Kilometraje guardado: ' + km.toLocaleString('es-AR') + ' km.'; }
+    else st.textContent = r.error || 'No se pudo guardar, probá de nuevo.';
+    kmBtn.disabled = false;
+  });
+  // Auxilio
+  const auxBtn = $w('#aux_btn');
+  if (auxBtn) auxBtn.addEventListener('click', () => { $w('#aux_form').hidden = false; auxBtn.hidden = true; });
+  const auxEnviar = $w('#aux_enviar');
+  if (auxEnviar) auxEnviar.addEventListener('click', async () => {
+    const st = $w('#aux_status');
+    auxEnviar.disabled = true; st.style.color = 'var(--muted)'; st.textContent = 'Buscando tu ubicación…';
+    const pos = await new Promise(res => {
+      if (!navigator.geolocation) return res(null);
+      navigator.geolocation.getCurrentPosition(p => res(p.coords), () => res(null), { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+    });
+    st.textContent = 'Avisando a la empresa…';
+    const r = await postPortal({ accion: 'auxilio', carId: $w('#aux_car').value, mensaje: $w('#aux_msg').value, lat: pos ? pos.latitude : null, lng: pos ? pos.longitude : null, precision: pos ? pos.accuracy : 0 });
+    const tel = j.telefonoEmergencia || j.companyPhone || '';
+    if (r.ok) { st.style.color = 'var(--ok)'; st.innerHTML = '✓ La empresa recibió tu pedido' + (pos ? ' con tu ubicación' : ' (no pudimos tomar tu ubicación: decí dónde estás por teléfono)') + '.' + (tel ? ' <a class="btn sec block" style="margin-top:8px" href="tel:' + esc(tel) + '">Llamar a ' + esc(tel) + '</a>' : ''); }
+    else { st.style.color = 'var(--bad)'; st.textContent = r.error || 'No se pudo enviar. Llamá a la empresa.'; auxEnviar.disabled = false; }
+  });
+  // Opinión sobre los arreglos
+  wrap.querySelectorAll('[data-arreglo]').forEach(card => {
+    const x = (j.arreglos || [])[+card.dataset.arreglo];
+    const enviar = async resultado => {
+      const st = card.querySelector('.arr_st');
+      st.textContent = 'Enviando…';
+      const r = await postPortal({ accion: 'opinion', carId: x.carId, otId: x.tipo === 'ot' ? x.id : '', mantId: x.tipo === 'mant' ? x.id : '', resultado, comentario: card.querySelector('.arr_com').value });
+      if (r.ok) card.innerHTML = '<b style="color:var(--ok)">✓ Gracias por avisar</b>' + (resultado !== 'bien' ? '<div class="small muted">La empresa se va a comunicar con vos.</div>' : '');
+      else st.textContent = r.error || 'No se pudo enviar, probá de nuevo.';
+    };
+    card.querySelector('.arr_si').addEventListener('click', () => enviar('bien'));
+    card.querySelector('.arr_no').addEventListener('click', () => enviar('sigue_fallando'));
+  });
+  // Recorrido de bienvenida
+  const verTour = $w('#tour_ver');
+  if (verTour) verTour.addEventListener('click', () => recorrido(wrap, true));
+  recorrido(wrap, false);
+}
+
+// Recorrido corto la primera vez que el chofer entra al portal.
+function recorrido(wrap, forzar) {
+  const KEY = 'portal-recorrido-' + PORTAL_ID;
+  if (!forzar) { try { if (localStorage.getItem(KEY)) return; } catch (e) { return; } }
+  const pasos = [
+    ['.sec-t', 'Bienvenido a tu portal', 'Acá ves todo lo tuyo con la empresa. Guardá este link en el celular para entrar cuando quieras.'],
+    ['#ya_pague', 'Cómo pagar', 'Arriba están los datos para transferir. Cuando pagues, subí el comprobante desde acá.'],
+    ['#aux_card', 'Si te quedás en la calle', 'Con este botón le mandás tu ubicación a la empresa para que te ayuden.'],
+    ['#tour_problema', 'Si el auto tiene un problema', 'Contalo con fotos. Se abre una orden en el taller y ves el avance en esta misma página.'],
+    ['#tour_km', 'Kilometraje', 'Sacale una foto al tablero y la leemos sola. Te lleva 10 segundos.'],
+    ['#tour_service', 'Turnos de service', 'Pedí el turno con el día que te queda bien. Cuando la empresa lo confirma, lo ves acá.'],
+  ].filter(p => wrap.querySelector(p[0]));
+  if (!pasos.length) return;
+  let i = 0, marcado = null;
+  const capa = document.createElement('div');
+  capa.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:2px solid var(--btn);box-shadow:0 -6px 20px rgba(0,0,0,.18)';
+  document.body.appendChild(capa);
+  const cerrar = () => { if (marcado) marcado.style.outline = ''; capa.remove(); try { localStorage.setItem(KEY, '1'); } catch (e) {} };
+  const mostrar = () => {
+    const [sel, titulo, texto] = pasos[i];
+    if (marcado) marcado.style.outline = '';
+    marcado = wrap.querySelector(sel);
+    if (marcado) { marcado.style.outline = '3px solid var(--btn)'; marcado.style.outlineOffset = '3px'; marcado.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    capa.innerHTML = '<div class="small muted">' + (i + 1) + ' de ' + pasos.length + '</div><b>' + esc(titulo) + '</b><div class="small" style="margin:4px 0 10px">' + esc(texto) + '</div>' +
+      '<div class="row"><button class="btn sec sm" id="tour_saltar">Saltar</button><button class="btn sm grow" id="tour_sig">' + (i === pasos.length - 1 ? 'Listo' : 'Siguiente') + '</button></div>';
+    capa.querySelector('#tour_saltar').onclick = cerrar;
+    capa.querySelector('#tour_sig').onclick = () => { i++; if (i >= pasos.length) cerrar(); else mostrar(); };
+  };
+  mostrar();
 }

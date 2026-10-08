@@ -3,7 +3,7 @@
 import { S } from './state.js';
 import { today, iso, parse, days, fdate } from './utils.js';
 import { isSnoozed } from './snooze.js';
-import { de } from './memo.js';
+import { de, enPasada } from './memo.js';
 
 const hoyIso = () => iso(today());
 const diasHasta = f => (f ? days(today(), parse(f)) : null);
@@ -107,7 +107,8 @@ export const valorFlota = () => S.cars.filter(c => !c.vendido).reduce((a, c) => 
 
 /* ---------- Auto problema: va al taller mucho más que los de su modelo ---------- */
 const modelo = c => [c.marca, c.modelo].filter(Boolean).join(' ').trim().toLowerCase();
-export function visitasTaller(c, dias = 180) {
+export const visitasTaller = (c, dias = 180) => enPasada('visitas:' + c.id + ':' + dias, () => _visitasTaller(c, dias));
+function _visitasTaller(c, dias) {
   const desde = new Date(today()); desde.setDate(desde.getDate() - dias);
   const d0 = iso(desde);
   const mant = de('mantenimientos', 'carId', c.id).filter(m => m.carId === c.id && m.tipo === 'correctivo' && (m.fecha || '') >= d0).length;
@@ -119,13 +120,18 @@ export function autoProblema(c) {
   if (c.vendido) return null;
   const n = visitasTaller(c);
   if (n < 3) return null;
-  const activos = S.cars.filter(x => !x.vendido && x.id !== c.id);
-  const pares = modelo(c) ? activos.filter(x => modelo(x) === modelo(c)) : [];
-  const base = pares.length ? pares : activos;
-  if (!base.length) return null;
-  const prom = base.reduce((a, x) => a + visitasTaller(x), 0) / base.length;
+  const { suma, n: cant, porModelo } = enPasada('visitasFlota', () => {
+    const r = { suma: 0, n: 0, porModelo: {} };
+    S.cars.filter(x => !x.vendido).forEach(x => { const v = visitasTaller(x), m = modelo(x); r.suma += v; r.n++; if (m) { const p = r.porModelo[m] || (r.porModelo[m] = { suma: 0, n: 0 }); p.suma += v; p.n++; } });
+    return r;
+  });
+  const pm = modelo(c) ? porModelo[modelo(c)] : null;
+  const pares = pm && pm.n > 1 ? { suma: pm.suma - n, n: pm.n - 1 } : null;
+  const base = pares || { suma: suma - n, n: cant - 1 };
+  if (base.n <= 0) return null;
+  const prom = base.suma / base.n;
   if (n < Math.max(3, prom * 2)) return null;
-  return { visitas: n, promedio: Math.round(prom * 10) / 10, comparado: pares.length ? 'los otros ' + (c.marca || '') + ' ' + (c.modelo || '') : 'el resto de la flota' };
+  return { visitas: n, promedio: Math.round(prom * 10) / 10, comparado: pares ? 'los otros ' + (c.marca || '') + ' ' + (c.modelo || '') : 'el resto de la flota' };
 }
 
 /* ---------- Avisos ---------- */
