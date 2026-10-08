@@ -2,6 +2,7 @@ import { S } from '../state.js';
 import { $, val, uid, iso, today, esc, fdate, money, moneyUSD, parse, days } from '../utils.js';
 import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS, MOTIVOS_REEMPLAZO, TIPOS_SINIESTRO, SINIESTRO_ESTADOS, ASEGURADORAS, TRANSMISIONES, COBERTURAS_SEGURO, ELEMENTOS_SEGURIDAD, CUMPLIMIENTO_NORMATIVO_ITEMS, RECLAMO_SEGURO_ESTADOS, STOCK_UNIDADES } from '../constants.js';
 import { seguroPaga, seguroPendiente, seguroPendienteDesde, isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas, estadoGeneralAuto, mejorPeorMesAuto, lineaDeTiempoAuto, contratoVencimiento, vs, gastosFijosMensuales, historialGastosFijos, comparacionGastoFijo, desgloseCobradoPorChofer, movimientosSalidaPorAuto, gastosRepuestosPorAuto } from '../calc.js';
+import { seccionPapeles, seccionCedulas, seccionVtv, seccionBateria, seccionCubiertas, seccionValorMercado, campoSeguroApps, seccionCodigosFalla, badgeAutoProblema, completarAuto } from './auto-extra.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
 import { renderFiles, purgeFiles, attach } from '../files.js';
@@ -331,7 +332,7 @@ export function carForm(id) {
     const estLabel = { ok: 'Todo al día', soft: 'Todo al día', warn: 'Algo pendiente', bad: 'Vencido / atención' }[estGen];
     const aceite = (c.mantenimientoPlan || []).find(p => p.item === 'aceite' && (p.intervaloKm || p.intervaloMeses));
     const eAceite = aceite ? estadoPlanItem(c, aceite) : null;
-    h += '<div class="card" style="margin-bottom:10px">' + badge(estGen, estLabel) + (eAceite ? ' ' + badge(eAceite.cls, 'Aceite: ' + textoRestante(eAceite)) : '') + '</div>';
+    h += '<div class="card" style="margin-bottom:10px">' + badge(estGen, estLabel) + (eAceite ? ' ' + badge(eAceite.cls, 'Aceite: ' + textoRestante(eAceite)) : '') + badgeAutoProblema(c) + '</div>';
   }
   if (ex && !c.vendido) {
     const asigActual = c.choferId ? (c.historialChoferes || []).slice().reverse().find(hh => hh.choferId === c.choferId && !hh.hasta) : null;
@@ -346,7 +347,7 @@ export function carForm(id) {
   }
 
   /* ---- Datos ---- */
-  let datos = '';
+  let datos = ex ? seccionPapeles(c) : '';
   if (ex && c.tipo !== 'financiado' && c.valorMercado && c.costoCompra) {
     const dif = c.valorMercado - c.costoCompra;
     datos += '<div class="card row between"><span class="muted">Valor de mercado vs. invertido</span><b style="color:' + (dif >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(dif) + '</b></div>';
@@ -364,13 +365,14 @@ export function carForm(id) {
   '<label class="f"><span>Combustible</span><select id="c_combustible"><option value="">Sin especificar</option>' + COMBUSTIBLES.map(x => '<option value="' + x[0] + '"' + (c.combustible === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
   '<div class="two"><label class="f"><span>Kilometraje actual</span><input id="c_km" inputmode="numeric" value="' + esc(c.km) + '"></label>' +
   '<label class="f"><span>Costo de compra</span><input id="c_costocompra" inputmode="decimal" value="' + esc(c.costoCompra || '') + '"></label></div>' +
-  '<label class="f"><span>Valor de mercado actual</span><input id="c_valormercado" inputmode="decimal" value="' + esc(c.valorMercado || '') + '"></label>' +
+  '<label class="f"><span>Valor de mercado actual</span><input id="c_valormercado" inputmode="decimal" value="' + esc(c.valorMercado || '') + '"></label>' + (ex ? seccionValorMercado(c) : '') +
   '<div class="sec-t">Llaves</div>' +
   '<label class="chk"><input type="checkbox" id="c_llaveDuplicada"' + (c.llaveDuplicada ? ' checked' : '') + '><span><b>Tiene la segunda llave (copia)</b></span></label>' +
   '<div class="two"><label class="f"><span>Copias de llave <small>en total</small></span><input id="c_copiasLlave" inputmode="numeric" value="' + esc(c.copiasLlave || '') + '"></label>' +
   '<label class="f"><span>Dónde está la copia</span><input id="c_llavesUbicacion" placeholder="ej: caja fuerte de la oficina" value="' + esc(c.llavesUbicacion) + '"></label></div>' +
+  (ex ? seccionCedulas(c) : '') +
   '<label class="f"><span>Estado</span><select id="c_tipo" data-orig="' + esc(ex ? c.tipo : '') + '" onchange="onTipo(this)">' + Object.keys(TIPOS).map(k => '<option value="' + k + '"' + (c.tipo === k ? ' selected' : '') + '>' + TIPOS[k] + '</option>').join('') + '</select></label>' +
-  '<div class="sec-t">Vencimientos</div><div class="two">' + VENC.filter(v => v[0] !== 'seguro').map(v => '<label class="f"><span>' + v[1] + '</span><input id="v_' + v[0] + '" type="date" value="' + esc(c[v[0]]) + '"></label>').join('') + '</div>' +
+  '<div class="sec-t">Vencimientos</div><div class="two">' + VENC.filter(v => v[0] !== 'seguro').map(v => '<label class="f"><span>' + v[1] + '</span><input id="v_' + v[0] + '" type="date" value="' + esc(c[v[0]]) + '"></label>').join('') + '</div>' + (ex ? seccionVtv(c) : '') +
   '<label class="chk"><input type="checkbox" id="c_form08"' + (c.form08 ? ' checked' : '') + '><span>08</span></label>' +
   '<label class="chk"><input type="checkbox" id="c_gncInstaladoEmpresa" onchange="document.getElementById(\'gncInstaladorBox\').style.display=this.checked?\'\':\'none\'"' + (c.gncInstaladoEmpresa ? ' checked' : '') + '><span>El GNC lo instaló la empresa</span></label>' +
   '<div id="gncInstaladorBox" class="two" style="display:' + (c.gncInstaladoEmpresa ? '' : 'none') + '"><label class="f"><span>Instalador</span><input id="c_gncInstalador" value="' + esc(c.gncInstalador) + '"></label>' +
@@ -401,7 +403,7 @@ export function carForm(id) {
   '<div id="reemplazoBox" style="display:' + (c.aReemplazar ? '' : 'none') + '"><label class="f"><span>Motivo</span><select id="c_motivoReemplazo">' + MOTIVOS_REEMPLAZO.map(x => '<option value="' + x[0] + '"' + (c.motivoReemplazo === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
   '<label class="f"><span>Fecha estimada de renovación</span><input id="c_fechaRenovacionPlan" type="date" value="' + esc(c.fechaRenovacionPlan) + '"></label></div>' +
   '<div class="sec-t">Elementos de seguridad</div>' + ELEMENTOS_SEGURIDAD.map(x => '<label class="chk"><input type="checkbox" id="es_' + x[0] + '"' + (c.elementosSeguridad && c.elementosSeguridad[x[0]] ? ' checked' : '') + '><span>' + x[1] + '</span></label>').join('') +
-  '<label class="f"><span>Batería 12V: fecha de cambio</span><input id="c_bateria12vFecha" type="date" value="' + esc(c.bateria12vFecha) + '"></label>' +
+  '<label class="f"><span>Batería 12V: fecha de cambio</span><input id="c_bateria12vFecha" type="date" value="' + esc(c.bateria12vFecha) + '"></label>' + (ex ? seccionBateria(c) : '') +
   '<div class="sec-t">Neumáticos</div>' +
   '<div class="two"><label class="f"><span>Marca / modelo</span><input id="c_neumaticosMarca" value="' + esc(c.neumaticosMarca) + '"></label>' +
   '<label class="f"><span>Rodado <small>pulgadas</small></span><input id="c_rodadoPulgadas" inputmode="numeric" value="' + esc(c.rodadoPulgadas || '') + '"></label></div>' +
@@ -409,8 +411,8 @@ export function carForm(id) {
     const n = (c.neumaticos || {})[pos] || {};
     const label = { di: 'Del. izquierdo', dd: 'Del. derecho', ti: 'Tras. izquierdo', td: 'Tras. derecho' }[pos];
     return '<div class="two"><label class="f"><span>' + label + ' · fecha</span><input id="nm_' + pos + '_fecha" type="date" value="' + esc(n.fecha || '') + '"></label>' +
-    '<label class="f"><span>Profundidad <small>mm</small></span><input id="nm_' + pos + '_prof" inputmode="numeric" value="' + esc(n.profundidad || '') + '"></label></div>';
-  }).join('') +
+    '<label class="f"><span>Profundidad <small>mm</small></span><input id="nm_' + pos + '_prof" inputmode="decimal" value="' + esc(n.profundidad || '') + '"></label></div>';
+  }).join('') + seccionCubiertas(c) +
   (ex ? '<div class="sec-t">Accesorios instalados</div>' +
   ((c.accesorios || []).length ? c.accesorios.map((a, i) => {
     let garTxt = '';
@@ -441,6 +443,7 @@ export function carForm(id) {
     const esOtro = c.aseguradora && !fija;
     return '<div id="aseguradoraOtroBox" style="display:' + (esOtro ? '' : 'none') + '"><label class="f"><span>Nombre de la aseguradora</span><input id="c_aseguradoraOtro" value="' + esc(esOtro ? c.aseguradora : '') + '"></label></div>';
   })() +
+  campoSeguroApps(c) +
   '<div class="two"><label class="f"><span>Cobertura</span><select id="c_coberturaSeguro"><option value="">Sin especificar</option>' + COBERTURAS_SEGURO.map(x => '<option value="' + x[0] + '"' + (c.coberturaSeguro === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
   '<label class="f"><span>Franquicia</span><input id="c_franquiciaSeguro" inputmode="decimal" value="' + esc(c.franquiciaSeguro || '') + '"></label></div>' +
   '<label class="f"><span>¿Quién paga el seguro?</span><select id="c_seguroPaga" onchange="document.getElementById(\'seguroPagaAyuda\').textContent=ayudaSeguroPaga(this.value)"' + (isAdmin() ? '' : ' disabled') + '>' +
@@ -542,6 +545,7 @@ export function carForm(id) {
     }
     if (plan.length) mant += plan.map(p => { const e = estadoPlanItem(c, p); return '<div class="row between small" style="padding:4px 0"><span>' + esc(p.label || p.item) + '</span><span>' + badge(e.cls, textoRestante(e)) + '</span></div>'; }).join('');
     mant += '<div class="row" style="margin:8px 0"><button class="btn sec grow" onclick="mantenimientoForm(\'' + c.id + '\')">+ Registrar mantenimiento</button>' + (plan.length ? '<button class="btn sec" onclick="editarPlanMantenimiento(\'' + c.id + '\')">Editar plan</button>' : '') + '</div>';
+    mant += seccionCodigosFalla(c);
     if (MH.length) mant += '<div class="sec-t">Historial de mantenimiento</div>' + MH.map(m => '<div class="card row"><div class="grow tap" onclick="mantenimientoForm(\'' + c.id + '\',\'' + m.id + '\')"><div>' + money(m.costo) + ' <span class="small muted">' + esc(m.label || m.item) + (m.tipo === 'correctivo' ? ' · correctivo' : '') + (m.sinFactura ? ' · sin factura' : '') + '</span></div><div class="small muted">' + fdate(m.fecha) + (m.km ? ' · ' + (+m.km).toLocaleString('es-AR') + ' km' : '') + ([m.marca, m.especificacion].filter(Boolean).length ? ' · ' + esc([m.marca, m.especificacion].filter(Boolean).join(' · ')) : '') + '</div></div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delMantenimiento(\'' + m.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     const MR = MH.filter(m => m.marca || m.especificacion);
     if (MR.length) mant += '<div class="sec-t">Historial de repuestos</div>' + MR.map(m => '<div class="row between small" style="padding:4px 0"><span>' + esc(m.label || m.item) + ': ' + esc([m.marca, m.especificacion].filter(Boolean).join(' · ')) + '</span><span class="muted">' + fdate(m.fecha) + '</span></div>').join('');
@@ -775,10 +779,10 @@ export async function saveCar(btn, id) {
     reservado: document.getElementById('c_reservado').checked, reservadoPara: val('c_reservadoPara'),
     aReemplazar: document.getElementById('c_aReemplazar').checked, motivoReemplazo: val('c_motivoReemplazo'), fechaRenovacionPlan: val('c_fechaRenovacionPlan'),
     neumaticos: {
-      di: { fecha: val('nm_di_fecha'), profundidad: +val('nm_di_prof') || 0 },
-      dd: { fecha: val('nm_dd_fecha'), profundidad: +val('nm_dd_prof') || 0 },
-      ti: { fecha: val('nm_ti_fecha'), profundidad: +val('nm_ti_prof') || 0 },
-      td: { fecha: val('nm_td_fecha'), profundidad: +val('nm_td_prof') || 0 },
+      di: { fecha: val('nm_di_fecha'), profundidad: +String(val('nm_di_prof')).replace(',', '.') || 0 },
+      dd: { fecha: val('nm_dd_fecha'), profundidad: +String(val('nm_dd_prof')).replace(',', '.') || 0 },
+      ti: { fecha: val('nm_ti_fecha'), profundidad: +String(val('nm_ti_prof')).replace(',', '.') || 0 },
+      td: { fecha: val('nm_td_fecha'), profundidad: +String(val('nm_td_prof')).replace(',', '.') || 0 },
     },
     accesorios: (ex || {}).accesorios || [],
     disponibleDesde: tipo === 'disponible' ? ((ex && ex.tipo === 'disponible' && ex.disponibleDesde) || iso(today())) : '',
@@ -795,6 +799,7 @@ export async function saveCar(btn, id) {
   });
   VENC.forEach(v => { o[v[0]] = val('v_' + v[0]); });
   o.vencHistorial = actualizarHistorialVenc(ex, o);
+  completarAuto(ex, o);
   if (con) {
     if (!o.choferId) { toast('Elegí el chofer (cargalo primero en Choferes)'); return; }
     if (!o.monto || !o.inicio) { toast('Completá el monto semanal y la fecha de inicio'); return; }

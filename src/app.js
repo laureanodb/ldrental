@@ -7,6 +7,7 @@ import { activarBiometria, desactivarBiometria, loginConBiometria } from './biom
 import { asignarChoferForm, guardarAsignacionChofer, quitarChofer, asignarAutoForm, guardarAsignacionAuto, quitarAutoDeChofer, onAsignacionTipo, calcularCuotaAsignacion, onAsignarAutoElegido } from './forms/asignacion.js';
 import { altaRapidaAutoForm, onAltaRapidaAutoTipo, guardarAltaRapidaAuto, altaRapidaChoferForm, guardarAltaRapidaChofer } from './forms/alta-rapida.js';
 import { renderSeguroDocs, subirDocSeguro, completarSeguroConIA, leerCotizacionSeguro, agregarCotizacionSeguro, quitarCotizacionSeguro, elegirCotizacionSeguro, ayudaSeguroPaga, corregirSeguroForm, guardarCorreccionSeguro, valorSemanalForm, guardarValorSemanal, volverDeValorSemanal, carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento } from './forms/car.js';
+import { cedulaForm, guardarCedula, bajaCedula, vtvTurnoForm, guardarVtvTurno, borrarVtvTurno, medicionBateriaForm, guardarMedicionBateria, estimarCubiertaIA, valoresMercadoView, guardarValoresMercado, codigoFallaForm, onCodigoFalla, guardarCodigoFalla, resolverCodigoFalla, leerOBD, ejecutarLecturaOBD } from './forms/auto-extra.js';
 import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
 import { calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, escenarioFlotaForm, calcularEscenarioFlota } from './forms/calculadora.js';
 import { compararAutosForm, renderComparacionAutos } from './forms/comparar.js';
@@ -71,6 +72,7 @@ Object.assign(window, {
   valorSemanalForm, guardarValorSemanal, volverDeValorSemanal,
   altaRapidaAutoForm, onAltaRapidaAutoTipo, guardarAltaRapidaAuto, altaRapidaChoferForm, guardarAltaRapidaChofer,
   carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento,
+  cedulaForm, guardarCedula, bajaCedula, vtvTurnoForm, guardarVtvTurno, borrarVtvTurno, medicionBateriaForm, guardarMedicionBateria, estimarCubiertaIA, valoresMercadoView, guardarValoresMercado, codigoFallaForm, onCodigoFalla, guardarCodigoFalla, resolverCodigoFalla, leerOBD, ejecutarLecturaOBD,
   recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio,
   calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, escenarioFlotaForm, calcularEscenarioFlota, compararAutosForm, renderComparacionAutos,
   reportePersonalizadoForm, toggleColumnaReporte, renderReportePersonalizado, exportarReportePersonalizado, exportarReportePersonalizadoPDF, guardarFavoritoReporte, cargarFavoritoReporte, borrarFavoritoReporte,

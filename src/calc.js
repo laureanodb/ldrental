@@ -6,6 +6,7 @@ import { isSnoozed } from './snooze.js';
 import { isEnTramite } from './tramite.js';
 import { de, enPasada } from './memo.js';
 import { stockBajoPanol, tipoDe } from './panol.js';
+import { alertasAuto, textoTurnoVtv } from './calc-auto.js';
 
 export const isContract = c => c.tipo === 'alquiler' || c.tipo === 'financiado';
 export const activeCars = () => S.cars.filter(c => !c.vendido);
@@ -418,7 +419,8 @@ function _alerts() {
       out.push(Object.assign({ who: c.patente || 'Auto sin patente', sub: 'Seguro: renovación', kind: 'car', id: c.id, key }, s, { t: s.t + ' · ' + (n ? n + (n === 1 ? ' cotización cargada' : ' cotizaciones cargadas') : 'pedí cotizaciones') }));
       return;
     }
-    out.push(Object.assign({ who: c.patente || 'Auto sin patente', sub: l, kind: 'car', id: c.id, key }, s));
+    const sv = k === 'vtv' && s.d <= 30 ? Object.assign({}, s, { t: s.t + textoTurnoVtv(c) }) : s;
+    out.push(Object.assign({ who: c.patente || 'Auto sin patente', sub: l, kind: 'car', id: c.id, key }, sv));
   }));
   activeCars().forEach(c => {
     if (!c.choferId || !isContract(c)) return;
@@ -602,6 +604,7 @@ function _alerts() {
     const t = faltaSeguro && faltaPatente ? 'Falta el monto mensual de seguro y de patente' : faltaSeguro ? 'Falta el monto mensual de seguro' : 'Falta el monto mensual de patente';
     out.push({ who: c.patente || 'Auto sin patente', sub: 'Dato faltante para la rentabilidad', kind: 'car', id: c.id, key, d: 25, cls: 'soft', t });
   });
+  out.push(...alertasAuto());
   return out.filter(a => {
     const carId = a.kind === 'car' ? a.id : a.kind === 'multa' ? a.carId : null;
     return !(carId && isSnoozed('car:' + carId + ':all'));

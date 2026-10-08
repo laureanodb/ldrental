@@ -56,6 +56,7 @@ export function viewMas() {
     ['Gastos generales', 'gastosGeneralesView()'],
     ['Proveedores y talleres', 'proveedoresView()'],
     ['Mapa de flota', 'mapaFlotaView()'],
+    ['Valores de mercado', 'valoresMercadoView()'],
     ['Mantenimiento preventivo en lote', 'mantenimientoLoteForm()'],
   ]);
   if (canVerFinanzas()) h += grupo('Cobros', [['Cruzar con el resumen de Mercado Pago o del banco', "goMas('cruce')"]]);

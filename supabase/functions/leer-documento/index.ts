@@ -1,5 +1,5 @@
 // LD Rental — lectura de documentos con IA (Claude).
-// POST { tipo: 'comprobante'|'poliza'|'factura'|'resumen', path?: string, archivo?: dataURL }
+// POST { tipo: 'comprobante'|'poliza'|'factura'|'resumen'|'tablero'|'cubierta', path?: string, archivo?: dataURL }
 // con el token de sesión del usuario de la app (Authorization: Bearer ...).
 // Lee el archivo (del bucket de documentos si viene `path`, o el que manda la
 // app en base64) y devuelve los datos que encontró:
@@ -8,6 +8,8 @@
 //   vigencia y premio mensual (sirve para póliza, certificado y credencial).
 // - factura: proveedor, fecha, total, concepto y categoría de un gasto.
 // - resumen: los movimientos de un resumen de Mercado Pago o del banco en PDF.
+// - tablero: km del odómetro, nivel de combustible y luces de falla encendidas.
+// - cubierta: profundidad estimada del dibujo y si el desgaste es desparejo.
 // No guarda nada: la app muestra lo leído y el usuario confirma.
 // Necesita el secreto ANTHROPIC_API_KEY (el mismo que usa el bot).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -107,6 +109,38 @@ const ESQUEMAS: Record<string, { instruccion: string; schema: any; maxTokens: nu
       additionalProperties: false,
     },
   },
+  tablero: {
+    instruccion: 'Es una foto del tablero (cuadro de instrumentos) de un auto. Leé el kilometraje TOTAL del odómetro (no el parcial ni el "trip"), el nivel de combustible en porcentaje (0 a 100; si no se ve, -1) y listá las luces de advertencia encendidas (por ejemplo: check engine / motor, aceite, batería, temperatura, ABS, airbag, frenos, presión de cubiertas). Si no es un tablero de auto, poné es_tablero en false.',
+    maxTokens: 2000,
+    schema: {
+      type: 'object',
+      properties: {
+        es_tablero: { type: 'boolean' },
+        km: { type: 'number', description: 'Odómetro total; 0 si no se lee' },
+        combustible_pct: { type: 'number', description: '0 a 100, o -1 si no se ve' },
+        testigos: { type: 'array', items: { type: 'string' } },
+        observaciones: { type: 'string', description: 'Algo que convenga revisar, o ""' },
+      },
+      required: ['es_tablero', 'km', 'combustible_pct', 'testigos', 'observaciones'],
+      additionalProperties: false,
+    },
+  },
+  cubierta: {
+    instruccion: 'Es una foto de la banda de rodadura de una cubierta de auto. Estimá la profundidad del dibujo que le queda en milímetros (una cubierta nueva tiene unos 8 mm y el mínimo legal en Argentina es 1,6 mm; si se ven los testigos de desgaste al ras del dibujo, está en el mínimo). Indicá el estado y si el desgaste es desparejo (más gastada de un lado: problema de alineación o presión). Si la foto no muestra el dibujo de una cubierta, poné es_cubierta en false.',
+    maxTokens: 2000,
+    schema: {
+      type: 'object',
+      properties: {
+        es_cubierta: { type: 'boolean' },
+        profundidad_mm: { type: 'number' },
+        estado: { type: 'string', enum: ['buena', 'regular', 'gastada', 'peligrosa', 'desconocido'] },
+        desgaste_irregular: { type: 'boolean' },
+        observaciones: { type: 'string', description: 'Algo que convenga revisar, o ""' },
+      },
+      required: ['es_cubierta', 'profundidad_mm', 'estado', 'desgaste_irregular', 'observaciones'],
+      additionalProperties: false,
+    },
+  },
   resumen: {
     instruccion: 'Es un resumen de cuenta o reporte de actividad de Mercado Pago o de un banco. Listá todos los movimientos en orden, con la fecha, el monto (positivo si entró plata a la cuenta, negativo si salió), la descripción tal como figura (incluí el nombre de quien mandó la plata si aparece) y el número de operación si está.',
     maxTokens: 32000,
@@ -159,6 +193,21 @@ function limpiar(tipo: string, d: any) {
       patente: txtOk(d.patente, 12).toUpperCase().replace(/[\s-]/g, ''), km: Math.round(numOk(d.km)), tipoComprobante: txtOk(d.tipo_comprobante, 20), observaciones: txtOk(d.observaciones, 300),
     };
   }
+  if (tipo === 'tablero') {
+    const pct = numOk(d.combustible_pct);
+    return {
+      esTablero: Boolean(d.es_tablero), km: Math.max(0, Math.round(numOk(d.km))), combustiblePct: pct >= 0 && pct <= 100 ? Math.round(pct) : null,
+      testigos: (Array.isArray(d.testigos) ? d.testigos : []).map((t: unknown) => txtOk(t, 40)).filter(Boolean).slice(0, 10), observaciones: txtOk(d.observaciones, 300),
+    };
+  }
+  if (tipo === 'cubierta') {
+    const mm = numOk(d.profundidad_mm);
+    return {
+      esCubierta: Boolean(d.es_cubierta), profundidadMm: mm > 0 && mm <= 12 ? Math.round(mm * 10) / 10 : 0,
+      estado: ['buena', 'regular', 'gastada', 'peligrosa'].includes(d.estado) ? d.estado : 'desconocido',
+      desgasteIrregular: Boolean(d.desgaste_irregular), observaciones: txtOk(d.observaciones, 300),
+    };
+  }
   return {
     movimientos: (Array.isArray(d.movimientos) ? d.movimientos : []).map((m: any) => ({ fecha: fechaOk(m.fecha), monto: numOk(m.monto), descripcion: txtOk(m.descripcion), referencia: txtOk(m.referencia, 80) }))
       .filter((m: any) => m.fecha && m.monto),
@@ -172,11 +221,15 @@ Deno.serve(async (req) => {
   const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   try {
     // Solo usuarios de la app con sesión y acceso activo.
+    // (o la función portal-chofer, que llama con la clave de servicio para leer la foto del tablero).
     const jwt = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
-    const { data: u } = await sb.auth.getUser(jwt);
-    if (!u || !u.user) return json({ ok: false, error: 'Tenés que iniciar sesión' }, 401);
-    const { data: perfil, error: errPerfil } = await sb.from('profiles').select('activo').eq('id', u.user.id).maybeSingle();
-    if (!errPerfil && perfil && perfil.activo === false) return json({ ok: false, error: 'Tu usuario no tiene acceso' }, 403);
+    const interno = jwt && jwt === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!interno) {
+      const { data: u } = await sb.auth.getUser(jwt);
+      if (!u || !u.user) return json({ ok: false, error: 'Tenés que iniciar sesión' }, 401);
+      const { data: perfil, error: errPerfil } = await sb.from('profiles').select('activo').eq('id', u.user.id).maybeSingle();
+      if (!errPerfil && perfil && perfil.activo === false) return json({ ok: false, error: 'Tu usuario no tiene acceso' }, 403);
+    }
 
     if (!IA_KEY) return json({ ok: false, error: 'sin_ia' });
     const body = await req.json().catch(() => ({}));
