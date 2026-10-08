@@ -9,6 +9,7 @@ import { altaRapidaAutoForm, onAltaRapidaAutoTipo, guardarAltaRapidaAuto, altaRa
 import { renderSeguroDocs, subirDocSeguro, completarSeguroConIA, leerCotizacionSeguro, agregarCotizacionSeguro, quitarCotizacionSeguro, elegirCotizacionSeguro, ayudaSeguroPaga, corregirSeguroForm, guardarCorreccionSeguro, valorSemanalForm, guardarValorSemanal, volverDeValorSemanal, carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, marcarEnTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento } from './forms/car.js';
 import { cedulaForm, guardarCedula, bajaCedula, vtvTurnoForm, guardarVtvTurno, borrarVtvTurno, medicionBateriaForm, guardarMedicionBateria, estimarCubiertaIA, valoresMercadoView, guardarValoresMercado, codigoFallaForm, onCodigoFalla, guardarCodigoFalla, resolverCodigoFalla, leerOBD, ejecutarLecturaOBD } from './forms/auto-extra.js';
 import { nuevaOTForm, crearOT, otForm, guardarDatosOT, agregarTareaOT, toggleTareaOT, agregarRepuestoOT, quitarRepuestoOT, agregarHorasOT, quitarHorasOT, valorHoraForm, guardarValorHora, subirFotoOT, cerrarOTForm, cerrarOT, cancelarOT, ordenesView } from './forms/ordenes.js';
+import { aprobacionesView, guardarUmbralAprobacion, aprobarPendiente, rechazarPendiente, bitacoraView, decisionForm, guardarDecision, borrarDecision, metasForm, guardarMetas } from './forms/control.js';
 import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
 import { calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, escenarioFlotaForm, calcularEscenarioFlota } from './forms/calculadora.js';
 import { compararAutosForm, renderComparacionAutos } from './forms/comparar.js';
@@ -21,7 +22,7 @@ import { mantAtajoFecha } from './views/mantenimiento.js';
 import { listaDeCompraForm, guardarCoberturaPanol } from './views/stock.js';
 import { multaForm, onMultaCar, onMultaFecha, onMultaTipo, saveMulta, delMulta } from './forms/multa.js';
 import { siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro } from './forms/siniestro.js';
-import { repuestoForm, saveRepuesto, delRepuesto, movimientoStockForm, guardarMovimientoStock, delMovimientoStock, onRepuestoCat, prestarHerramientaForm, guardarPrestamo, devolverHerramienta, inventarioPanolForm, guardarInventarioPanol, inventariosAnteriores, verInventario, kitsPanolView, kitPanolForm, addKitRow, guardarKitPanol, borrarKitPanol, usarKitForm, guardarUsoKit, exportarPanolExcel } from './forms/repuesto.js';
+import { repuestoForm, saveRepuesto, delRepuesto, movimientoStockForm, guardarMovimientoStock, delMovimientoStock, onRepuestoCat, prestarHerramientaForm, guardarPrestamo, devolverHerramienta, inventarioPanolForm, guardarInventarioPanol, inventariosAnteriores, verInventario, kitsPanolView, kitPanolForm, addKitRow, guardarKitPanol, borrarKitPanol, usarKitForm, guardarUsoKit, exportarPanolExcel, ventaPanolForm, calcVentaPanol, guardarVentaPanol } from './forms/repuesto.js';
 import { reciboPDF, reciboCompartir, estadoCuentaPDF } from './recibo.js';
 import { descargarReporteEjecutivo } from './reporte-ejecutivo.js';
 import { contratoForm, renovarContratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion, mandarContratoAFirmar, avisoFirmaRemota, cancelarFirmaRemota, descargarContratoFirmado, copiarLinkFirma } from './contrato.js';
@@ -75,6 +76,7 @@ Object.assign(window, {
   carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento,
   cedulaForm, guardarCedula, bajaCedula, vtvTurnoForm, guardarVtvTurno, borrarVtvTurno, medicionBateriaForm, guardarMedicionBateria, estimarCubiertaIA, valoresMercadoView, guardarValoresMercado, codigoFallaForm, onCodigoFalla, guardarCodigoFalla, resolverCodigoFalla, leerOBD, ejecutarLecturaOBD,
   nuevaOTForm, crearOT, otForm, guardarDatosOT, agregarTareaOT, toggleTareaOT, agregarRepuestoOT, quitarRepuestoOT, agregarHorasOT, quitarHorasOT, valorHoraForm, guardarValorHora, subirFotoOT, cerrarOTForm, cerrarOT, cancelarOT, ordenesView, marcarEnTaller,
+  aprobacionesView, guardarUmbralAprobacion, aprobarPendiente, rechazarPendiente, bitacoraView, decisionForm, guardarDecision, borrarDecision, metasForm, guardarMetas,
   recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio,
   calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, escenarioFlotaForm, calcularEscenarioFlota, compararAutosForm, renderComparacionAutos,
   reportePersonalizadoForm, toggleColumnaReporte, renderReportePersonalizado, exportarReportePersonalizado, exportarReportePersonalizadoPDF, guardarFavoritoReporte, cargarFavoritoReporte, borrarFavoritoReporte,
@@ -87,7 +89,7 @@ Object.assign(window, {
   siniestroForm, onSiniestroCar, onSiniestroFecha, saveSiniestro, delSiniestro, generarGastoSiniestro,
   repuestoForm, saveRepuesto, delRepuesto, movimientoStockForm, guardarMovimientoStock, delMovimientoStock,
   onRepuestoCat, prestarHerramientaForm, guardarPrestamo, devolverHerramienta, inventarioPanolForm, guardarInventarioPanol, inventariosAnteriores, verInventario,
-  kitsPanolView, kitPanolForm, addKitRow, guardarKitPanol, borrarKitPanol, usarKitForm, guardarUsoKit, exportarPanolExcel, guardarCoberturaPanol, cargarKitMant,
+  kitsPanolView, kitPanolForm, addKitRow, guardarKitPanol, borrarKitPanol, usarKitForm, guardarUsoKit, exportarPanolExcel, guardarCoberturaPanol, ventaPanolForm, calcVentaPanol, guardarVentaPanol, cargarKitMant,
   reciboPDF, reciboCompartir, estadoCuentaPDF, descargarReporteEjecutivo, exportarExcel, activarPush, desactivarPush, guardarHorarioPush, guardarPreferenciasPush,
   contratoForm, renovarContratoForm, limpiarFirmaContrato, generarContrato, compartirContrato, generarConstanciaCesion, plantillaForm, onPlantillaTipo, generarPlantilla, marcarCartaEnviada,
   driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, togglePortalDesactivado, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion,

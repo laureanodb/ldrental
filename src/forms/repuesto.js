@@ -46,7 +46,7 @@ export function repuestoForm(editId) {
     '<button class="btn sec grow" onclick="movimientoStockForm(\'' + ex.id + '\',\'entrada\')">+ Entrada (compra)</button>' +
     (esHerr ? (ex.prestadaA ? '<button class="btn sec grow" onclick="devolverHerramienta(\'' + ex.id + '\')">Devuelta</button>' : '<button class="btn sec grow" onclick="prestarHerramientaForm(\'' + ex.id + '\')">Prestar</button>') +
       '<button class="btn sec grow" onclick="movimientoStockForm(\'' + ex.id + '\',\'salida\')">Baja</button>' :
-      '<button class="btn sec grow" onclick="movimientoStockForm(\'' + ex.id + '\',\'salida\')">- Salida (uso)</button>') +
+      '<button class="btn sec grow" onclick="movimientoStockForm(\'' + ex.id + '\',\'salida\')">- Salida (uso)</button><button class="btn sec grow" onclick="ventaPanolForm(\'' + ex.id + '\')">Vender</button>') +
   '</div>' : '') +
   '<label class="f"><span>Tipo</span><select id="rp_tipo">' + PANOL_TIPOS.map(x => '<option value="' + x[0] + '"' + (tipo === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
   '<div class="small muted" style="margin:-6px 0 10px">' + PANOL_TIPOS.map(x => '<b>' + x[1] + ':</b> ' + x[2]).join('<br>') + '</div>' +
@@ -82,6 +82,7 @@ function comparacionPrecios(repuestoId) {
 function textoMov(r, m) {
   if (m.tipo === 'ajuste') return (m.cantidad >= 0 ? '+ ' : '- ') + cant(r, Math.abs(m.cantidad)) + ' · ' + esc(m.nota || 'Ajuste');
   if (m.tipo === 'entrada') return '+ ' + cant(r, m.cantidad) + (m.costoUnitario ? ' a ' + money(m.costoUnitario) : '');
+  if (m.venta) return '- ' + cant(r, m.cantidad) + ' vendido a ' + esc(m.venta.comprador || 'un tercero') + ' por ' + money(m.cantidad * m.venta.precioUnit) + (m.venta.aCuenta ? ' (a cuenta)' : '');
   return '- ' + cant(r, m.cantidad) + (m.baja ? ' (baja)' : '');
 }
 function historialMovimientos(r) {
@@ -367,4 +368,51 @@ export async function exportarPanolExcel() {
   } catch (e) {
     toast('No se pudo generar el Excel: ' + ((e && e.message) || 'error'));
   }
+}
+
+/* ---------- Venta desde el pañol ---------- */
+export function ventaPanolForm(id) {
+  const r = repuestoById(id); if (!r) return;
+  const margen = +settings.panolMargenPct || 0;
+  const sugerido = Math.ceil(precioReposicion(r) * (1 + margen / 100) / 100) * 100;
+  const choferes = S.drivers.filter(d => !d.inactivo && !d.prospecto).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+  openModal('<h3>Vender: ' + esc(r.nombre) + '</h3>' +
+    '<div class="small muted" style="margin-bottom:10px">Hay ' + cant(r, stockDe(r)) + '. Costo promedio ' + money(costoDe(r)) + ', precio de hoy ' + money(precioReposicion(r)) + '. Precio sugerido con ' + margen + '% de margen.</div>' +
+    '<div class="two"><label class="f"><span>Cantidad</span><input id="vp_cant" inputmode="decimal" value="1" oninput="calcVentaPanol(\'' + r.id + '\')"></label>' +
+    '<label class="f"><span>Precio por ' + esc(unidadLabel(r.unidad).toLowerCase()) + '</span><input id="vp_precio" inputmode="decimal" value="' + sugerido + '" oninput="calcVentaPanol(\'' + r.id + '\')"></label></div>' +
+    '<label class="f"><span>A quién</span><select id="vp_chofer" onchange="calcVentaPanol(\'' + r.id + '\')"><option value="">Otra persona</option>' + choferes.map(d => '<option value="' + d.id + '">' + esc(d.nombre) + '</option>').join('') + '</select></label>' +
+    '<label class="f" id="vp_nombreBox"><span>Nombre</span><input id="vp_nombre" placeholder="ej: taller vecino"></label>' +
+    '<label class="f"><span>Cómo paga</span><select id="vp_pago"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="mercadopago">Mercado Pago</option><option value="cuenta" id="vp_cuenta">A cuenta del chofer (se suma a lo que debe)</option></select></label>' +
+    '<div id="vp_res" class="card small" style="margin-bottom:10px"></div>' +
+    '<div class="row"><button class="btn grow" onclick="guardarVentaPanol(\'' + r.id + '\')">Registrar venta</button><button class="btn sec" onclick="repuestoForm(\'' + r.id + '\')">Cancelar</button></div>');
+  calcVentaPanol(r.id);
+}
+export function calcVentaPanol(id) {
+  const r = repuestoById(id); if (!r) return;
+  const q = +String(val('vp_cant')).replace(',', '.') || 0, p = +String(val('vp_precio')).replace(',', '.') || 0;
+  const esChofer = !!val('vp_chofer');
+  document.getElementById('vp_nombreBox').hidden = esChofer;
+  const opCuenta = document.getElementById('vp_cuenta'); if (opCuenta) { opCuenta.disabled = !esChofer; if (!esChofer && val('vp_pago') === 'cuenta') document.getElementById('vp_pago').value = 'efectivo'; }
+  const total = q * p, costo = q * costoDe(r);
+  document.getElementById('vp_res').innerHTML = 'Total: <b>' + money(total) + '</b> · ganancia ' + money(total - costo) + (costo ? ' (' + Math.round((total - costo) / costo * 100) + '%)' : '');
+}
+export async function guardarVentaPanol(id) {
+  const r = repuestoById(id); if (!r) return;
+  const q = +String(val('vp_cant')).replace(',', '.') || 0, p = +String(val('vp_precio')).replace(',', '.') || 0;
+  if (q <= 0 || p <= 0) { toast('Poné la cantidad y el precio'); return; }
+  if (q > stockDe(r)) { toast('No hay tanto stock: quedan ' + cant(r, stockDe(r)), 'error'); return; }
+  const choferId = val('vp_chofer'), pago = val('vp_pago');
+  const d = choferId ? de('drivers', 'id', choferId)[0] : null;
+  const comprador = d ? d.nombre : (val('vp_nombre') || 'Otra persona');
+  const fecha = iso(today());
+  const mov = { id: uid(), tipo: 'salida', cantidad: q, fecha, costoUnitario: costoDe(r), nota: 'Venta', venta: { precioUnit: p, comprador, choferId: choferId || '', formaPago: pago, aCuenta: pago === 'cuenta' } };
+  if (await aplicarMovimiento(r, mov) == null) return;
+  const total = q * p, concepto = 'Compra en el pañol: ' + cant(r, q) + ' de ' + r.nombre;
+  if (d && pago === 'cuenta') {
+    await save('drivers', Object.assign({}, d, { adelantos: (d.adelantos || []).concat([{ id: uid(), fecha, monto: total, motivo: concepto, origen: 'panol' }]) }));
+  } else if (d) {
+    const auto = de('cars', 'choferId', d.id).find(c => c.choferId === d.id && !c.vendido);
+    if (auto) await save('payments', { id: uid(), carId: auto.id, choferId: d.id, fecha, monto: total, tipo: 'otro', metodo: pago, nota: concepto });
+  }
+  closeModal(); toast('Venta registrada: ' + money(total)); repuestoForm(r.id);
 }

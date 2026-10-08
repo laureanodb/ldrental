@@ -3,7 +3,7 @@ import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { S, sb, setSb, setAs, configured } from './state.js';
 import { $, val } from './utils.js';
 import { COLS } from './constants.js';
-import { load, flushQueue, aplicarCambios } from './data.js';
+import { load, flushQueue, aplicarCambios, asignarColeccion } from './data.js';
 import { readCachedCollections } from './offline.js';
 import { render } from './nav.js';
 import { makeStorage } from './storage.js';
@@ -43,7 +43,7 @@ export async function start() {
   S.ready = false;
   render();
   const cache = await readCachedCollections(COLS);
-  COLS.forEach(c => { if (cache[c]) S[c] = cache[c]; });
+  COLS.forEach(c => { if (cache[c]) asignarColeccion(c, cache[c]); });
   tocarDatos();
   if (PRIORITY_COLS.every(c => S[c].length)) S.ready = true;
   render();
@@ -95,7 +95,7 @@ function vigilarVuelta() {
 export function stop() {
   if (S.chan) { try { sb.removeChannel(S.chan); } catch (e) {} S.chan = null; }
   detenerAlertasSupervisor();
-  COLS.forEach(c => S[c] = []); S.ready = false; S.profile = null; S.profilesEnabled = false;
+  COLS.forEach(c => S[c] = []); S.pendientes = { gastos: [], mantenimientos: [] }; S.ready = false; S.profile = null; S.profilesEnabled = false;
 }
 
 export async function init() {

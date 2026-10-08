@@ -5,10 +5,44 @@ import { normCar } from './constants.js';
 import { queueOp, getQueue, setQueue, cacheCollection, readCachedCollection, programarCache, isNetworkError } from './offline.js';
 import { modoConsultaActivo } from './consulta.js';
 import { tocarDatos } from './memo.js';
+import { isAdmin } from './roles.js';
+import { settings } from './settings.js';
+
+/* Gastos y mantenimientos que superan el monto de aprobación, cargados por alguien que no es
+   administrador, quedan en S.pendientes hasta que se aprueban: no cuentan en ningún número. */
+const CON_APROBACION = ['gastos', 'mantenimientos'];
+const esPendiente = o => Boolean(o && o.pendienteAprobacion);
+function pendientesDe(col) { if (!S.pendientes) S.pendientes = {}; return S.pendientes[col] || (S.pendientes[col] = []); }
+const todasDe = col => (CON_APROBACION.includes(col) ? S[col].concat(pendientesDe(col)) : S[col]);
+// Asigna una colección completa separando lo pendiente de aprobación.
+export function asignarColeccion(col, rows) {
+  if (CON_APROBACION.includes(col)) { S[col] = rows.filter(x => !esPendiente(x)); S.pendientes[col] = rows.filter(esPendiente); }
+  else S[col] = rows;
+  tocarDatos();
+}
+function necesitaAprobacion(col, obj) {
+  if (!CON_APROBACION.includes(col) || isAdmin() || obj.aprobado) return false;
+  const umbral = +settings.aprobacionUmbral || 0;
+  if (!umbral || (+obj.costo || 0) < umbral) return false;
+  const ex = todasDe(col).find(x => x.id === obj.id);
+  return !(ex && !esPendiente(ex) && (+obj.costo || 0) <= (+ex.costo || 0));
+}
 
 export function rowOf(obj) { const d = Object.assign({}, obj); delete d.id; return { id: obj.id, data: d, updated_at: new Date().toISOString() }; }
-export function putLocal(col, obj) { const i = S[col].findIndex(x => x.id === obj.id); if (i >= 0) S[col][i] = obj; else S[col].push(obj); tocarDatos(); programarCache(col, () => S[col]); }
-function quitarLocal(col, id) { S[col] = S[col].filter(x => x.id !== id); tocarDatos(); programarCache(col, () => S[col]); }
+export function putLocal(col, obj) {
+  if (CON_APROBACION.includes(col)) {
+    if (esPendiente(obj)) S[col] = S[col].filter(x => x.id !== obj.id);
+    else S.pendientes[col] = pendientesDe(col).filter(x => x.id !== obj.id);
+  }
+  const L = CON_APROBACION.includes(col) && esPendiente(obj) ? pendientesDe(col) : S[col];
+  const i = L.findIndex(x => x.id === obj.id); if (i >= 0) L[i] = obj; else L.push(obj);
+  tocarDatos(); programarCache(col, () => todasDe(col));
+}
+function quitarLocal(col, id) {
+  S[col] = S[col].filter(x => x.id !== id);
+  if (CON_APROBACION.includes(col)) S.pendientes[col] = pendientesDe(col).filter(x => x.id !== id);
+  tocarDatos(); programarCache(col, () => todasDe(col));
+}
 
 /* Cambios propios: cuando Supabase avisa en vivo de un cambio que hicimos desde
    este mismo celular, no hace falta volver a aplicarlo ni redibujar. */
@@ -38,7 +72,7 @@ export function aplicarCambios(col, eventos) {
       const id = p.old && p.old.id;
       if (id == null) return 'recargar';
       if (esEco(col, id, 'borrado')) continue;
-      if (S[col].some(x => x.id === id)) { quitarLocal(col, id); cambio = true; }
+      if (todasDe(col).some(x => x.id === id)) { quitarLocal(col, id); cambio = true; }
       continue;
     }
     const row = p.new;
@@ -88,12 +122,12 @@ export async function load(col) {
   try {
     let rows = await fetchAll(col);
     if (col === 'cars') rows = rows.map(normCar);
-    S[col] = rows; tocarDatos(); cacheCollection(col, rows); return true;
+    asignarColeccion(col, rows); cacheCollection(col, rows); return true;
   } catch (e) {
     // Si ya hay datos en pantalla se mantienen (pueden ser más nuevos que la copia guardada).
-    const cached = S[col].length ? S[col] : await readCachedCollection(col);
-    if (cached) {
-      if (cached !== S[col]) { S[col] = cached; tocarDatos(); }
+    const cached = todasDe(col).length ? null : await readCachedCollection(col);
+    if (cached || todasDe(col).length) {
+      if (cached) asignarColeccion(col, cached);
       if (Date.now() - avisoSinConexion > 10000) { avisoSinConexion = Date.now(); toast('Sin conexión: mostrando la última copia guardada en este celular.'); }
       return true;
     }
@@ -102,6 +136,10 @@ export async function load(col) {
 }
 export async function save(col, obj) {
   if (modoConsultaActivo()) { toast('No se puede guardar: modo solo consulta activado', 'error'); return false; }
+  if (necesitaAprobacion(col, obj)) {
+    obj = Object.assign({}, obj, { pendienteAprobacion: true, solicitadoPor: (S.user && S.user.email) || '', solicitadoFecha: new Date().toISOString().slice(0, 10) });
+    setTimeout(() => toast('Supera el monto de aprobación: queda pendiente hasta que lo apruebe un administrador'), 80);
+  }
   if (!navigator.onLine) {
     putLocal(col, obj); render(); queueOp({ type: 'save', col, obj });
     toast('Guardado sin conexión, se sincroniza solo cuando vuelva internet'); return true;

@@ -15,6 +15,7 @@ import { viewReportes } from './reportes.js';
 import { viewMultas } from './multas.js';
 import { viewSiniestros } from './siniestros.js';
 import { viewStock } from './stock.js';
+import { cantidadPendientes } from '../forms/control.js';
 import { viewTablero } from './tablero.js';
 import { ajustesCard, backupCard, saludDatosCard } from './shared.js';
 import { googleCard } from './google-ui.js';
@@ -61,7 +62,7 @@ export function viewMas() {
     ['Mantenimiento preventivo en lote', 'mantenimientoLoteForm()'],
   ]);
   if (canVerFinanzas()) h += grupo('Cobros', [['Cruzar con el resumen de Mercado Pago o del banco', "goMas('cruce')"]]);
-  h += grupo('Análisis', [['Tablero semanal por auto', "goMas('tablero')"], ['Reportes', "goMas('reportes')"], ['Reporte personalizado', 'reportePersonalizadoForm()']]);
+  h += grupo('Análisis', [['Tablero semanal por auto', "goMas('tablero')"], ['Reportes', "goMas('reportes')"], ['Reporte personalizado', 'reportePersonalizadoForm()'], ['Metas de la flota', 'metasForm()']]);
   h += grupo('Herramientas', [
     ['Recordatorios', 'recordatoriosView()'],
     ['Simulador de financiación', 'simuladorFinanciacionForm()'],
@@ -76,7 +77,9 @@ export function viewMas() {
   if (isAdmin()) h += grupo('Comunicación', [['Tablón de anuncios (portal del chofer)', 'anunciosForm()']]);
   const admin = [['Ajustes', "goMas('ajustes')"], ['Copia de seguridad', "goMas('backup')"], ['Google', "goMas('google')"], ['Salud de los datos', "goMas('saluddatos')"]];
   if (canVerFinanzas() && !featureOculta('autoseguro')) admin.push(['Fondo de autoseguro', 'autoseguroForm()']);
-  if (isAdmin()) admin.push(['Usuarios y permisos', 'usuariosView()'], ['Auditoría', 'auditoriaView()']);
+  if (isAdmin()) admin.push(['Usuarios y permisos', 'usuariosView()'], ['Auditoría', 'auditoriaView()'], ['Bitácora de decisiones', 'bitacoraView()']);
+  const nPend = cantidadPendientes();
+  if (isAdmin() || nPend) admin.unshift(['Gastos para aprobar' + (nPend ? ' (' + nPend + ')' : ''), 'aprobacionesView()']);
   h += grupo('Administración', admin);
   h += grupo('Cuenta', [['Cerrar sesión (' + esc(S.user && S.user.email || '') + ')', 'logout()']]);
   return h;

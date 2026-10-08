@@ -7,7 +7,7 @@ import { cotizacion } from '../dolar.js';
 import { canVerFinanzas } from '../roles.js';
 import {
   tipoDe, catLabel, unidades, stockDe, costoDe, valorItem, coberturaDias, stockBajoPanol, porReponer, itemsActivos,
-  resumenPanol, consumoPorMes, listaCompraPanol, diasQuieto,
+  resumenPanol, consumoPorMes, listaCompraPanol, diasQuieto, ventasPanolMes,
 } from '../panol.js';
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -44,6 +44,8 @@ function seccionResumen() {
     '<div class="kpi ' + (R.bajos ? 'warn' : '') + ' tap" onclick="ui.stockSoloBajo=!ui.stockSoloBajo;render()"><div class="n">' + R.bajos + '</div><div class="l">Bajo el mínimo</div></div>' +
   '</div>';
   if (R.quieto > 0) h += '<div class="card small" style="margin-bottom:8px"><b>' + money(R.quieto) + '</b> parados hace más de 90 días en ' + R.quietoItems + ' ítem' + (R.quietoItems === 1 ? '' : 's') + '. Es plata inmovilizada: conviene no volver a comprar eso hasta usarlo.</div>';
+  const V = ventasPanolMes();
+  if (V.n) h += '<div class="card small" style="margin-bottom:8px">Ventas del pañol este mes: <b>' + money(V.ingreso) + '</b> · ganancia ' + money(V.ganancia) + ' (' + V.n + ' venta' + (V.n === 1 ? '' : 's') + ')</div>';
   if (R.prestadas) h += '<div class="card small" style="margin-bottom:8px">' + R.prestadas + ' herramienta' + (R.prestadas === 1 ? ' prestada' : 's prestadas') + ' ahora.</div>';
   const cats = Object.entries(R.porCategoria).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]);
   if (cats.length) {

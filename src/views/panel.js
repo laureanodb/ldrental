@@ -7,6 +7,7 @@ import { alertRow } from './shared.js';
 import { isSnoozed, snooze } from '../snooze.js';
 import { render } from '../nav.js';
 import { toast } from '../modal.js';
+import { tarjetaMetas } from '../forms/control.js';
 
 export function viewPanel() {
   const flota = activeCars();
@@ -35,6 +36,7 @@ export function viewPanel() {
   '<button class="btn sec sm" onclick="gastoGeneralForm()">Gasto</button>' +
   '<button class="btn sec sm" onclick="searchView()">Buscar</button></div>';
   h += '<div class="card tap row between" style="margin-bottom:12px" onclick="goMas(\'tablero\')"><div><b>Tablero semanal por auto</b><div class="small muted">Cobrado, gasto y ganancia de los últimos 7 días</div></div><span class="muted">›</span></div>';
+  h += tarjetaMetas();
   h += notaInternaCard();
   h += seccionSemanaAdelantada(act);
   h += seccionSugerenciasHoy(morosos, urg);

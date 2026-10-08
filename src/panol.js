@@ -57,7 +57,7 @@ export function consumoDiario(r, dias = 90) {
   let total = 0, primera = null;
   (r.movimientos || []).forEach(m => {
     if (!primera || m.fecha < primera) primera = m.fecha;
-    if (m.tipo === 'salida' && m.fecha >= d0 && !m.baja) total += +m.cantidad || 0;
+    if (m.tipo === 'salida' && m.fecha >= d0 && !m.baja && !m.venta) total += +m.cantidad || 0;
   });
   if (!total) return 0;
   const inicio = [r.creadoFecha, primera].filter(Boolean).sort()[0];
@@ -132,7 +132,7 @@ export function consumoPorMes(meses = 6) {
   const out = claves.map(k => ({ mes: k, consumible: 0, repuesto: 0, herramienta: 0 }));
   const idx = Object.fromEntries(claves.map((k, i) => [k, i]));
   S.repuestos.forEach(r => (r.movimientos || []).forEach(m => {
-    if (m.tipo !== 'salida') return;
+    if (m.tipo !== 'salida' || m.venta) return;
     const i = idx[(m.fecha || '').slice(0, 7)];
     if (i == null) return;
     out[i][tipoDe(r)] += (+m.cantidad || 0) * (+m.costoUnitario || costoDe(r));
@@ -149,4 +149,18 @@ export const modeloDe = c => [c.marca, c.modelo].filter(Boolean).join(' ').trim(
 export function esCompatible(r, c) {
   const L = r.compatibles || [];
   return !L.length || !c || L.includes(modeloDe(c));
+}
+
+// Ventas del pañol del mes (ingreso, costo y ganancia).
+export function ventasPanolMes(mes) {
+  const m = mes || iso(today()).slice(0, 7);
+  const R = { ingreso: 0, costo: 0, n: 0 };
+  S.repuestos.forEach(r => (r.movimientos || []).forEach(x => {
+    if (!x.venta || (x.fecha || '').slice(0, 7) !== m) return;
+    R.ingreso += (+x.cantidad || 0) * (+x.venta.precioUnit || 0);
+    R.costo += (+x.cantidad || 0) * (+x.costoUnitario || costoDe(r));
+    R.n++;
+  }));
+  R.ganancia = R.ingreso - R.costo;
+  return R;
 }
