@@ -153,8 +153,10 @@ export function otForm(carId, otId) {
     '<div class="small muted" style="margin-top:4px">Al cerrar, queda en el historial de mantenimiento con lo pagado afuera (' + money(k.externa + k.otros) + '). Los repuestos ya se contaron al comprarlos y la mano de obra propia es costo interno.</div></div>';
 
   if (abierta) h += '<div class="row"><button class="btn grow" onclick="cerrarOTForm(\'' + c.id + '\',\'' + o.id + '\')">Cerrar orden</button><button class="btn sec" onclick="carForm(\'' + c.id + '\')">Volver al auto</button></div>' +
-    (canDelete() ? '<button class="btn danger block" style="margin-top:10px" onclick="confirmDel(this,()=>cancelarOT(\'' + c.id + '\',\'' + o.id + '\'))">Cancelar orden</button>' : '');
-  else h += '<div class="small muted" style="margin-bottom:8px">' + (o.estado === 'cerrada' ? 'Cerrada el ' + fdate(o.fechaCierre) : 'Cancelada') + '.</div><button class="btn sec block" onclick="carForm(\'' + c.id + '\')">Volver al auto</button>';
+    (canDelete() ? '<button class="btn danger block" style="margin-top:10px" onclick="confirmDel(this,()=>cancelarOT(\'' + c.id + '\',\'' + o.id + '\'))">Cancelar orden</button>' : '') +
+    (canDelete() ? '<button class="btn danger block" style="margin-top:8px" onclick="confirmDel(this,()=>borrarOT(\'' + c.id + '\',\'' + o.id + '\'))">Borrar orden (por ejemplo, una de prueba)</button>' : '');
+  else h += '<div class="small muted" style="margin-bottom:8px">' + (o.estado === 'cerrada' ? 'Cerrada el ' + fdate(o.fechaCierre) : 'Cancelada') + '.</div><button class="btn sec block" onclick="carForm(\'' + c.id + '\')">Volver al auto</button>' +
+    (canDelete() && o.estado === 'cancelada' ? '<button class="btn danger block" style="margin-top:8px" onclick="confirmDel(this,()=>borrarOT(\'' + c.id + '\',\'' + o.id + '\'))">Borrar orden</button>' : '');
   openModal(h);
   hydrateThumbs(document.getElementById('modal'));
 }
@@ -280,4 +282,11 @@ export async function reabrirOT(carId, otId) {
   const nueva = { id: uid(), numero: proximoNumero(), fecha: iso(today()), estado: 'abierta', origen: 'app', tipo: 'correctivo', titulo: 'Sigue fallando: ' + o.titulo, descripcion: (o.opinionChofer && o.opinionChofer.comentario) || '', km: +c.km || 0, proveedorId: o.proveedorId || '', mecanico: o.mecanico || '', tareas: [], repuestos: [], horas: [], fotosAntes: [], fotosDespues: [], otAnterior: o.id };
   const ordenes = (c.ordenes || []).map(x => (x.id === o.id ? Object.assign({}, x, { opinionAtendida: iso(today()) }) : x)).concat([nueva]);
   if (await save('cars', Object.assign({}, c, { ordenes }))) { toast('Orden ' + nueva.numero + ' abierta'); otForm(carId, nueva.id); }
+}
+
+// Borra la orden sin dejar registro (solo si no está cerrada: una cerrada ya descontó el pañol y está en el historial).
+export async function borrarOT(carId, otId) {
+  const { c, o } = buscar(carId, otId); if (!o) return;
+  if (o.estado === 'cerrada') { toast('Una orden cerrada no se puede borrar: ya está en el historial de mantenimiento', 'error'); return; }
+  if (await save('cars', Object.assign({}, c, { ordenes: (c.ordenes || []).filter(x => x.id !== otId) }))) { toast('Orden ' + (o.numero || '') + ' borrada'); window.carForm(carId); window.setTabAuto('mant'); }
 }
