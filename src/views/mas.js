@@ -82,5 +82,7 @@ export function viewMas() {
   if (isAdmin() || nPend) admin.unshift(['Gastos para aprobar' + (nPend ? ' (' + nPend + ')' : ''), 'aprobacionesView()']);
   h += grupo('Administración', admin);
   h += grupo('Cuenta', [['Cerrar sesión (' + esc(S.user && S.user.email || '') + ')', 'logout()']]);
+  const ver = typeof __VERSION__ !== 'undefined' ? __VERSION__ : '';
+  h += '<div class="small muted" style="text-align:center;margin:18px 0 6px">' + (ver ? 'Versión del ' + esc(ver.slice(8, 10) + '/' + ver.slice(5, 7) + ' ' + ver.slice(11)) + ' · ' : '') + '<a class="tap" style="text-decoration:underline" onclick="buscarActualizacion()">Buscar actualización</a></div>';
   return h;
 }

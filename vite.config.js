@@ -1,8 +1,12 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Fecha y hora (de Argentina) en que se armó esta versión, para mostrarla en la app.
+const VERSION = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ');
+
 export default defineConfig({
   base: './',
+  define: { __VERSION__: JSON.stringify(VERSION) },
   build: {
     rollupOptions: {
       output: {

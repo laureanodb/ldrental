@@ -37,7 +37,7 @@ import { payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, c
 import { simuladorFinanciacionForm, simuladorElegirAuto, simuladorCalcular, simuladorCompartir, simuladorPDF, simuladorUsar, simuladorTogglePlazo, simuladorAgregarPlazo } from './forms/simulador.js';
 import { cuentaCorrienteView, planPagosForm, planPagosRecalcular, guardarPlanPagos, cerrarPlanPagos, cuentaCorrientePDF } from './forms/cuenta.js';
 import { cruceArchivo, cruceColumna, cruceOrigen, cruceLimpiar, cruceCobrar, cruceIgnorar, cruceConfirmar } from './forms/cruce.js';
-import { closeModal, confirmDel } from './modal.js';
+import { closeModal, confirmDel, toast } from './modal.js';
 import { attach, liveCam, closeCam, shoot, viewFile, closeViewer, addLink, onPaste, delFile } from './files.js';
 import { backup, pickRestore, doRestore, exportCSV, cancelRestore, archivarCobrosViejosForm, actualizarInfoArchivar, archivarCobrosViejos } from './backup.js';
 import { buscarArchivosHuerfanos, confirmarBorrarHuerfanos } from './huerfanos.js';
@@ -129,5 +129,12 @@ window.addEventListener('online', () => { flushQueue(); render(); });
 window.addEventListener('offline', () => render());
 
 if (googleConfigured()) loadGis().catch(() => {});
+
+// Busca una versión nueva de la app y recarga.
+window.buscarActualizacion = async () => {
+  toast('Buscando actualización…');
+  try { const r = await navigator.serviceWorker.getRegistration(); if (r) await r.update(); } catch (e) {}
+  setTimeout(() => location.reload(), 2500);
+};
 
 init();
