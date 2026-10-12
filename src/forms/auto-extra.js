@@ -1,5 +1,6 @@
 // Secciones extra de la ficha del auto: papeles, cédulas de autorizado, turno de VTV,
 // batería, cubiertas (con estimación por foto), valor de mercado y códigos de falla.
+import { textoDepreciacion, depreciacionFlota } from './compras.js';
 import { S } from '../state.js';
 import { esc, val, uid, iso, today, fdate, money, num1 } from '../utils.js';
 import { openModal, closeModal, toast } from '../modal.js';
@@ -168,12 +169,13 @@ export function valoresMercadoView() {
   const L = S.cars.filter(c => !c.vendido).slice().sort((a, b) => String(a.patente).localeCompare(String(b.patente)));
   const desact = new Set(autosValorDesactualizado().map(c => c.id));
   let h = '<h3>Valores de mercado</h3><div class="small muted" style="margin-bottom:10px">Una vez por mes, mirá cuánto se publica cada modelo y anotá el valor. Queda el historial de cada auto y sirve para la rentabilidad, el simulador y la decisión de vender.</div>' +
-    '<div class="kpi" style="margin-bottom:10px"><div class="n">' + money(valorFlota()) + '</div><div class="l">Valor de la flota según lo cargado</div></div>';
+    '<div class="kpi" style="margin-bottom:10px"><div class="n">' + money(valorFlota()) + '</div><div class="l">Valor de la flota según lo cargado</div></div>' +
+    (() => { const d = depreciacionFlota(); return d.promedio != null ? '<div class="card small" style="margin-bottom:10px">En promedio, cada auto pierde <b>' + money(d.promedio) + '</b> (' + num1(d.promedioPct) + '%) de valor cada 10.000 km (' + d.autos.length + (d.autos.length === 1 ? ' auto' : ' autos') + ' con dos valores cargados o más).</div>' : '<div class="small muted" style="margin-bottom:10px">Cuando un auto tenga dos valores cargados en distintos meses (y km), vas a ver cuánto pierde cada 10.000 km.</div>'; })();
   h += L.map(c => {
     const f = ultimaActualizacionValor(c);
     return '<div class="card"><div class="row between"><div><b>' + esc(c.patente) + '</b> <span class="small muted">' + esc([c.marca, c.modelo, c.anio].filter(Boolean).join(' ')) + '</span></div>' + (desact.has(c.id) ? badge('warn', f ? 'Hace más de un mes' : 'Sin actualizar') : badge('ok', fdate(f))) + '</div>' +
       '<div class="row" style="margin-top:6px"><input class="vm-valor grow" data-id="' + c.id + '" inputmode="decimal" placeholder="Valor actual" value="' + esc(c.valorMercado || '') + '">' +
-      '<a class="btn sec sm" target="_blank" rel="noopener" href="' + linkMercadoLibre(c) + '">Mercado Libre</a></div></div>';
+      '<a class="btn sec sm" target="_blank" rel="noopener" href="' + linkMercadoLibre(c) + '">Mercado Libre</a></div>' + textoDepreciacion(c) + '</div>';
   }).join('');
   h += '<div class="small muted" style="margin:8px 0">Para que se actualice solo hace falta contratar el acceso a una guía de precios (InfoAuto o similar). Si lo contratás, avisame y lo conecto.</div>' +
     '<div class="row"><button class="btn grow" onclick="guardarValoresMercado()">Guardar valores</button><button class="btn sec" onclick="closeModal()">Cerrar</button></div>';

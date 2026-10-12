@@ -9,36 +9,68 @@ import { leerDocumento } from '../ia.js';
 import { cotizacion, textoCotizacion } from '../dolar.js';
 import { subirArchivoSuelto } from '../files.js';
 import { de } from '../memo.js';
+import { esMensual, montoMensual } from '../financiados.js';
 
 // Comprobante que se adjunta al próximo cobro guardado: el que subió el chofer
 // desde el portal (trae driverId) o una foto/PDF que se sube desde el formulario.
 let comprobantePortal = null;
 // Número de operación leído con IA, para avisar si el mismo comprobante se usa dos veces.
 let comprobanteRef = '';
+// Carga en tanda: después de "Guardar y cargar otro" el formulario vuelve con la
+// misma fecha y método, y el próximo auto que todavía no tiene cobro esta semana.
+const cobrosSeguidos = { n: 0, resumen: [], fecha: '', metodo: '', hechos: [], continuar: false };
+function resetCobrosSeguidos() { Object.assign(cobrosSeguidos, { n: 0, resumen: [], fecha: '', metodo: '', hechos: [], continuar: false }); }
+// Lo que corresponde cobrar ahora: la deuda si hay, si no el monto semanal.
+function montoCorrespondiente(c) {
+  const i = calc(c);
+  return i.debt > 0 ? i.debt : (esMensual(c) ? montoMensual(c) : +c.monto || 0);
+}
+export function avisoMontoCobro() {
+  const el = document.getElementById('p_montoAviso'); if (!el) return;
+  const c = carById(val('p_car')); const monto = +val('p_monto');
+  const tipo = val('p_tipo');
+  if (!c || !monto || (tipo !== 'alquiler' && tipo !== 'cuota')) { el.style.display = 'none'; return; }
+  const semanal = esMensual(c) ? montoMensual(c) : +c.monto || 0, deuda = calc(c).debt;
+  const mon = c.tipo === 'financiado' ? moneyUSD : money;
+  const coincide = [semanal, deuda].some(x => x > 0 && Math.abs(monto - x) <= Math.max(1, x * 0.02));
+  const explicado = document.getElementById('p_parcial').checked || document.getElementById('p_acuenta').checked;
+  if (coincide || !semanal) { el.style.display = 'none'; return; }
+  const ref = deuda > 0 ? deuda : semanal;
+  const dif = monto - ref;
+  el.style.display = '';
+  el.style.color = explicado ? 'var(--muted)' : 'var(--warn)';
+  el.textContent = (explicado ? '' : '⚠ ') + 'Corresponde ' + mon(ref) + (deuda > 0 ? ' (lo que debe)' : ' (semanal)') + ': estás cargando ' + mon(Math.abs(dif)) + (dif > 0 ? ' de más' : ' de menos') + '.' + (explicado ? '' : ' Si es a propósito, marcá "pago parcial" o "no coincide con el semanal".');
+}
 export function payForm(carId, comprobante) {
+  if (!cobrosSeguidos.continuar) resetCobrosSeguidos();
+  cobrosSeguidos.continuar = false;
   const cars = S.cars.filter(c => isContract(c) && c.choferId);
   if (!cars.length) { toast('Primero cargá un auto alquilado o financiado con chofer'); return; }
   comprobantePortal = comprobante || null;
   comprobanteRef = '';
-  const c = cars.find(x => x.id === carId) || cars[0];
-  const h = '<h3>Registrar cobro</h3>' +
+  const siguiente = cobrosSeguidos.n ? cars.find(x => !cobrosSeguidos.hechos.includes(x.id) && calc(x).debt > 0) || cars.find(x => !cobrosSeguidos.hechos.includes(x.id)) : null;
+  const c = cars.find(x => x.id === carId) || siguiente || cars[0];
+  const h = '<h3>Registrar cobro' + (cobrosSeguidos.n ? ' <small class="muted">(' + (cobrosSeguidos.n + 1) + '°)</small>' : '') + '</h3>' +
   (comprobante ? '<div class="card small" style="margin-bottom:10px">📎 Se adjunta el comprobante que subió ' + esc(driverName(comprobante.driverId) || 'el chofer') + ' el ' + fdate(comprobante.fecha) + '.<div id="p_ia" class="small muted" style="margin-top:4px"></div></div>'
     : '<label class="btn sec sm block filebtn" style="margin-bottom:4px">📷 Leer un comprobante (foto o PDF)<input id="p_compIn" type="file" accept="image/*,application/pdf" onchange="leerComprobanteCobro()"></label><div id="p_ia" class="small muted" style="margin-bottom:10px"></div>') +
   '<label class="f"><span>Auto</span><select id="p_car" onchange="onPayCar()">' + cars.map(x => '<option value="' + x.id + '"' + (x.id === c.id ? ' selected' : '') + '>' + esc(x.patente) + ' · ' + esc(driverName(x.choferId)) + '</option>').join('') + '</select></label>' +
   '<div class="small muted" id="p_info" style="margin:-4px 0 12px"></div>' +
-  '<div class="two"><label class="f"><span id="p_lblmonto">Monto</span><input id="p_monto" inputmode="decimal"></label>' +
+  '<div class="two"><label class="f"><span id="p_lblmonto">Monto</span><input id="p_monto" inputmode="decimal" oninput="avisoMontoCobro()"></label>' +
   '<label class="f"><span>Fecha</span><input id="p_fecha" type="date" value="' + iso(today()) + '"></label></div>' +
+  '<div id="p_montoAviso" class="small" style="margin:-6px 0 10px;display:none"></div>' +
   '<div id="p_pesosBox" class="card small" style="display:none;margin-bottom:10px"><div class="two"><label class="f"><span>Te pagó en pesos <small>opcional</small></span><input id="p_pesos" inputmode="decimal" oninput="onPayPesos()"></label>' +
   '<label class="f"><span>Dólar a</span><input id="p_cot" inputmode="decimal" oninput="onPayPesos()"></label></div><div class="small muted" id="p_cotInfo"></div></div>' +
   '<div class="two"><label class="f"><span>Tipo</span><select id="p_tipo" onchange="onPayTipo()"><option value="alquiler">Alquiler</option><option value="cuota">Cuota de financiación</option><option value="seguro">Seguro (en pesos)</option><option value="otro">Otro (anticipo, seña, etc.)</option></select></label>' +
   '<label class="f"><span>Método de pago</span><select id="p_metodo">' + METODOS_PAGO.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label></div>' +
-  '<label class="chk"><input type="checkbox" id="p_parcial"><span>Es un pago parcial</span></label>' +
-  '<label class="chk"><input type="checkbox" id="p_acuenta"><span>El monto no coincide con el semanal (a cuenta, adelanto de varias semanas, etc.)</span></label>' +
+  '<label class="chk"><input type="checkbox" id="p_parcial" onchange="avisoMontoCobro()"><span>Es un pago parcial</span></label>' +
+  '<label class="chk"><input type="checkbox" id="p_acuenta" onchange="avisoMontoCobro()"><span>El monto no coincide con el semanal (a cuenta, adelanto de varias semanas, etc.)</span></label>' +
   '<label class="chk"><input type="checkbox" id="p_generaradelanto"><span>Si sobra plata después de cubrir la deuda, generar semana adelantada con el resto</span></label>' +
   '<label class="f"><span>Km actual <small>opcional</small></span><input id="p_km" inputmode="numeric" placeholder="' + esc(c.km || '') + '"></label>' +
   '<label class="f"><span>Nota</span><input id="p_nota"></label>' +
-  '<div class="row"><button class="btn grow" onclick="savePay(this)">Guardar cobro</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>';
+  '<div class="row"><button class="btn grow" onclick="savePay(this)">Guardar cobro</button><button class="btn sec" onclick="savePay(this,true)" title="Guarda este cobro y abre otro con la misma fecha y método">Guardar y cargar otro</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>' +
+  (cobrosSeguidos.n ? '<div class="small muted" style="margin-top:8px">Llevás ' + cobrosSeguidos.n + ' cobro' + (cobrosSeguidos.n === 1 ? '' : 's') + ' cargado' + (cobrosSeguidos.n === 1 ? '' : 's') + ' seguidos: ' + esc(cobrosSeguidos.resumen.join(', ')) + '</div>' : '');
   openModal(h); onPayCar();
+  if (cobrosSeguidos.fecha) { $('#p_fecha').value = cobrosSeguidos.fecha; $('#p_metodo').value = cobrosSeguidos.metodo; }
   if (comprobante) leerComprobanteEnCobro(comprobante.id);
 }
 // Sube la foto o PDF elegido en el formulario, lo deja para adjuntar al cobro y lo lee con IA.
@@ -143,25 +175,29 @@ export function onPayCar() {
   $('#p_monto').value = montoSugeridoCobro(c) || '';
   $('#p_tipo').value = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';
   $('#p_lblmonto').textContent = c.tipo === 'financiado' ? 'Monto (en dólares)' : 'Monto';
-  $('#p_info').textContent = (i.debt > 0 ? 'Debe ' + mon(i.debt) + ' (' + num1(i.late) + ' semanas). ' : 'Está al día. ') + (c.tipo === 'alquiler' ? 'Alquiler' : 'Cuota') + ' semanal: ' + mon(c.monto) + '.';
+  $('#p_info').textContent = (i.debt > 0 ? 'Debe ' + mon(i.debt) + ' (' + num1(i.late) + ' semanas). ' : 'Está al día. ') + (c.tipo === 'alquiler' ? 'Alquiler semanal: ' + mon(c.monto) : esMensual(c) ? 'Cuota mensual: ' + mon(montoMensual(c)) : 'Cuota semanal: ' + mon(c.monto)) + '.';
   const metodoHabitual = metodoPreferidoChofer(c.choferId);
   if (metodoHabitual) $('#p_metodo').value = metodoHabitual;
   if (document.getElementById('p_pesos')) $('#p_pesos').value = '';
   actualizarPesosBox();
+  avisoMontoCobro();
 }
 let payAnomaloArmed = null;
-export async function savePay(btn) {
+export async function savePay(btn, otro) {
   const c = carById(val('p_car')); const monto = +val('p_monto');
   if (!c) { toast('Elegí un auto'); return; }
   if (!monto || monto <= 0) { toast('Poné el monto cobrado'); return; }
   if (!val('p_fecha')) { toast('Poné la fecha'); return; }
   const parcial = document.getElementById('p_parcial').checked;
   const aCuenta = document.getElementById('p_acuenta').checked;
-  const esperado = +c.monto || 0;
-  if (val('p_tipo') !== 'seguro' && !parcial && !aCuenta && esperado && (monto > esperado * 1.5 || monto < esperado * 0.5) && payAnomaloArmed !== btn) {
+  const esperado = esMensual(c) ? montoMensual(c) : +c.monto || 0;
+  const tipoCobro = val('p_tipo');
+  const corresponde = montoCorrespondiente(c);
+  const distinto = (tipoCobro === 'alquiler' || tipoCobro === 'cuota') && esperado && ![esperado, corresponde].some(x => x > 0 && Math.abs(monto - x) <= Math.max(1, x * 0.02));
+  if (distinto && !parcial && !aCuenta && payAnomaloArmed !== btn) {
     payAnomaloArmed = btn;
     const mon = c.tipo === 'financiado' ? moneyUSD : money;
-    toast('Este monto (' + mon(monto) + ') es muy distinto al habitual (' + mon(esperado) + '). Tocá "Guardar cobro" de nuevo para confirmar.');
+    toast('Este monto (' + mon(monto) + ') no es el que corresponde (' + mon(corresponde) + '). Tocá el botón de nuevo para guardarlo igual.');
     return;
   }
   payAnomaloArmed = null;
@@ -174,6 +210,7 @@ export async function savePay(btn) {
     if (excedente > 0) montoPago = monto - excedente;
   }
   const o = { id: uid(), carId: c.id, choferId: c.choferId, fecha: val('p_fecha'), monto: montoPago, tipo, metodo: val('p_metodo'), parcial, aCuenta, nota: val('p_nota'), depositado: false };
+  if (distinto) { o.montoEsperado = corresponde; o.montoDistinto = true; }
   const comp = comprobantePortal;
   if (comp) o.files = [{ id: comp.id, name: (comp.driverId ? 'comprobante-portal-' : 'comprobante-') + comp.fecha + '.' + (String(comp.type || '').split('/')[1] || 'jpg').replace('jpeg', 'jpg'), cat: 'comprobante', type: comp.type, size: comp.size, fecha: comp.fecha }];
   if (comprobanteRef) o.comprobanteRef = comprobanteRef;
@@ -190,6 +227,14 @@ export async function savePay(btn) {
   }
   if (km) await actualizarKm(c.id, km);
   const mon2 = c.tipo === 'financiado' ? moneyUSD : money;
+  if (otro) {
+    Object.assign(cobrosSeguidos, { n: cobrosSeguidos.n + 1, fecha: o.fecha, metodo: o.metodo, hechos: cobrosSeguidos.hechos.concat([c.id]), resumen: cobrosSeguidos.resumen.concat([(c.patente || '') + ' ' + mon2(montoPago)]) });
+    toast('Cobro de ' + (c.patente || '') + ' guardado');
+    cobrosSeguidos.continuar = true;
+    payForm();
+    return;
+  }
+  resetCobrosSeguidos();
   const msgOk = excedente > 0 ? 'Cobro registrado y ' + mon2(excedente) + ' quedaron como semana adelantada' : 'Cobro registrado';
   const d = de('drivers', 'id', c.choferId)[0];
   if (d && d.tel) {

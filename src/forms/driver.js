@@ -13,6 +13,10 @@ import { gruposDuplicadosLedger } from './deposito.js';
 import { settings, featureOculta } from '../settings.js';
 import { de } from '../memo.js';
 import { seccionCambiosDatos } from './portal-pedidos.js';
+import { seccionReclamos, MOTIVOS_CONTACTO, motivoContacto, ultimoContacto, rachaSinAtraso, textoRacha, fechaIngreso } from './choferes-extra.js';
+import { seccionPedidosChofer } from './pedidos-chofer.js';
+import { estadoPortalVisto } from './mensajes.js';
+import { seccionManejoChofer } from './gps.js';
 
 function telRow(t) {
   t = t || {};
@@ -50,7 +54,10 @@ export function driverForm(id) {
     const estLabel = { ok: 'Todo al día', soft: 'Todo al día', warn: 'Algo pendiente', bad: 'Requiere atención' }[estGen];
     h += '<div class="card" style="margin-bottom:10px">' + badge(estGen, estLabel) + '</div>';
   }
+  if (ex) h += seccionPedidosChofer(d);
   if (ex && !d.prospecto) {
+    const uc = ultimoContacto(d);
+    if (uc) h += '<div class="small muted" style="margin:-4px 0 10px">Último contacto: ' + fdate(uc.fecha) + ' · ' + esc((COMUNICACION_TIPOS.find(x => x[0] === uc.tipo) || [0, uc.tipo])[1]) + (uc.motivo ? ' por ' + esc(motivoContacto(uc.motivo).toLowerCase()) : '') + '</div>';
     const autoAsignado = S.cars.find(c => c.choferId === d.id && !c.vendido);
     h += '<div class="card" style="margin-bottom:10px">' + (autoAsignado ?
       '<div class="row between"><div><div class="small muted">Auto asignado</div><b>' + esc(autoAsignado.patente) + '</b></div>' +
@@ -66,8 +73,9 @@ export function driverForm(id) {
     (d.portalDesactivado ? '<div class="row between" style="margin-bottom:8px"><span class="small" style="color:var(--bad)">Acceso desactivado</span><button class="btn sec sm" onclick="togglePortalDesactivado(\'' + d.id + '\')">Reactivar</button></div>' : '') +
     (portalUrl ? '<input readonly value="' + esc(portalUrl) + '" onclick="this.select()" style="margin-bottom:8px">' +
       '<div class="row"><button class="btn sec sm" onclick="copiarLinkPortal(\'' + esc(portalUrl) + '\')">Copiar</button>' +
-      '<a class="btn sec sm" target="_blank" href="https://wa.me/?text=' + encodeURIComponent('Hola ' + (d.nombre || '').split(' ')[0] + ', acá podés ver tu estado de cuenta: ' + portalUrl) + '">WhatsApp</a>' +
+      '<a class="btn sec sm" target="_blank" href="https://wa.me/' + (d.tel ? String(d.tel).replace(/\D/g, '') : '') + '?text=' + encodeURIComponent('Hola ' + (d.nombre || '').split(' ')[0] + ', acá podés ver tu estado de cuenta: ' + portalUrl) + '" onclick="marcarLinkEnviado(\'' + d.id + '\')">WhatsApp</a>' +
       '<button class="btn sec sm" onclick="regenerarLinkPortal(\'' + d.id + '\')">Regenerar</button></div>' +
+      estadoPortalVisto(d) +
       (!d.portalDesactivado ? '<button class="btn sec sm block" style="margin-top:6px" onclick="togglePortalDesactivado(\'' + d.id + '\')">Desactivar acceso temporalmente</button>' : '')
       : '<button class="btn sec block" onclick="regenerarLinkPortal(\'' + d.id + '\')">Generar link del portal</button>') +
     '</div>';
@@ -94,6 +102,7 @@ export function driverForm(id) {
   '<label class="f"><span>Teléfono <small>con código de país, ej: +5491155551234</small></span><input id="d_tel" type="tel" value="' + esc(d.tel) + '"></label>' +
   '<div class="two"><label class="f"><span>Fecha de nacimiento</span><input id="d_nac" type="date" value="' + esc(d.fechaNacimiento) + '"></label>' +
   '<label class="f"><span>Calificación</span><select id="d_rating"><option value="">Sin calificar</option>' + RATINGS.map(x => '<option value="' + x[0] + '"' + (d.rating === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
+  '<label class="f"><span>Trabaja con la empresa desde <small>para el aviso de aniversario</small></span><input id="d_ingreso" type="date" value="' + esc(d.fechaIngreso || (ex ? fechaIngreso(d) : '')) + '"></label>' +
   '<div class="two"><label class="f"><span>Domicilio</span><input id="d_dom" value="' + esc(d.domicilio) + '"></label>' +
   '<label class="f"><span>Link de Google Maps <small>opcional</small></span><input id="d_domMaps" type="url" value="' + esc(d.domicilioMaps) + '"></label></div>' +
   '<div class="sec-t">Datos adicionales</div>' +
@@ -131,6 +140,7 @@ export function driverForm(id) {
         (pend > 0 && auto ? '<button class="btn sec sm block" style="margin:4px 0 6px" onclick="payFormSeguro(\'' + auto.id + '\')">Registrar pago de seguro</button>' : '');
     })() +
     (score != null ? '<div class="row between"><span class="muted">Puntualidad</span><b>' + score + '%</b></div>' : '') +
+    (() => { const rc = rachaSinAtraso(d.id); return rc == null ? '' : '<div class="row between"><span class="muted">Racha</span><b style="color:' + (rc ? 'var(--ok)' : 'var(--muted)') + '">' + (rc ? '🔥 ' : '') + esc(textoRacha(rc)) + '</b></div>'; })() +
     (() => { const pr = promedioIngresos3MesesChofer(d.id); return (pr.promedio || pr.promedioUSD) ? '<div class="row between"><span class="muted">Promedio mensual (3 meses)</span><b>' + (pr.promedio ? money(pr.promedio) : '') + (pr.promedioUSD ? (pr.promedio ? ' + ' : '') + moneyUSD(pr.promedioUSD) : '') + '</b></div>' : ''; })() +
     (!d.prospecto && driverEnRiesgo(d.id) ? '<div class="row between"><span class="muted">Riesgo</span>' + badge('bad', 'En riesgo por atrasos') + '</div>' : '') +
     (!d.prospecto && driverCalificaBono(d.id) ? '<div class="row between"><span class="muted">Bono</span>' + badge('ok', 'Califica por puntualidad') + '</div>' : '') +
@@ -180,6 +190,7 @@ export function driverForm(id) {
     if (San.length) sanciones += San.map(s => '<div class="card row"><div class="grow"><div class="small muted">' + fdate(s.fecha) + '</div><div>' + esc(s.motivo) + '</div></div>' + (canDelete() ? '<button class="btn danger sm" onclick="confirmDel(this,()=>delSancion(\'' + s.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     else sanciones += '<div class="small muted" style="margin-bottom:8px">Sin sanciones registradas.</div>';
     sanciones += '<button class="btn sec block" style="margin:8px 0 20px" onclick="sancionForm(\'' + d.id + '\')">+ Agregar sanción</button>';
+    sanciones += seccionManejoChofer(d.id);
     const M = multasDeChofer(d.id);
     sanciones += '<div class="sec-t">Multas</div>';
     const pts = puntosLicencia(d.id);
@@ -198,12 +209,14 @@ export function driverForm(id) {
     if (H.length) hist += H.map(x => '<div class="row between small" style="padding:4px 0"><span>' + esc(x.patente || 'Auto eliminado') + '</span><span class="muted">' + fdate(x.desde) + ' – ' + (x.hasta ? fdate(x.hasta) : 'actual') + '</span></div>').join('');
     else hist += '<div class="small muted" style="margin-bottom:20px">Sin autos asignados todavía.</div>';
     const COM = (d.comunicaciones || []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
-    hist += '<div class="sec-t">Historial de comunicaciones</div>' +
+    hist += seccionReclamos(d);
+    hist += '<div class="sec-t row between">Llamados y comunicaciones' + (d.tel ? '<button class="btn sec sm" onclick="llamarYAnotar(\'' + d.id + '\')">Llamar y anotar</button>' : '') + '</div>' +
     '<div class="two"><label class="f"><span>Tipo</span><select id="cm_tipo">' + COMUNICACION_TIPOS.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label>' +
     '<label class="f"><span>Fecha</span><input id="cm_fecha" type="date" value="' + iso(today()) + '"></label></div>' +
-    '<label class="f"><span>Notas</span><textarea id="cm_notas" placeholder="ej: llamó por atraso en el pago, dijo que paga el viernes"></textarea></label>' +
+    '<label class="f"><span>Motivo</span><select id="cm_motivo">' + MOTIVOS_CONTACTO.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label>' +
+    '<label class="f"><span>Qué se habló / cómo quedó</span><textarea id="cm_notas" placeholder="ej: dice que paga el viernes"></textarea></label>' +
     '<button class="btn sec block" style="margin-bottom:14px" onclick="agregarComunicacion(\'' + d.id + '\')">Agregar</button>' +
-    (COM.length ? COM.map(c => '<div class="card row"><div class="grow"><div>' + esc((COMUNICACION_TIPOS.find(x => x[0] === c.tipo) || [0, c.tipo])[1]) + '</div><div class="small muted">' + fdate(c.fecha) + (c.notas ? ' · ' + esc(c.notas) : '') + '</div></div><button class="btn danger sm" onclick="confirmDel(this,()=>borrarComunicacion(\'' + d.id + '\',\'' + c.id + '\'))">Borrar</button></div>').join('') : '<div class="small muted" style="margin-bottom:20px">Sin comunicaciones registradas.</div>');
+    (COM.length ? COM.map(c => '<div class="card row"><div class="grow"><div>' + esc((COMUNICACION_TIPOS.find(x => x[0] === c.tipo) || [0, c.tipo])[1]) + '</div><div class="small muted">' + fdate(c.fecha) + (c.motivo ? ' · ' + esc(motivoContacto(c.motivo)) : '') + (c.notas ? ' · ' + esc(c.notas) : '') + '</div></div><button class="btn danger sm" onclick="confirmDel(this,()=>borrarComunicacion(\'' + d.id + '\',\'' + c.id + '\'))">Borrar</button></div>').join('') : '<div class="small muted" style="margin-bottom:20px">Sin comunicaciones registradas.</div>');
     const ENC = encuestasDeChofer(d.id);
     const prom = promedioNpsChofer(d.id);
     hist += '<div class="sec-t row between">Encuestas de satisfacción' + (prom != null ? '<span class="small muted">' + prom.toFixed(1) + '/5 promedio</span>' : '') + '</div>';
@@ -251,7 +264,7 @@ export async function saveDriver(id) {
   // (link del portal, comprobantes, comunicaciones, adelantos, etc.).
   const o = Object.assign({}, ex || {}, {
     id: id || uid(), nombre, dni: val('d_dni'), licVenc: val('d_lic'), tipoLicencia: val('d_tipoLicencia'), antecedentesVenc: val('d_antecedentesVenc'), tel: val('d_tel'), domicilio: val('d_dom'), notas: val('d_notas'), docs,
-    fechaNacimiento: val('d_nac'), rating: val('d_rating'),
+    fechaNacimiento: val('d_nac'), fechaIngreso: val('d_ingreso'), rating: val('d_rating'),
     domicilioMaps: val('d_domMaps'), nacionalidad: val('d_nacionalidad'), estadoCivil: val('d_estadoCivil'),
     referenciaNombre: val('d_refNombre'), referenciaTel: val('d_refTel'), nivelEstudios: val('d_estudios'),
     otrosIngresos: val('d_otrosIngresos'), ocupacionAnterior: val('d_ocupacion'), experienciaChofer: val('d_experiencia'),
@@ -321,8 +334,8 @@ export async function marcarComprobantePortal(id, compId, revisado) {
 export async function agregarComunicacion(id) {
   const d = de('drivers', 'id', id)[0]; if (!d) return;
   const notas = val('cm_notas');
-  const comunicaciones = (d.comunicaciones || []).concat([{ id: uid(), tipo: val('cm_tipo'), fecha: val('cm_fecha') || iso(today()), notas }]);
-  if (await save('drivers', Object.assign({}, d, { comunicaciones }))) { toast('Comunicación registrada'); driverForm(id); }
+  const comunicaciones = (d.comunicaciones || []).concat([{ id: uid(), tipo: val('cm_tipo'), motivo: val('cm_motivo'), fecha: val('cm_fecha') || iso(today()), notas }]);
+  if (await save('drivers', Object.assign({}, d, { comunicaciones }))) { toast('Comunicación registrada'); driverForm(id); setTabChofer('hist'); }
 }
 export async function borrarComunicacion(id, comId) {
   const d = de('drivers', 'id', id)[0]; if (!d) return;

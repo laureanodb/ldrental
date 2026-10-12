@@ -14,6 +14,11 @@
 // - auxilio: manda la ubicación del chofer para que lo vayan a buscar.
 // - opinion: el chofer dice si un arreglo quedó bien o sigue fallando.
 // - encuesta, foto, comprobante, documento, firmar_contrato: como antes.
+// - reclamo: reclamo o sugerencia del chofer.
+// - gasto: algo del auto que pagó el chofer (con foto del ticket) para que se lo descuenten.
+// - aviso_atraso: avisa que se atrasa con el pago y qué día paga.
+// - devolucion: avisa qué día devuelve el auto.
+// El GET también anota cuándo abrió el portal (para saber si vio el link que le mandaron).
 // Todo valida que el auto sea del chofer y avisa a la empresa con una notificación.
 // El token se genera y se puede regenerar desde la ficha del chofer en la app.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -100,6 +105,66 @@ function planService(c: any) {
     return { label: p.label || p.item, proxKm, proxFecha, faltanKm, faltanDias, estado: vencido ? 'vencido' : pronto ? 'pronto' : 'ok' };
   }).sort((a: any, b: any) => (a.faltanKm ?? 1e9) - (b.faltanKm ?? 1e9));
 }
+
+// Guarda cambios en el chofer leyendo antes la versión más nueva.
+async function guardarChofer(sb: any, driverId: string, patch: (d: any) => any) {
+  const { data: fresco } = await sb.from('drivers').select('id,data').eq('id', driverId).maybeSingle();
+  if (!fresco || !fresco.data) return 'Chofer no encontrado';
+  const upd = await sb.from('drivers').update({ data: Object.assign({}, fresco.data, patch(fresco.data)), updated_at: new Date().toISOString() }).eq('id', driverId);
+  return upd.error ? upd.error.message : '';
+}
+const fechaValida = (v: unknown) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '');
+// Semanas seguidas (de la más reciente para atrás) en que lo pagado cubrió todo lo que correspondía.
+function rachaAuto(c: any, payments: any[], hoy: Date): number {
+  const kind = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';
+  const monto = +c.monto || 0;
+  const transcurridos = diasEntre(c.inicio, hoy);
+  if (transcurridos < 0 || !monto) return 0;
+  const movs = payments.filter((p: any) => p.carId === c.id && p.tipo === kind && p.fecha >= c.inicio).map((p: any) => [p.fecha, +p.monto || 0])
+    .concat((c.ajustesDeuda || []).map((a: any) => [a.fecha || c.inicio, +a.monto || 0]));
+  const pagadoHasta = (f: string) => movs.reduce((s: number, m: any) => (m[0] <= f ? s + m[1] : s), 0);
+  let completas = Math.floor(transcurridos / 7);
+  if (c.tipo === 'financiado' && +c.cuotas) completas = Math.min(completas, +c.cuotas);
+  let racha = 0;
+  if (!(c.tipo === 'financiado' && +c.cuotas && completas >= +c.cuotas) && pagadoHasta(hoy.toISOString().slice(0, 10)) >= (completas + 1) * monto - 1) racha++;
+  for (let k = completas - 1; k >= 0; k--) {
+    const fin = new Date(c.inicio + 'T00:00:00'); fin.setDate(fin.getDate() + k * 7 + 6);
+    if (pagadoHasta(fin.toISOString().slice(0, 10)) >= (k + 1) * monto - 1) racha++; else break;
+  }
+  return racha;
+}
+
+// Plan mensual y arreglos financiados (mismas cuentas que src/financiados.js de la app).
+const esMensual = (c: any) => c.tipo === 'financiado' && c.frecuencia === 'mensual';
+const montoMensual = (c: any) => Math.round((+c.monto || 0) * 52 / 12 * (1 + (+c.ajusteFrecuenciaPct || 0) / 100) * 100) / 100;
+const cuotasMensuales = (c: any) => Math.ceil((+c.cuotas || 0) * 12 / 52);
+function totalPlan(c: any) {
+  const base = +c.total || (+c.monto || 0) * (+c.cuotas || 0);
+  return esMensual(c) ? Math.round(base * (1 + (+c.ajusteFrecuenciaPct || 0) / 100) * 100) / 100 : base;
+}
+function fechaMes(inicio: string, n: number): Date {
+  const d = new Date(inicio + 'T00:00:00'), dia = d.getDate();
+  const f = new Date(d.getFullYear(), d.getMonth() + n - 1, 1);
+  f.setDate(Math.min(dia, new Date(f.getFullYear(), f.getMonth() + 1, 0).getDate()));
+  return f;
+}
+function mesesVencidos(inicio: string, hoy: Date): number {
+  if (!inicio || diasEntre(inicio, hoy) < 0) return 0;
+  let n = 1;
+  while (n < 600 && fechaMes(inicio, n + 1).getTime() <= hoy.getTime()) n++;
+  return n;
+}
+function cargosVencidos(c: any, hoy: Date): number {
+  if (c.tipo !== 'financiado') return 0;
+  return (c.cargosFinanciados || []).reduce((s: number, x: any) => {
+    if (!x.desde || diasEntre(x.desde, hoy) < 0) return s;
+    const n = +x.cuotas || 1;
+    const periodos = esMensual(c) ? mesesVencidos(x.desde, hoy) : Math.floor(diasEntre(x.desde, hoy) / 7) + 1;
+    return s + Math.min(n, periodos) * (+x.monto || 0) / n;
+  }, 0);
+}
+const totalCargos = (c: any) => (c.tipo === 'financiado' ? (c.cargosFinanciados || []).reduce((s: number, x: any) => s + (+x.monto || 0), 0) : 0);
+const isoLocal = (d: Date) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
 async function avisarPush(sb: any, title: string, body: string) {
   try {
@@ -230,6 +295,47 @@ Deno.serve(async (req) => {
           if (upd.error) return json({ ok: false, error: 'No se pudo guardar: ' + upd.error.message }, 500);
         } else return json({ ok: false, error: 'Falta el arreglo' }, 400);
         if (resultado !== 'bien') await avisarPush(sb, 'Un arreglo sigue fallando', (d.nombre || 'Chofer') + (opinion.comentario ? ': ' + opinion.comentario : ''));
+      } else if (accion === 'reclamo') {
+        const detalle = txt(body.detalle, 800);
+        if (!detalle) return json({ ok: false, error: 'Contanos qué pasó' }, 400);
+        const motivo = ['pagos', 'auto', 'trato', 'portal', 'sugerencia', 'otro'].includes(String(body.motivo)) ? String(body.motivo) : 'otro';
+        const err = await guardarChofer(sb, driverId, (x: any) => ({ reclamos: (x.reclamos || []).concat([{ id: nuevoId(), fecha: hoyIso(), motivo, detalle, estado: 'abierto', origen: 'portal' }]).slice(-50) }));
+        if (err) return json({ ok: false, error: 'No se pudo guardar: ' + err }, 500);
+        await avisarPush(sb, motivo === 'sugerencia' ? 'Sugerencia de un chofer' : 'Reclamo de un chofer', (d.nombre || 'Chofer') + ': ' + detalle.slice(0, 140));
+      } else if (accion === 'gasto') {
+        const row = await autoDelChofer(sb, driverId, String(body.carId || ''));
+        if (!row) return json({ ok: false, error: 'Elegí tu auto' }, 400);
+        const concepto = txt(body.concepto, 120);
+        const monto = Math.round((+body.monto || 0) * 100) / 100;
+        if (!concepto) return json({ ok: false, error: 'Contá qué pagaste' }, 400);
+        if (!(monto > 0) || monto > 5000000) return json({ ok: false, error: 'Revisá el monto' }, 400);
+        let foto: any = null;
+        if (body.imagen) {
+          const up = await subirImagen(sb, String(body.imagen), 'ticket-chofer');
+          if (up.error) return json({ ok: false, error: up.error }, 400);
+          foto = { id: up.path, type: up.type };
+        }
+        const categoria = ['repuestos', 'service', 'otro'].includes(String(body.categoria)) ? String(body.categoria) : 'otro';
+        const g = { id: nuevoId(), fecha: fechaValida(body.fecha) || hoyIso(), enviado: hoyIso(), carId: row.id, concepto, monto, categoria, foto, estado: 'pendiente' };
+        const err = await guardarChofer(sb, driverId, (x: any) => ({ gastosChofer: (x.gastosChofer || []).concat([g]).slice(-60) }));
+        if (err) return json({ ok: false, error: 'No se pudo guardar: ' + err }, 500);
+        await avisarPush(sb, 'Gasto pagado por un chofer', (d.nombre || 'Chofer') + ' · ' + (row.data.patente || '') + ': ' + concepto + ' $' + monto.toLocaleString('es-AR') + '. Aprobalo en su ficha.');
+      } else if (accion === 'aviso_atraso') {
+        const pagaEl = fechaValida(body.pagaEl);
+        if (!pagaEl || pagaEl < hoyIso()) return json({ ok: false, error: 'Elegí qué día pagás' }, 400);
+        const aviso = { id: nuevoId(), fecha: hoyIso(), pagaEl, motivo: txt(body.motivo, 300), estado: 'abierto' };
+        const err = await guardarChofer(sb, driverId, (x: any) => ({ avisosAtraso: (x.avisosAtraso || []).concat([aviso]).slice(-30) }));
+        if (err) return json({ ok: false, error: 'No se pudo guardar: ' + err }, 500);
+        await avisarPush(sb, 'Un chofer avisa que se atrasa', (d.nombre || 'Chofer') + ' paga el ' + pagaEl.split('-').reverse().join('/') + (aviso.motivo ? ': ' + aviso.motivo : ''));
+      } else if (accion === 'devolucion') {
+        const row = await autoDelChofer(sb, driverId, String(body.carId || ''));
+        if (!row) return json({ ok: false, error: 'Elegí tu auto' }, 400);
+        const fecha = fechaValida(body.fecha);
+        if (!fecha || fecha < hoyIso()) return json({ ok: false, error: 'Elegí qué día lo devolvés' }, 400);
+        const dev = { id: nuevoId(), fecha: hoyIso(), fechaDevolucion: fecha, carId: row.id, motivo: txt(body.motivo, 300), estado: 'avisada' };
+        const err = await guardarChofer(sb, driverId, () => ({ devolucion: dev }));
+        if (err) return json({ ok: false, error: 'No se pudo guardar: ' + err }, 500);
+        await avisarPush(sb, 'Un chofer va a devolver el auto', (d.nombre || 'Chofer') + ' · ' + (row.data.patente || '') + ' el ' + fecha.split('-').reverse().join('/') + (dev.motivo ? ': ' + dev.motivo : ''));
       } else if (accion === 'encuesta') {
         const rating = Math.max(1, Math.min(5, +body.rating || 0));
         const comentario = String(body.comentario || '').trim().slice(0, 300);
@@ -340,6 +446,10 @@ Deno.serve(async (req) => {
     }
     const d = Object.assign({ id: driverRow.id }, driverRow.data);
     if (d.portalDesactivado) return json({ ok: false, error: 'El acceso al portal está desactivado temporalmente' }, 403);
+    // Anota la visita (como mucho una vez cada 10 minutos) para que la empresa sepa si vio el link.
+    if (!d.portalVisto || Date.now() - Date.parse(d.portalVisto) > 10 * 60 * 1000) {
+      await guardarChofer(sb, driverId, (x: any) => ({ portalVisto: new Date().toISOString(), portalVisitas: (+x.portalVisitas || 0) + 1 })).catch(() => '');
+    }
 
     const [{ data: carsRaw }, { data: paymentsRaw }, { data: multasRaw }, { data: settingsRow }, { data: depositosRaw }, { data: gastosRaw }, { data: mantRaw }] = await Promise.all([
       sb.from('cars').select('id,data'),
@@ -374,7 +484,7 @@ Deno.serve(async (req) => {
 
     const autos = cars.map((c: any) => {
       const moneda = c.tipo === 'financiado' ? 'USD' : 'ARS';
-      let debt = 0, proximo: string | null = null, cuotaActual = 0, saldo: number | null = null, adelantoAplicado = 0;
+      let debt = 0, proximo: string | null = null, cuotaActual = 0, saldo: number | null = null, adelantoAplicado = 0, totalFin = 0, pagadoFin = 0, finFin = '';
       if (c.inicio && c.monto) {
         const dias = diasEntre(c.inicio, hoy);
         if (dias >= 0) {
@@ -385,20 +495,26 @@ Deno.serve(async (req) => {
           const paid = payments.filter((p: any) => p.carId === c.id && p.tipo === kind && p.fecha >= c.inicio)
             .reduce((a: number, p: any) => a + (+p.monto || 0), 0);
           const ajustes = (c.ajustesDeuda || []).reduce((a: number, x: any) => a + (+x.monto || 0), 0);
-          const debtSinAdelanto = Math.max(0, weeks * c.monto - paid - ajustes);
+          const mensual = esMensual(c);
+          const meses = mensual ? mesesVencidos(c.inicio, hoy) : 0;
+          const due = (mensual ? Math.min(meses * montoMensual(c), totalPlan(c)) : weeks * c.monto) + cargosVencidos(c, hoy);
+          const debtSinAdelanto = Math.max(0, due - paid - ajustes);
           adelantoAplicado = Math.min(adelantoRestante, debtSinAdelanto);
           adelantoRestante -= adelantoAplicado;
           debt = Math.max(0, debtSinAdelanto - adelantoAplicado);
           const prox = new Date(c.inicio + 'T00:00:00'); prox.setDate(prox.getDate() + weeks * 7);
-          proximo = prox.toISOString().slice(0, 10);
+          proximo = mensual ? isoLocal(fechaMes(c.inicio, meses + 1)) : prox.toISOString().slice(0, 10);
+          if (mensual) cuotaActual = meses;
           if (c.tipo === 'financiado') {
-            const total = +c.total || c.monto * (+c.cuotas || 0);
+            const total = totalPlan(c) + totalCargos(c);
             saldo = Math.max(0, total - paid);
-            if (c.cuotas) cuotaActual = Math.min(cuotaActual, +c.cuotas);
+            totalFin = total; pagadoFin = Math.min(total, paid + ajustes);
+            if (c.cuotas && mensual) { cuotaActual = Math.min(cuotaActual, cuotasMensuales(c)); finFin = isoLocal(fechaMes(c.inicio, cuotasMensuales(c))); }
+            else if (c.cuotas) { cuotaActual = Math.min(cuotaActual, +c.cuotas); const f = new Date(c.inicio + 'T00:00:00'); f.setDate(f.getDate() + (+c.cuotas - 1) * 7); finFin = f.toISOString().slice(0, 10); }
           }
         }
       }
-      return { id: c.id, patente: c.patente || '', marca: c.marca || '', modelo: c.modelo || '', vtv: c.vtv || '', seguro: c.seguro || '', aseguradora: c.aseguradora || '', polizaNumero: c.polizaNumero || '', tipo: c.tipo, monto: +c.monto || 0, moneda, debt, proximo, cuotas: +c.cuotas || 0, cuotaActual, saldo, adelantoAplicado };
+      return { id: c.id, patente: c.patente || '', marca: c.marca || '', modelo: c.modelo || '', vtv: c.vtv || '', seguro: c.seguro || '', aseguradora: c.aseguradora || '', polizaNumero: c.polizaNumero || '', tipo: c.tipo, monto: esMensual(c) ? montoMensual(c) : +c.monto || 0, frecuencia: esMensual(c) ? 'mensual' : 'semanal', moneda, debt, proximo, cuotas: esMensual(c) ? cuotasMensuales(c) : +c.cuotas || 0, cuotaActual, saldo, adelantoAplicado, total: totalFin, pagado: pagadoFin, fin: finFin };
     });
     const contratosPendientes = cars.filter((c: any) => c.firmaRemota && c.firmaRemota.estado === 'pendiente' && c.firmaRemota.choferId === driverId)
       .map((c: any) => ({ carId: c.id, id: c.firmaRemota.id, patente: c.patente || '', titulo: c.firmaRemota.titulo || 'Contrato', parrafos: c.firmaRemota.parrafos || [] }));
@@ -448,6 +564,11 @@ Deno.serve(async (req) => {
 
     return json({
       ok: true, nombre: d.nombre || '', autos, pagos, multas, taller, arreglos, misAutos: extra,
+      racha: cars.filter((c: any) => c.inicio && +c.monto > 0).length ? Math.min(...cars.filter((c: any) => c.inicio && +c.monto > 0).map((c: any) => rachaAuto(c, payments, hoy))) : 0,
+      gastosChofer: (d.gastosChofer || []).slice(-5).reverse().map((g: any) => ({ fecha: g.fecha, concepto: g.concepto, monto: g.monto, estado: g.estado, nota: g.nota || '' })),
+      avisoAtraso: (() => { const a = (d.avisosAtraso || []).slice(-1)[0]; return a ? { fecha: a.fecha, pagaEl: a.pagaEl, estado: a.estado } : null; })(),
+      devolucion: d.devolucion ? { fechaDevolucion: d.devolucion.fechaDevolucion, estado: d.devolucion.estado } : null,
+      reclamos: (d.reclamos || []).slice(-5).reverse().map((x: any) => ({ fecha: x.fecha, detalle: x.detalle, estado: x.estado, resolucion: x.resolucion || '' })),
       cambiosPendientes: d.cambiosPendientes || null,
       cuenta: { deudaARS, deudaUSD, adelantos }, plan, contratosPendientes,
       documentos: Object.entries(DOCS_CHOFER).map(([tipo, x]) => {

@@ -62,6 +62,7 @@ export function repuestoForm(editId) {
   '<label class="f"><span>Proveedor <small>opcional</small></span><select id="rp_proveedor"><option value="">Sin especificar</option>' + proveedoresActivos().map(p => '<option value="' + p.id + '"' + (ex && ex.proveedorId === p.id ? ' selected' : '') + '>' + esc(p.nombre) + '</option>').join('') + '</select></label></div>' +
   (modelos.length ? '<div class="sec-t">Sirve para <small>dejalo vacío si sirve para todos los autos</small></div><div style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-bottom:10px">' +
     modelos.map((m, i) => '<label class="chk" style="margin:0"><input type="checkbox" class="rp-compat" value="' + esc(m) + '"' + (compat.includes(m) ? ' checked' : '') + '><span>' + esc(m) + '</span></label>').join('') + '</div>' : '') +
+  '<label class="f"><span>Vence el <small>líquidos, baterías, lo que caduca (opcional)</small></span><input id="rp_vence" type="date" value="' + esc(ex ? ex.venceEl || '' : '') + '"></label>' +
   '<label class="f"><span>Notas</span><textarea id="rp_notas">' + esc(ex ? ex.notas : '') + '</textarea></label>' +
   (ex ? '<label class="chk"><input type="checkbox" id="rp_inactivo"' + (ex.inactivo ? ' checked' : '') + '><span>Inactivo (no se cuenta en el pañol ni avisa)</span></label>' : '') +
   '<div class="row"><button class="btn grow" onclick="saveRepuesto(' + (ex ? "'" + ex.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>' +
@@ -105,7 +106,7 @@ export async function saveRepuesto(editId) {
     id: editId || uid(), nombre, tipo: val('rp_tipo'), categoria: val('rp_cat'), unidad: val('rp_unidad'),
     codigo: val('rp_codigo'), ubicacion: val('rp_ubicacion'),
     stockMinimo: +val('rp_min') || 0, costoUnitario: +val('rp_costo') || 0,
-    proveedorId: val('rp_proveedor'), notas: val('rp_notas'),
+    proveedorId: val('rp_proveedor'), notas: val('rp_notas'), venceEl: val('rp_vence'),
     compatibles: [...document.querySelectorAll('.rp-compat:checked')].map(x => x.value),
     creadoFecha: ex ? ex.creadoFecha : iso(today()),
     inactivo: editId ? document.getElementById('rp_inactivo').checked : false,
@@ -136,6 +137,7 @@ export function movimientoStockForm(repuestoId, tipo) {
     '<div class="two"><label class="f"><span>Precio unitario de compra</span><input id="mv_costo" inputmode="decimal" value="' + esc(precioReposicion(r) || '') + '"></label>' +
     '<label class="f"><span>Factura nº <small>opcional</small></span><input id="mv_factura"></label></div>' +
     '<label class="f"><span>Proveedor <small>opcional, para comparar precios</small></span><select id="mv_proveedor"><option value="">Sin especificar</option>' + proveedoresActivos().map(p => '<option value="' + p.id + '"' + (r.proveedorId === p.id ? ' selected' : '') + '>' + esc(p.nombre) + '</option>').join('') + '</select></label>' +
+    '<label class="f"><span>Vence el <small>si caduca, opcional</small></span><input id="mv_vence" type="date"></label>' +
     '<label class="chk"><input type="checkbox" id="mv_gengasto" checked><span>Generar gasto general por esta compra</span></label>' :
     (esHerr ? '' : '<label class="f"><span>Auto <small>opcional, para qué auto se usó</small></span><select id="mv_car"><option value="">Sin especificar</option>' + cars.map(c => '<option value="' + c.id + '">' + esc(c.patente) + (esCompatible(r, c) ? '' : ' (no figura como compatible)') + '</option>').join('') + '</select></label>') +
     '<label class="f"><span>' + (esHerr ? 'Quién la tenía' : 'Retiró') + ' <small>opcional</small></span><input id="mv_retiro" list="mv_quienes"><datalist id="mv_quienes">' + quienes().map(n => '<option value="' + esc(n) + '">').join('') + '</datalist></label>') +
@@ -176,6 +178,8 @@ export async function guardarMovimientoStock(repuestoId, tipo) {
     const proveedorId = val('mv_proveedor'); if (proveedorId) mov.proveedorId = proveedorId;
     const factura = val('mv_factura'); if (factura) mov.factura = factura;
     cambios = { costoUnitario: costoPromedioNuevo(r, cantidad, precio) };
+    const vence = val('mv_vence');
+    if (vence) { mov.venceEl = vence; cambios.venceEl = stockDe(r) > 0 && r.venceEl && r.venceEl < vence ? r.venceEl : vence; }
     if (document.getElementById('mv_gengasto').checked && precio) {
       generarGasto = { id: uid(), carId: '', categoria: 'repuestos', fecha, costo: cantidad * precio, proveedorId: proveedorId || '', descripcion: 'Compra pañol: ' + r.nombre + ' (' + cant(r, cantidad) + ')' + (factura ? ' · fact. ' + factura : ''), generadoAuto: true };
     }

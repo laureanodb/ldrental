@@ -1,3 +1,4 @@
+import { rachaSinAtraso } from '../forms/choferes-extra.js';
 import { S, ui } from '../state.js';
 import { esc, money, moneyUSD } from '../utils.js';
 import { vs, driverDebt, plate, badge, isContract, driverScore, driverEnRiesgo, driverCalificaBono } from '../calc.js';
@@ -73,6 +74,7 @@ export function listChoferes() {
     const etapaLabel = (ETAPAS_PROSPECTO.find(x => x[0] === d.etapaProspecto) || [0, 'Contacto inicial'])[1];
     let b = d.prospecto ? badge(d.etapaProspecto === 'rechazado' ? 'bad' : d.etapaProspecto === 'aprobado' ? 'ok' : 'info', etapaLabel) : d.inactivo ? badge('mute', 'Inactivo') : (debt > 0 ? badge('bad', 'Debe ' + mon(debt)) : (cars.some(isContract) ? badge('ok', 'Al día') : ''));
     if (ratingLabel) b += ' ' + badge(d.rating === 'malo' ? 'bad' : d.rating === 'regular' ? 'soft' : 'ok', ratingLabel);
+    if (!d.prospecto && !d.inactivo) { const rc = rachaSinAtraso(d.id); if (rc >= 4) b += ' ' + badge('ok', '🔥 ' + rc + ' sem. al día'); }
     b += ' ' + badge(got === DOCS.length ? 'ok' : 'soft', 'Docs ' + got + '/' + DOCS.length);
     if (!d.prospecto && !d.inactivo) {
       const gotOb = ONBOARDING_ITEMS.filter(x => d.onboarding && d.onboarding[x[0]]).length;

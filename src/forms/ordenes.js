@@ -1,5 +1,8 @@
 // Órdenes de trabajo del taller. Viven dentro de cada auto (c.ordenes), así no
 // hace falta una tabla nueva. Cada acción se guarda al instante.
+import { botonAgradecer } from './mensajes.js';
+import { alPapelera } from './papelera.js';
+import { opcionesChecklist, tareasDeChecklist, checklistPorId } from './checklists.js';
 import { S, ui } from '../state.js';
 import { esc, val, uid, iso, today, fdate, money, num1 } from '../utils.js';
 import { openModal, closeModal, toast } from '../modal.js';
@@ -71,6 +74,7 @@ export function nuevaOTForm(carId) {
   openModal('<h3>Nueva orden de trabajo</h3>' +
     (c ? '<input type="hidden" id="ot_car" value="' + c.id + '"><div class="small muted" style="margin-bottom:10px">' + esc(c.patente) + ' · ' + esc([c.marca, c.modelo].filter(Boolean).join(' ')) + '</div>' :
       '<label class="f"><span>Auto</span><select id="ot_car">' + cars.map(x => '<option value="' + x.id + '">' + esc(x.patente) + '</option>').join('') + '</select></label>') +
+    '<label class="f"><span>Checklist del trabajo <small>carga las tareas solas</small></span><select id="ot_checklist" onchange="onChecklistOT()">' + opcionesChecklist() + '</select></label>' +
     '<label class="f"><span>Qué hay que hacer</span><input id="ot_titulo" placeholder="ej: ruido en tren delantero"></label>' +
     '<label class="f"><span>Detalle <small>opcional</small></span><textarea id="ot_desc"></textarea></label>' +
     '<div class="two"><label class="f"><span>Tipo</span><select id="ot_tipo"><option value="correctivo">Arreglo (correctivo)</option><option value="preventivo">Preventivo / service</option></select></label>' +
@@ -89,8 +93,9 @@ export async function crearOT() {
   const o = {
     id: uid(), numero: proximoNumero(), fecha: iso(today()), estado: 'abierta', origen: 'app', tipo: val('ot_tipo'), titulo, descripcion: val('ot_desc'),
     km: +val('ot_km') || +c.km || 0, proveedorId: taller === 'propio' ? '' : taller, mecanico: val('ot_mecanico'),
-    tareas: [], repuestos: [], horas: [], fotosAntes: [], fotosDespues: [], creadoPor: (S.user && S.user.email) || '',
+    tareas: tareasDeChecklist(val('ot_checklist')), repuestos: [], horas: [], fotosAntes: [], fotosDespues: [], creadoPor: (S.user && S.user.email) || '',
   };
+  if (val('ot_checklist')) o.checklist = (checklistPorId(val('ot_checklist')) || {}).nombre || '';
   const parado = document.getElementById('ot_parado');
   if (parado && parado.checked) o.dejoEnTaller = true;
   if (!(await guardarOT(c, o, 'Orden ' + o.numero + ' abierta'))) return;
@@ -106,7 +111,7 @@ export function otForm(carId, otId) {
   const prov = o.proveedorId ? de('proveedores', 'id', o.proveedorId)[0] : null;
   let h = '<h3>OT ' + o.numero + ' · ' + esc(c.patente) + '</h3>' +
     '<div class="row between" style="margin-bottom:10px">' + badge(estadoCls(o.estado), estadoLabel(o.estado)) + '<span class="small muted">' + fdate(o.fecha) + (o.km ? ' · ' + Number(o.km).toLocaleString('es-AR') + ' km' : '') + ' · ' + (prov ? esc(prov.nombre) : 'taller propio') + '</span></div>';
-  if (o.origen === 'portal') h += '<div class="card small" style="margin-bottom:10px">La reportó ' + esc(o.reportadoPor || 'el chofer') + ' desde el portal.</div>';
+  if (o.origen === 'portal') h += '<div class="card small" style="margin-bottom:10px">La reportó ' + esc(o.reportadoPor || 'el chofer') + ' desde el portal.' + botonAgradecer(c, o) + '</div>';
   if (o.opinionChofer) h += '<div class="card small" style="margin-bottom:10px">Opinión del chofer (' + fdate(o.opinionChofer.fecha) + '): <b>' + (o.opinionChofer.resultado === 'bien' ? 'quedó bien' : 'sigue fallando') + '</b>' + (o.opinionChofer.comentario ? ' · ' + esc(o.opinionChofer.comentario) : '') +
     (o.opinionChofer.resultado !== 'bien' && !o.opinionAtendida ? '<div class="row" style="margin-top:6px"><button class="btn sm grow" onclick="reabrirOT(\'' + c.id + '\',\'' + o.id + '\')">Abrir otra orden</button><button class="btn sec sm" onclick="atenderOpinionOT(\'' + c.id + '\',\'' + o.id + '\')">Ya lo resolví</button></div>' : '') + '</div>';
 
@@ -120,7 +125,8 @@ export function otForm(carId, otId) {
 
   // Tareas
   h += '<div class="sec-t">Tareas</div>' + ((o.tareas || []).length ? o.tareas.map(t => '<label class="chk"><input type="checkbox"' + (t.hecho ? ' checked' : '') + (abierta ? ' onchange="toggleTareaOT(\'' + c.id + '\',\'' + o.id + '\',\'' + t.id + '\')"' : ' disabled') + '><span>' + esc(t.texto) + '</span></label>').join('') : '<div class="small muted">Sin tareas.</div>') +
-    (abierta ? '<div class="row" style="margin:6px 0 12px"><input id="otf_tarea" class="grow" placeholder="ej: cambiar bieletas"><button class="btn sec sm" onclick="agregarTareaOT(\'' + c.id + '\',\'' + o.id + '\')">Agregar</button></div>' : '');
+    (abierta ? '<div class="row" style="margin:6px 0 6px"><input id="otf_tarea" class="grow" placeholder="ej: cambiar bieletas"><button class="btn sec sm" onclick="agregarTareaOT(\'' + c.id + '\',\'' + o.id + '\')">Agregar</button></div>' +
+      '<div class="row" style="margin:0 0 12px"><select id="otf_ck" class="grow">' + opcionesChecklist().replace('Sin checklist', 'Sumar un checklist…') + '</select><button class="btn sec sm" onclick="sumarChecklistOT(\'' + c.id + '\',\'' + o.id + '\')">Sumar</button></div>' : '');
 
   // Repuestos del pañol
   h += '<div class="sec-t row between">Repuestos<span class="small muted">' + money(k.repuestos) + '</span></div>' +
@@ -176,6 +182,10 @@ export function guardarDatosOT(carId, otId) {
 export function agregarTareaOT(carId, otId) {
   const texto = val('otf_tarea'); if (!texto) { toast('Escribí la tarea'); return; }
   return cambiar(carId, otId, o => { o.tareas = (o.tareas || []).concat([{ id: uid(), texto, hecho: false }]); return o; });
+}
+export function sumarChecklistOT(carId, otId) {
+  const id = val('otf_ck'); if (!id) { toast('Elegí un checklist'); return; }
+  return cambiar(carId, otId, o => { o.tareas = (o.tareas || []).concat(tareasDeChecklist(id)); o.checklist = o.checklist || (checklistPorId(id) || {}).nombre || ''; return o; });
 }
 export function toggleTareaOT(carId, otId, tid) {
   return cambiar(carId, otId, o => { o.tareas = (o.tareas || []).map(t => (t.id === tid ? Object.assign({}, t, { hecho: !t.hecho }) : t)); return o; });
@@ -268,7 +278,8 @@ export function ordenesView() {
     (isAdmin() && delMes.length ? '<div class="small muted" style="margin-bottom:10px">Costo de los arreglos cerrados este mes: ' + money(delMes.reduce((a, x) => a + costosOT(x.o).total, 0)) + '</div>' : '') +
     '<div class="tabs">' + [['abiertas', 'Abiertas'], ['reportadas', 'Reportadas'], ['todas', 'Todas']].map(([k, l]) => '<button class="tab' + (f === k ? ' on' : '') + '" onclick="ui.otFiltro=\'' + k + '\';ordenesView()">' + l + '</button>').join('') + '</div>';
   h += vis.length ? vis.slice(0, 80).map(x => filaOT(x.c, x.o, true)).join('') : '<div class="card empty">No hay órdenes acá.</div>';
-  h += '<div class="row" style="margin-top:10px"><button class="btn grow" onclick="nuevaOTForm()">+ Nueva orden</button><button class="btn sec" onclick="closeModal()">Cerrar</button></div>';
+  h += '<div class="row" style="margin-top:10px"><button class="btn grow" onclick="nuevaOTForm()">+ Nueva orden</button><button class="btn sec" onclick="closeModal()">Cerrar</button></div>' +
+    '<button class="btn sec block" style="margin-top:8px" onclick="checklistsTrabajoView()">Checklists por tipo de trabajo</button>';
   openModal(h);
 }
 
@@ -288,5 +299,5 @@ export async function reabrirOT(carId, otId) {
 export async function borrarOT(carId, otId) {
   const { c, o } = buscar(carId, otId); if (!o) return;
   if (o.estado === 'cerrada') { toast('Una orden cerrada no se puede borrar: ya está en el historial de mantenimiento', 'error'); return; }
-  if (await save('cars', Object.assign({}, c, { ordenes: (c.ordenes || []).filter(x => x.id !== otId) }))) { toast('Orden ' + (o.numero || '') + ' borrada'); window.carForm(carId); window.setTabAuto('mant'); }
+  if (await save('cars', Object.assign({}, c, { ordenes: (c.ordenes || []).filter(x => x.id !== otId) }))) { alPapelera('ordenes', o, { carId }); toast('Orden ' + (o.numero || '') + ' borrada (queda 30 días en la papelera)'); window.carForm(carId); window.setTabAuto('mant'); }
 }

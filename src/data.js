@@ -7,6 +7,7 @@ import { modoConsultaActivo } from './consulta.js';
 import { tocarDatos } from './memo.js';
 import { isAdmin } from './roles.js';
 import { settings } from './settings.js';
+import { alPapelera } from './forms/papelera.js';
 
 /* Gastos y mantenimientos que superan el monto de aprobación, cargados por alguien que no es
    administrador, quedan en S.pendientes hasta que se aprueban: no cuentan en ningún número. */
@@ -165,6 +166,8 @@ export async function saveMany(col, arr) {
 }
 export async function remove(col, id) {
   if (modoConsultaActivo()) { toast('No se puede eliminar: modo solo consulta activado', 'error'); return false; }
+  const previo = (S[col] || []).find(x => x.id === id) || ((S.pendientes || {})[col] || []).find(x => x.id === id);
+  alPapelera(col, previo);
   if (!navigator.onLine) {
     quitarLocal(col, id); render(); queueOp({ type: 'remove', col, id });
     toast('Eliminado sin conexión, se sincroniza solo cuando vuelva internet'); return true;

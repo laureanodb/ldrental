@@ -4,6 +4,9 @@ import { TIPOS, VENC, COMBUSTIBLES, GASTO_CATS, MULTA_ESTADOS, MOTIVOS_REEMPLAZO
 import { seguroPaga, seguroPendiente, seguroPendienteDesde, isContract, calc, finFinanciado, driverName, diasEnTaller, planMantenimientoDefault, estadoPlanItem, textoRestante, badge, estadoMultaCls, resultadoVenta, fichaTecnica, cronogramaCuotas, estadoGeneralAuto, mejorPeorMesAuto, lineaDeTiempoAuto, contratoVencimiento, vs, gastosFijosMensuales, historialGastosFijos, comparacionGastoFijo, desgloseCobradoPorChofer, movimientosSalidaPorAuto, gastosRepuestosPorAuto } from '../calc.js';
 import { seccionOrdenes } from './ordenes.js';
 import { seccionTurnos } from './portal-pedidos.js';
+import { campoGpsId } from './gps.js';
+import { camposOrigenCompra, datosOrigenCompra, seccionPrecioMinimo } from './compras.js';
+import { camposFinanciado, seccionCargosFinanciados, onFrecuencia, datosFinanciado } from './financiados-ui.js';
 import { seccionPapeles, seccionCedulas, seccionVtv, seccionBateria, seccionCubiertas, seccionValorMercado, campoSeguroApps, seccionCodigosFalla, badgeAutoProblema, completarAuto } from './auto-extra.js';
 import { openModal, closeModal, toast, confirmDel } from '../modal.js';
 import { save, remove } from '../data.js';
@@ -367,6 +370,7 @@ export function carForm(id) {
   '<label class="f"><span>Combustible</span><select id="c_combustible"><option value="">Sin especificar</option>' + COMBUSTIBLES.map(x => '<option value="' + x[0] + '"' + (c.combustible === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
   '<div class="two"><label class="f"><span>Kilometraje actual</span><input id="c_km" inputmode="numeric" value="' + esc(c.km) + '"></label>' +
   '<label class="f"><span>Costo de compra</span><input id="c_costocompra" inputmode="decimal" value="' + esc(c.costoCompra || '') + '"></label></div>' +
+  camposOrigenCompra(c) +
   '<label class="f"><span>Valor de mercado actual</span><input id="c_valormercado" inputmode="decimal" value="' + esc(c.valorMercado || '') + '"></label>' + (ex ? seccionValorMercado(c) : '') +
   '<div class="sec-t">Llaves</div>' +
   '<label class="chk"><input type="checkbox" id="c_llaveDuplicada"' + (c.llaveDuplicada ? ' checked' : '') + '><span><b>Tiene la segunda llave (copia)</b></span></label>' +
@@ -386,7 +390,7 @@ export function carForm(id) {
   '<div class="sec-t">Ubicación y GPS</div>' +
   '<div class="two"><label class="f"><span>Dónde duerme de noche</span><input id="c_dondeDuerme" value="' + esc(c.dondeDuerme) + '"></label>' +
   '<label class="f"><span>Link de Google Maps <small>opcional</small></span><input id="c_dondeDuermeMaps" type="url" value="' + esc(c.dondeDuermeMaps) + '"></label></div>' +
-  '<label class="f"><span>Tipo de GPS</span><input id="c_gpsTipo" value="' + esc(c.gpsTipo) + '"></label>' +
+  '<label class="f"><span>Tipo de GPS</span><input id="c_gpsTipo" value="' + esc(c.gpsTipo) + '"></label>' + campoGpsId(c) +
   '<label class="chk"><input type="checkbox" id="c_gpsAlerta"' + (c.gpsAlerta ? ' checked' : '') + '><span>GPS roto / con alerta' + (c.gpsAlerta ? '' : ' (pone el auto en taller al guardar)') + '</span></label>' +
   '<div class="sec-t">Datos administrativos</div>' +
   '<div class="two"><label class="f"><span>Fecha de compra</span><input id="c_fechaCompra" type="date" value="' + esc(c.fechaCompra) + '"></label>' +
@@ -512,8 +516,9 @@ export function carForm(id) {
   '<div id="finbox" class="two"><label class="f"><span id="lbltotal">Total a pagar en cuotas</span><input id="c_total" inputmode="decimal" value="' + esc(c.total || '') + '" oninput="autoCuota()"></label>' +
   '<label class="f"><span>Cantidad de cuotas</span><input id="c_cuotas" inputmode="numeric" value="' + esc(c.cuotas || '') + '" oninput="autoCuota()"></label>' +
   '<label class="f"><span>Anticipo pagado <small>opcional</small></span><input id="c_anticipo" inputmode="decimal" value="' + esc(c.anticipo || '') + '"></label></div>' +
-  '<div class="two"><label class="f"><span id="lblmonto">Monto semanal</span><input id="c_monto" inputmode="decimal" value="' + esc(c.monto || '') + '" data-vs="' + esc(c.valorSemanal || '') + '" oninput="this.dataset.touched=1"></label>' +
+  '<div class="two"><label class="f"><span id="lblmonto">Monto semanal</span><input id="c_monto" inputmode="decimal" value="' + esc(c.monto || '') + '" data-vs="' + esc(c.valorSemanal || '') + '" oninput="this.dataset.touched=1;onFrecuencia()"></label>' +
   '<label class="f"><span>Inicio del contrato</span><input id="c_inicio" type="date" value="' + esc(c.inicio) + '"></label></div>' +
+  '<div id="frecwrap"' + (c.tipo === 'financiado' ? '' : ' style="display:none"') + '>' + camposFinanciado(c) + (ex && c.tipo === 'financiado' ? seccionCargosFinanciados(c) : '') + '</div>' +
   (ex && isContract(c) && c.tipo !== 'financiado' && c.inicio && c.monto ? '<button type="button" class="btn sec sm" style="margin:-4px 0 12px" onclick="sugerirAjusteInflacion(\'' + c.id + '\')">Sugerir ajuste por inflación</button>' : '') +
   '<div class="small muted" style="margin:-4px 0 12px">Si cambia el chofer o pasa de alquiler a financiación, poné la fecha nueva de inicio. La deuda se cuenta desde ahí.</div></div>';
   if (ex) {
@@ -603,6 +608,7 @@ export function carForm(id) {
     gastos += '<button class="btn sec block" style="margin:8px 0 20px" onclick="siniestroForm(\'' + c.id + '\')">+ Registrar siniestro</button>';
 
     /* ---- Historial ---- */
+    hist += seccionPrecioMinimo(c);
     if (c.vendido && c.precioVenta) {
       const r = resultadoVenta(c);
       if (r) {
@@ -693,6 +699,7 @@ export function onTipo(el, init) {
   const t = el.value, con = t === 'alquiler' || t === 'financiado';
   $('#contrato').style.display = con ? '' : 'none';
   $('#finbox').style.display = t === 'financiado' ? '' : 'none';
+  if (document.getElementById('frecwrap')) $('#frecwrap').style.display = t === 'financiado' ? '' : 'none';
   $('#lblmonto').textContent = t === 'financiado' ? 'Cuota semanal (en dólares)' : 'Alquiler semanal';
   const lblTotal = $('#lbltotal'); if (lblTotal) lblTotal.textContent = 'Total a pagar en cuotas (en dólares)';
   if (!init && con && el.value !== el.dataset.orig) $('#c_inicio').value = iso(today());
@@ -703,6 +710,7 @@ export function autoCuota() {
   const m = $('#c_monto'); if (m.dataset.touched) return;
   const t = +val('c_total'), n = +val('c_cuotas');
   if (t && n) m.value = Math.round(t / n);
+  onFrecuencia();
 }
 let saveCarAvisoArmed = null;
 export async function saveCar(btn, id) {
@@ -754,6 +762,8 @@ export async function saveCar(btn, id) {
     choferId, monto: con ? (+val('c_monto') || 0) : 0, inicio: con ? val('c_inicio') : '',
     total: tipo === 'financiado' ? (+val('c_total') || 0) : 0, cuotas: tipo === 'financiado' ? (+val('c_cuotas') || 0) : 0,
     anticipo: tipo === 'financiado' ? (+val('c_anticipo') || 0) : 0, notas: val('c_notas'),
+    ...(tipo === 'financiado' ? datosFinanciado() : { frecuencia: '' }),
+    ...datosOrigenCompra(),
     tituloTransferido: document.getElementById('c_tituloTransferido') ? document.getElementById('c_tituloTransferido').checked : ((ex && ex.tituloTransferido) || false),
     tituloTransferidoFecha: document.getElementById('c_tituloTransferidoFecha') ? val('c_tituloTransferidoFecha') : ((ex && ex.tituloTransferidoFecha) || ''),
     numeroFlota: val('c_numflota'), combustible: val('c_combustible'), km: val('c_km'), costoCompra: +val('c_costocompra') || 0,
@@ -761,7 +771,7 @@ export async function saveCar(btn, id) {
     polizaNumero: val('c_poliza'), aseguradora: val('c_aseguradora') === 'Otro' ? val('c_aseguradoraOtro') : val('c_aseguradora'),
     seguroPaga: document.getElementById('c_seguroPaga') ? val('c_seguroPaga') : seguroPaga(ex), seguroMensual: nuevoSeguro, patenteMensual: nuevaPatente, mantenimientoMensualEstimado: +val('c_mantenimientoMensualEstimado') || 0, gastoFijoHistorial,
     dondeDuerme: val('c_dondeDuerme'), dondeDuermeMaps: val('c_dondeDuermeMaps'),
-    gpsTipo: val('c_gpsTipo'), gpsAlerta: document.getElementById('c_gpsAlerta').checked,
+    gpsTipo: val('c_gpsTipo'), gpsId: val('c_gpsId'), gpsAlerta: document.getElementById('c_gpsAlerta').checked,
     form08: document.getElementById('c_form08').checked,
     color: val('c_color'), transmision: val('c_transmision'), vin: val('c_vin'), numeroMotor: val('c_numeroMotor'),
     tags: val('c_tags').split(',').map(s => s.trim()).filter(Boolean),

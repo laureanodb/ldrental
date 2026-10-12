@@ -58,11 +58,15 @@ export function viewMas() {
     ['Gastos generales', 'gastosGeneralesView()'],
     ['Proveedores y talleres', 'proveedoresView()'],
     ['Mapa de flota', 'mapaFlotaView()'],
+    ['GPS de la flota (zonas, batería, velocidad)', 'gpsView()'],
     ['Valores de mercado', 'valoresMercadoView()'],
+    ['Autos para comprar (checklist de revisión)', 'candidatosCompraView()'],
+    ['Cuándo conviene comprar otro auto', 'calendarioComprasView()'],
+    ['Cómo salió cada compra (por vendedor)', 'comprasPorVendedorView()'],
     ['Mantenimiento preventivo en lote', 'mantenimientoLoteForm()'],
   ]);
   if (canVerFinanzas()) h += grupo('Cobros', [['Cruzar con el resumen de Mercado Pago o del banco', "goMas('cruce')"]]);
-  h += grupo('Análisis', [['Tablero semanal por auto', "goMas('tablero')"], ['Reportes', "goMas('reportes')"], ['Reporte personalizado', 'reportePersonalizadoForm()'], ['Metas de la flota', 'metasForm()']]);
+  h += grupo('Análisis', [['Chequeo trimestral del negocio (IA)', 'chequeoView()'], ['Cuánto tardás en resolver cada cosa', 'tiemposRespuestaView()'], ['Km de la flota por semana', 'kmFlotaView()'], ['Services hechos a tiempo', 'servicesATiempoView()'], ['Cuánto duran los choferes (edad y experiencia)', 'duracionChoferesView()'], ['Tablero semanal por auto', "goMas('tablero')"], ['Reportes', "goMas('reportes')"], ['Reporte personalizado', 'reportePersonalizadoForm()'], ['Metas de la flota', 'metasForm()']].concat(canVerFinanzas() ? [['Rendimiento de las financiaciones', 'rankingFinanciacionesView()']] : []));
   h += grupo('Herramientas', [
     ['Recordatorios', 'recordatoriosView()'],
     ['Simulador de financiación', 'simuladorFinanciacionForm()'],
@@ -74,15 +78,16 @@ export function viewMas() {
     ['Novedades de la app', 'mostrarNovedades()'],
   ]);
   if (isAdmin() && !featureOculta('desafios')) h += grupo('Motivación', [['Desafío del mes', 'desafioMesForm()']]);
-  if (isAdmin()) h += grupo('Comunicación', [['Tablón de anuncios (portal del chofer)', 'anunciosForm()']]);
+  h += grupo('Comunicación', [['Mensajes programados por WhatsApp', 'mensajesProgramadosView()']].concat(isAdmin() ? [['Tablón de anuncios (portal del chofer)', 'anunciosForm()']] : []));
   const admin = [['Ajustes', "goMas('ajustes')"], ['Copia de seguridad', "goMas('backup')"], ['Google', "goMas('google')"], ['Salud de los datos', "goMas('saluddatos')"]];
   if (canVerFinanzas() && !featureOculta('autoseguro')) admin.push(['Fondo de autoseguro', 'autoseguroForm()']);
   if (isAdmin()) admin.push(['Usuarios y permisos', 'usuariosView()'], ['Auditoría', 'auditoriaView()'], ['Bitácora de decisiones', 'bitacoraView()']);
   const nPend = cantidadPendientes();
   if (isAdmin() || nPend) admin.unshift(['Gastos para aprobar' + (nPend ? ' (' + nPend + ')' : ''), 'aprobacionesView()']);
+  admin.push(['Papelera (lo borrado en los últimos 30 días)', 'papeleraView()']);
   h += grupo('Administración', admin);
   h += grupo('Cuenta', [['Cerrar sesión (' + esc(S.user && S.user.email || '') + ')', 'logout()']]);
   const ver = typeof __VERSION__ !== 'undefined' ? __VERSION__ : '';
-  h += '<div class="small muted" style="text-align:center;margin:18px 0 6px">' + (ver ? 'Versión del ' + esc(ver.slice(8, 10) + '/' + ver.slice(5, 7) + ' ' + ver.slice(11)) + ' · ' : '') + '<a class="tap" style="text-decoration:underline" onclick="buscarActualizacion()">Buscar actualización</a></div>';
+  h += '<div class="small muted" style="text-align:center;margin:18px 0 6px">' + (ver ? 'Versión del ' + esc(ver.slice(8, 10) + '/' + ver.slice(5, 7) + ' ' + ver.slice(11)) + ' · ' : '') + '<a class="tap" style="text-decoration:underline" onclick="buscarActualizacion()">Buscar actualización</a> · <a class="tap" style="text-decoration:underline" onclick="go(\'panel\');setTimeout(()=>recorridoApp(true),300)">Ver cómo usar la app</a></div>';
   return h;
 }

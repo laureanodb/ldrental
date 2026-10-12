@@ -17,6 +17,8 @@ import { queueLength } from './offline.js';
 import { settings, featureOculta } from './settings.js';
 import { modoConsultaActivo, modoConsultaHasta } from './consulta.js';
 import { nuevaPasada } from './memo.js';
+import { guardarFiltros } from './preferencias.js';
+import { programarRecorrido } from './recorrido.js';
 
 const ICONS = {
   panel: '<path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-4H4zM14 8h6V4h-6z"/>',
@@ -88,6 +90,7 @@ function bindFabScroll() {
 }
 export function render() {
   nuevaPasada();
+  guardarFiltros();
   renderNav();
   const app = $('#app');
   if (!configured()) { app.innerHTML = viewSetup(); return; }
@@ -97,6 +100,7 @@ export function render() {
   app.innerHTML = offlineBar() + consultaBar() + topBar() + v + (modoConsultaActivo() ? '' : fabBar());
   if (!modoConsultaActivo()) bindFabScroll();
   renderList();
+  programarRecorrido();
 }
 export function renderList() {
   const el = $('#list'); if (!el) return;

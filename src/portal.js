@@ -1,6 +1,7 @@
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { esc, money, moneyUSD, fdate, today, parse, days } from './utils.js';
 import { brandH1, settings } from './settings.js';
+import { bannersPortal, avisoAtrasoHtml, seccionesFinalesPortal, conectarExtra } from './portal-extra.js';
 
 const TEMA_KEY = 'portal-tema';
 function temaGuardado() { try { return localStorage.getItem(TEMA_KEY) || ''; } catch (e) { return ''; } }
@@ -107,6 +108,7 @@ function renderPortal(app, j) {
   if (companyPhone) {
     h += '<a class="btn block" style="margin-bottom:14px" target="_blank" href="https://wa.me/' + esc(companyPhone.replace(/\D/g, '')) + '?text=' + encodeURIComponent('Hola, soy ' + (j.nombre || '') + '.') + '">Contactar por WhatsApp</a>';
   }
+  h += bannersPortal(j);
   const mis = j.misAutos || [];
   if (mis.length) {
     h += '<div class="card" id="aux_card" style="margin-bottom:14px;border-color:var(--bad)"><button class="btn danger block" id="aux_btn">🆘 Necesito auxilio</button>' +
@@ -141,6 +143,7 @@ function renderPortal(app, j) {
       '<div class="small muted" id="fc_status_' + i + '" style="margin-top:6px"></div></div>';
   });
   h += tarjetaComoPagar(j);
+  h += avisoAtrasoHtml(j);
   const anuncios = (j.anuncios && j.anuncios.length ? j.anuncios : (settings.anuncios || [])).slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5);
   if (anuncios.length) {
     h += '<div class="sec-t">Anuncios</div>' + anuncios.map(a => '<div class="card"><div>' + esc(a.texto) + '</div><div class="small muted" style="margin-top:4px">' + fdate(a.fecha) + '</div></div>').join('');
@@ -196,8 +199,14 @@ function renderPortal(app, j) {
       '<div class="row between"><span class="muted">Deuda actual</span><b style="color:' + (a.debt > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + mon(a.debt) + '</b></div>' +
       (a.proximo ? '<div class="row between"><span class="muted">Próximo pago</span><span><b>' + fdate(a.proximo) + '</b><span class="small" style="color:' + proxColor + ';margin-left:6px">' + proxTexto + '</span></span></div>' : '') +
       (a.tipo === 'financiado' && a.cuotas ? '<div class="row between small"><span class="muted">Cuota actual</span><span>' + a.cuotaActual + ' de ' + a.cuotas + '</span></div>' : '') +
-      (a.tipo === 'financiado' && a.cuotas ? '<div style="background:var(--soft);border-radius:6px;height:8px;overflow:hidden;margin:6px 0"><div style="width:' + Math.min(100, Math.round(a.cuotaActual / a.cuotas * 100)) + '%;height:100%;background:var(--ok)"></div></div>' : '') +
-      (a.tipo === 'financiado' && a.saldo != null ? '<div class="row between small"><span class="muted">Saldo total</span><span>' + moneyUSD(a.saldo) + '</span></div>' : '') +
+      (a.tipo === 'financiado' && a.total ? (() => {
+        const pct = Math.min(100, Math.round((a.pagado || 0) / a.total * 100));
+        const faltanCuotas = a.monto ? Math.ceil((a.saldo || 0) / a.monto) : 0;
+        return '<div style="margin:10px 0 4px"><div class="row between small"><b>Pagaste el ' + pct + '% de tu auto</b><span class="muted">' + moneyUSD(a.pagado || 0) + ' de ' + moneyUSD(a.total) + '</span></div>' +
+          '<div style="background:var(--soft);border-radius:6px;height:12px;overflow:hidden;margin:6px 0"><div style="width:' + pct + '%;height:100%;background:var(--ok)"></div></div>' +
+          '<div class="small">' + (a.saldo > 0 ? 'Te faltan <b>' + moneyUSD(a.saldo) + '</b>' + (faltanCuotas ? ' (unas ' + faltanCuotas + ' cuotas)' : '') + (a.fin ? '. Si seguís al día, terminás el ' + fdate(a.fin) + '.' : '.') : '<b style="color:var(--ok)">¡Terminaste de pagar tu auto! 🎉</b>') + '</div></div>';
+      })() : (a.tipo === 'financiado' && a.cuotas ? '<div style="background:var(--soft);border-radius:6px;height:8px;overflow:hidden;margin:6px 0"><div style="width:' + Math.min(100, Math.round(a.cuotaActual / a.cuotas * 100)) + '%;height:100%;background:var(--ok)"></div></div>' : '') +
+      (a.tipo === 'financiado' && a.saldo != null ? '<div class="row between small"><span class="muted">Saldo total</span><span>' + moneyUSD(a.saldo) + '</span></div>' : '')) +
       (a.vtv ? '<div class="row between small"><span class="muted">VTV</span><span>' + fdate(a.vtv) + '</span></div>' : '') +
       (a.seguro ? '<div class="row between small"><span class="muted">Seguro</span><span>' + fdate(a.seguro) + '</span></div>' : '') +
       (a.docsSeguro && a.docsSeguro.length ? '<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><div class="small muted">Papeles del seguro' + (a.aseguradora ? ' · ' + esc(a.aseguradora) : '') + (a.polizaNumero ? ' · Póliza ' + esc(a.polizaNumero) : '') + '</div>' +
@@ -267,6 +276,7 @@ function renderPortal(app, j) {
         '<button class="btn block doc_btn" style="margin-top:8px">Enviar</button><div class="small muted doc_status" style="margin-top:6px"></div></details></div>';
     }).join('');
   }
+  h += seccionesFinalesPortal(j);
   h += '<div class="sec-t">Actualizar mis datos</div><div class="card">' +
   (j.cambiosPendientes ? '<div class="small" style="color:var(--warn);margin-bottom:8px">Ya mandaste cambios el ' + fdate(j.cambiosPendientes.fecha) + ' y la empresa los está revisando.</div>' : '') +
   '<label class="f"><span>Teléfono nuevo</span><input id="ad_tel" type="tel"></label>' +
@@ -316,6 +326,7 @@ function renderPortal(app, j) {
     });
   });
   conectarNuevos(wrap, j);
+  conectarExtra(wrap, postPortal, comprimirImagen);
   const adBtn = wrap.querySelector('#ad_btn');
   if (adBtn) adBtn.addEventListener('click', async () => {
     const tel = wrap.querySelector('#ad_tel').value.trim(), domicilio = wrap.querySelector('#ad_domicilio').value.trim(), email = wrap.querySelector('#ad_email').value.trim();

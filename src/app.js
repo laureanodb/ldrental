@@ -8,9 +8,20 @@ import { asignarChoferForm, guardarAsignacionChofer, quitarChofer, asignarAutoFo
 import { altaRapidaAutoForm, onAltaRapidaAutoTipo, guardarAltaRapidaAuto, altaRapidaChoferForm, guardarAltaRapidaChofer } from './forms/alta-rapida.js';
 import { renderSeguroDocs, subirDocSeguro, completarSeguroConIA, leerCotizacionSeguro, agregarCotizacionSeguro, quitarCotizacionSeguro, elegirCotizacionSeguro, ayudaSeguroPaga, corregirSeguroForm, guardarCorreccionSeguro, valorSemanalForm, guardarValorSemanal, volverDeValorSemanal, carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, marcarEnTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento } from './forms/car.js';
 import { cedulaForm, guardarCedula, bajaCedula, vtvTurnoForm, guardarVtvTurno, borrarVtvTurno, medicionBateriaForm, guardarMedicionBateria, estimarCubiertaIA, valoresMercadoView, guardarValoresMercado, codigoFallaForm, onCodigoFalla, guardarCodigoFalla, resolverCodigoFalla, leerOBD, ejecutarLecturaOBD } from './forms/auto-extra.js';
-import { nuevaOTForm, crearOT, otForm, guardarDatosOT, agregarTareaOT, toggleTareaOT, agregarRepuestoOT, quitarRepuestoOT, agregarHorasOT, quitarHorasOT, valorHoraForm, guardarValorHora, subirFotoOT, cerrarOTForm, cerrarOT, cancelarOT, ordenesView, atenderOpinionOT, reabrirOT, borrarOT } from './forms/ordenes.js';
+import { nuevaOTForm, crearOT, otForm, guardarDatosOT, agregarTareaOT, sumarChecklistOT, toggleTareaOT, agregarRepuestoOT, quitarRepuestoOT, agregarHorasOT, quitarHorasOT, valorHoraForm, guardarValorHora, subirFotoOT, cerrarOTForm, cerrarOT, cancelarOT, ordenesView, atenderOpinionOT, reabrirOT, borrarOT } from './forms/ordenes.js';
+import { onChecklistOT, checklistsTrabajoView, agregarChecklistTrabajo, guardarChecklistsTrabajo } from './forms/checklists.js';
 import { aprobacionesView, guardarUmbralAprobacion, aprobarPendiente, rechazarPendiente, bitacoraView, decisionForm, guardarDecision, borrarDecision, metasForm, guardarMetas } from './forms/control.js';
 import { turnoServiceForm, responderTurno, auxilioView, atenderAuxilio, aprobarCambiosDatos, rechazarCambiosDatos } from './forms/portal-pedidos.js';
+import { agendarServiceForm, guardarServiceAgendado, recordarServiceView, marcarServiceRecordado, agregarReclamo, resolverReclamo, borrarReclamo, llamarYAnotar, saludoView, mandarSaludo, marcarSaludado } from './forms/choferes-extra.js';
+import { mensajesProgramadosView, guardarMensajeProgramado, borrarMensajeProgramado, enviarMensajeProgramado, marcarMensajeEnviado, cerrarMensajeProgramado, marcarLinkEnviado, marcarAgradecido } from './forms/mensajes.js';
+import { onFrecuencia, cargoFinanciadoForm, calcCargoFinanciado, guardarCargoFinanciado, borrarCargoFinanciado, rankingFinanciacionesView } from './forms/financiados-ui.js';
+import { candidatosCompraView, candidatoCompraForm, guardarCandidatoCompra, descartarCandidato, comprarCandidato, comprasPorVendedorView, calendarioComprasView, guardarCalendarioCompras } from './forms/compras.js';
+import { tiemposRespuestaView, duracionChoferesView, kmFlotaView, servicesATiempoView, chequeoView, hacerChequeo, verChequeo } from './forms/reportes-extra.js';
+import { papeleraView, restaurarPapelera } from './forms/papelera.js';
+import { elegirPantallaInicio, limpiarFiltrosGuardados, cargarPreferencias } from './preferencias.js';
+import { recorridoApp } from './recorrido.js';
+import { gpsView, generarClaveGps, copiarUrlGps, guardarConfigGps, zonaGpsForm, ubicacionZonaGps, guardarZonaGps, borrarZonaGps } from './forms/gps.js';
+import { aprobarGastoChofer, rechazarGastoChofer, cerrarAvisoAtraso, cerrarDevolucion } from './forms/pedidos-chofer.js';
 import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
 import { calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, escenarioFlotaForm, calcularEscenarioFlota } from './forms/calculadora.js';
 import { compararAutosForm, renderComparacionAutos } from './forms/comparar.js';
@@ -33,7 +44,7 @@ import { activarPush, desactivarPush, guardarHorarioPush, guardarPreferenciasPus
 import { marcarComprobantePortal, aceptarDocPortal, rechazarDocPortal, driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, togglePortalDesactivado, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion } from './forms/driver.js';
 import { goMas } from './views/mas.js';
 import { depositoForm, saveDeposito, delDeposito, semanaAdelantadaForm, guardarSemanaAdelantada, delSemanaAdelantada, confirmarBorrarSemanaAdelantada, fusionarDuplicadosLedger } from './forms/deposito.js';
-import { payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, payFormSeguro, onPayTipo, leerComprobanteCobro, onPayPesos } from './forms/payment.js';
+import { payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, payFormSeguro, onPayTipo, leerComprobanteCobro, onPayPesos, avisoMontoCobro } from './forms/payment.js';
 import { simuladorFinanciacionForm, simuladorElegirAuto, simuladorCalcular, simuladorCompartir, simuladorPDF, simuladorUsar, simuladorTogglePlazo, simuladorAgregarPlazo } from './forms/simulador.js';
 import { cuentaCorrienteView, planPagosForm, planPagosRecalcular, guardarPlanPagos, cerrarPlanPagos, cuentaCorrientePDF } from './forms/cuenta.js';
 import { cruceArchivo, cruceColumna, cruceOrigen, cruceLimpiar, cruceCobrar, cruceIgnorar, cruceConfirmar } from './forms/cruce.js';
@@ -69,6 +80,15 @@ import { syncDriveUI } from './google-drive.js';
    que se resuelven en el scope global, así que las funciones que referencian
    necesitan quedar colgadas de window. */
 Object.assign(window, {
+  agendarServiceForm, guardarServiceAgendado, recordarServiceView, marcarServiceRecordado, agregarReclamo, resolverReclamo, borrarReclamo, llamarYAnotar, saludoView, mandarSaludo, marcarSaludado,
+  aprobarGastoChofer, rechazarGastoChofer, cerrarAvisoAtraso, cerrarDevolucion,
+  gpsView, generarClaveGps, copiarUrlGps, guardarConfigGps, zonaGpsForm, ubicacionZonaGps, guardarZonaGps, borrarZonaGps,
+  elegirPantallaInicio, limpiarFiltrosGuardados, toast, recorridoApp,
+  papeleraView, restaurarPapelera,
+  tiemposRespuestaView, duracionChoferesView, kmFlotaView, servicesATiempoView, chequeoView, hacerChequeo, verChequeo,
+  candidatosCompraView, candidatoCompraForm, guardarCandidatoCompra, descartarCandidato, comprarCandidato, comprasPorVendedorView, calendarioComprasView, guardarCalendarioCompras,
+  onFrecuencia, cargoFinanciadoForm, calcCargoFinanciado, guardarCargoFinanciado, borrarCargoFinanciado, rankingFinanciacionesView,
+  mensajesProgramadosView, guardarMensajeProgramado, borrarMensajeProgramado, enviarMensajeProgramado, marcarMensajeEnviado, cerrarMensajeProgramado, marcarLinkEnviado, marcarAgradecido,
   ui, go, render, renderList, sincronizarAhora: flushQueue,
   doLogin, logout, activarBiometria, desactivarBiometria, loginConBiometria,
   asignarChoferForm, guardarAsignacionChofer, quitarChofer, asignarAutoForm, guardarAsignacionAuto, quitarAutoDeChofer, onAsignacionTipo, calcularCuotaAsignacion, onAsignarAutoElegido,
@@ -76,7 +96,7 @@ Object.assign(window, {
   altaRapidaAutoForm, onAltaRapidaAutoTipo, guardarAltaRapidaAuto, altaRapidaChoferForm, guardarAltaRapidaChofer,
   carForm, onTipo, autoCuota, saveCar, delCar, toggleVendido, sugerirAjusteInflacion, sacarDeTaller, setTabAuto, venderAutoForm, confirmarVenta, cronogramaCuotasForm, accesorioForm, saveAccesorio, delAccesorio, qrAutoForm, toggleFavoritoAuto, simularAumentoForm, calcularSimulacionAumento,
   cedulaForm, guardarCedula, bajaCedula, vtvTurnoForm, guardarVtvTurno, borrarVtvTurno, medicionBateriaForm, guardarMedicionBateria, estimarCubiertaIA, valoresMercadoView, guardarValoresMercado, codigoFallaForm, onCodigoFalla, guardarCodigoFalla, resolverCodigoFalla, leerOBD, ejecutarLecturaOBD,
-  nuevaOTForm, crearOT, otForm, guardarDatosOT, agregarTareaOT, toggleTareaOT, agregarRepuestoOT, quitarRepuestoOT, agregarHorasOT, quitarHorasOT, valorHoraForm, guardarValorHora, subirFotoOT, cerrarOTForm, cerrarOT, cancelarOT, ordenesView, marcarEnTaller,
+  nuevaOTForm, crearOT, otForm, guardarDatosOT, agregarTareaOT, sumarChecklistOT, onChecklistOT, checklistsTrabajoView, agregarChecklistTrabajo, guardarChecklistsTrabajo, toggleTareaOT, agregarRepuestoOT, quitarRepuestoOT, agregarHorasOT, quitarHorasOT, valorHoraForm, guardarValorHora, subirFotoOT, cerrarOTForm, cerrarOT, cancelarOT, ordenesView, marcarEnTaller,
   aprobacionesView, guardarUmbralAprobacion, aprobarPendiente, rechazarPendiente, bitacoraView, decisionForm, guardarDecision, borrarDecision, metasForm, guardarMetas,
   turnoServiceForm, responderTurno, auxilioView, atenderAuxilio, aprobarCambiosDatos, rechazarCambiosDatos, atenderOpinionOT, reabrirOT, borrarOT,
   recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio,
@@ -97,7 +117,7 @@ Object.assign(window, {
   driverForm, saveDriver, delDriver, addTelRow, toggleInactivo, aprobarProspecto, onFotoPerfil, regenerarLinkPortal, copiarLinkPortal, togglePortalDesactivado, setTabChofer, liquidacionForm, addConceptoRow, confirmarLiquidacion, toggleFavoritoChofer, agregarComunicacion, borrarComunicacion,
   adelantoForm, guardarAdelanto, borrarAdelanto,
   depositoForm, saveDeposito, delDeposito, semanaAdelantadaForm, guardarSemanaAdelantada, delSemanaAdelantada, confirmarBorrarSemanaAdelantada, fusionarDuplicadosLedger,
-  payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, marcarComprobantePortal, aceptarDocPortal, rechazarDocPortal, payFormSeguro, onPayTipo, leerComprobanteCobro, onPayPesos, renderSeguroDocs, subirDocSeguro, completarSeguroConIA, leerCotizacionSeguro, agregarCotizacionSeguro, quitarCotizacionSeguro, elegirCotizacionSeguro,
+  payForm, payFormACuenta, onPayCar, savePay, delPay, toggleDepositado, cobrarComprobantePortal, marcarComprobantePortal, aceptarDocPortal, rechazarDocPortal, payFormSeguro, onPayTipo, leerComprobanteCobro, onPayPesos, avisoMontoCobro, renderSeguroDocs, subirDocSeguro, completarSeguroConIA, leerCotizacionSeguro, agregarCotizacionSeguro, quitarCotizacionSeguro, elegirCotizacionSeguro,
   renderPasosFotos, fotoPaso, compararInspeccion, leerFacturaGasto, leerFacturaMant,
   mandarContratoAFirmar, avisoFirmaRemota, cancelarFirmaRemota, descargarContratoFirmado, copiarLinkFirma,
   simuladorFinanciacionForm, simuladorElegirAuto, simuladorCalcular, simuladorCompartir, simuladorPDF, simuladorUsar, simuladorTogglePlazo, simuladorAgregarPlazo,
@@ -137,4 +157,5 @@ window.buscarActualizacion = async () => {
   setTimeout(() => location.reload(), 2500);
 };
 
+cargarPreferencias();
 init();

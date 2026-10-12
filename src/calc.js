@@ -9,6 +9,8 @@ import { stockBajoPanol, tipoDe } from './panol.js';
 import { alertasAuto, textoTurnoVtv } from './calc-auto.js';
 import { alertasControl } from './forms/control.js';
 import { alertasPortal } from './forms/portal-pedidos.js';
+import { alertasExtra } from './alertas-extra.js';
+import { esMensual, vencidoMensual, cargosVencidos, totalCargos, totalPlan, montoMensual, cuotasMensuales, fechaMes } from './financiados.js';
 
 export const isContract = c => c.tipo === 'alquiler' || c.tipo === 'financiado';
 export const activeCars = () => S.cars.filter(c => !c.vendido);
@@ -16,6 +18,7 @@ export const activeDrivers = () => S.drivers.filter(d => !d.inactivo);
 
 export function finFinanciado(c) {
   if (c.tipo !== 'financiado' || !c.inicio || !c.cuotas) return null;
+  if (esMensual(c)) return fechaMes(c.inicio, cuotasMensuales(c) + 1);
   const d = parse(c.inicio);
   d.setDate(d.getDate() + (+c.cuotas) * 7);
   return d;
@@ -31,13 +34,14 @@ export function calc(c) {
   if (c.tipo === 'financiado' && c.cuotas) weeks = Math.min(weeks, +c.cuotas);
   const paid = de('payments', 'carId', c.id).filter(p => p.carId === c.id && p.tipo === kind && p.fecha >= c.inicio).reduce((a, p) => a + (+p.monto || 0), 0);
   const ajustes = (c.ajustesDeuda || []).reduce((a, x) => a + (+x.monto || 0), 0);
-  const due = weeks * c.monto;
+  // Plan mensual: se cuentan los meses empezados; los arreglos financiados suman sus cuotas.
+  const due = (esMensual(c) ? vencidoMensual(c) : weeks * c.monto) + cargosVencidos(c);
   const adelantoDisponible = c.choferId ? saldoSemanaAdelantada(c.choferId) : 0;
   const debtSinAdelanto = Math.max(0, due - paid - ajustes);
   r.weeks = weeks; r.paid = paid; r.due = due; r.ajustes = ajustes;
   r.adelantoAplicado = Math.min(adelantoDisponible, debtSinAdelanto);
   r.debt = Math.max(0, debtSinAdelanto - adelantoDisponible); r.late = r.debt / c.monto;
-  if (c.tipo === 'financiado') { r.total = +c.total || c.monto * (+c.cuotas || 0); r.saldo = Math.max(0, r.total - paid); }
+  if (c.tipo === 'financiado') { r.total = totalPlan(c) + totalCargos(c); r.saldo = Math.max(0, r.total - paid); }
   return r;
 }
 
@@ -606,7 +610,7 @@ function _alerts() {
     const t = faltaSeguro && faltaPatente ? 'Falta el monto mensual de seguro y de patente' : faltaSeguro ? 'Falta el monto mensual de seguro' : 'Falta el monto mensual de patente';
     out.push({ who: c.patente || 'Auto sin patente', sub: 'Dato faltante para la rentabilidad', kind: 'car', id: c.id, key, d: 25, cls: 'soft', t });
   });
-  out.push(...alertasAuto(), ...alertasControl(), ...alertasPortal());
+  out.push(...alertasAuto(), ...alertasControl(), ...alertasPortal(), ...alertasExtra());
   return out.filter(a => {
     const carId = a.kind === 'car' ? a.id : a.kind === 'multa' ? a.carId : null;
     return !(carId && isSnoozed('car:' + carId + ':all'));
@@ -698,6 +702,15 @@ export function cronogramaCuotas(c) {
   if (c.tipo !== 'financiado' || !c.inicio || !c.cuotas || !c.monto) return [];
   const i = calc(c);
   const cubierto = i.paid + (i.ajustes || 0);
+  if (esMensual(c)) {
+    const m = montoMensual(c), out = [];
+    for (let n = 1; n <= cuotasMensuales(c); n++) {
+      const f = fechaMes(c.inicio, n);
+      const cub = Math.max(0, Math.min(cubierto - (n - 1) * m, m));
+      out.push({ numero: n, fecha: iso(f), monto: m, estado: cub >= m - 0.01 ? 'pagada' : cub > 0 ? 'parcial' : days(today(), f) < 0 ? 'atrasada' : 'pendiente' });
+    }
+    return out;
+  }
   const inicio = parse(c.inicio);
   const out = [];
   for (let n = 1; n <= +c.cuotas; n++) {
@@ -801,7 +814,7 @@ export function listaDeCompra() {
 export function montoSugeridoCobro(c) {
   const kind = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';
   const pagos = de('payments', 'carId', c.id).filter(p => p.carId === c.id && p.tipo === kind && !p.parcial).slice(-5);
-  if (!pagos.length) return +c.monto || 0;
+  if (!pagos.length) return esMensual(c) ? montoMensual(c) : +c.monto || 0;
   const counts = {};
   pagos.forEach(p => { counts[p.monto] = (counts[p.monto] || 0) + 1; });
   const moda = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];

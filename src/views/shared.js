@@ -1,3 +1,4 @@
+import { preferenciasCard } from '../preferencias.js';
 import { ui } from '../state.js';
 import { esc, val, fdate, iso, today } from '../utils.js';
 import { badge, usoDeDatos, saludDeDatos } from '../calc.js';
@@ -45,7 +46,7 @@ function pushCard() {
 }
 
 export function ajustesCard() {
-  return '<h2>Ajustes</h2><div class="card"><div class="small muted" style="margin-bottom:10px">Cuántos días antes querés que un vencimiento se marque como urgente o próximo.</div>' +
+  return '<h2>Ajustes</h2>' + preferenciasCard() + '<div class="card"><div class="small muted" style="margin-bottom:10px">Cuántos días antes querés que un vencimiento se marque como urgente o próximo.</div>' +
   '<div class="two"><label class="f"><span>Aviso urgente (días)</span><input id="a_warn" inputmode="numeric" value="' + settings.avisoWarn + '"></label>' +
   '<label class="f"><span>Aviso próximo (días)</span><input id="a_soft" inputmode="numeric" value="' + settings.avisoSoft + '"></label></div>' +
   '<button class="btn sec block" onclick="saveAjustes()">Guardar ajustes</button></div>' +

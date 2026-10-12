@@ -4,7 +4,7 @@
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { sb } from './state.js';
 
-export async function leerDocumento(tipo, { path, archivo } = {}) {
+export async function leerDocumento(tipo, { path, archivo, texto } = {}) {
   if (!navigator.onLine) return { ok: false, error: 'Sin conexión: la lectura con IA necesita internet' };
   if (!sb) return { ok: false, error: 'La lectura con IA no está disponible acá' };
   try {
@@ -14,7 +14,7 @@ export async function leerDocumento(tipo, { path, archivo } = {}) {
     const r = await fetch(SUPABASE_URL + '/functions/v1/leer-documento', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + token, apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tipo, path, archivo }),
+      body: JSON.stringify({ tipo, path, archivo, texto }),
     });
     const j = await r.json().catch(() => null);
     if (!j || typeof j.ok !== 'boolean') return { ok: false, error: r.status === 404 ? 'Falta crear la función leer-documento en Supabase' : 'No se pudo leer el documento' };

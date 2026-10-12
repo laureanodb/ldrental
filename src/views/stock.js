@@ -1,5 +1,5 @@
 import { S, ui } from '../state.js';
-import { esc, money, moneyUSD, num1, fdate } from '../utils.js';
+import { esc, money, moneyUSD, num1, fdate, parse, today } from '../utils.js';
 import { STOCK_CATEGORIAS, PANOL_TIPOS } from '../constants.js';
 import { openModal, toast } from '../modal.js';
 import { settings, saveSettings } from '../settings.js';
@@ -107,6 +107,13 @@ export function listaDeCompraForm() {
 }
 export function guardarCoberturaPanol(v) { saveSettings({ panolCoberturaDias: +v || 30 }); listaDeCompraForm(); }
 
+// Vencimiento de lo que caduca (líquidos, baterías…): solo si queda stock.
+function venceTexto(r) {
+  if (!r.venceEl || stockDe(r) <= 0) return '';
+  const d = Math.round((parse(r.venceEl) - today()) / 864e5);
+  if (d > 60) return '<span class="small muted">vence ' + fdate(r.venceEl) + '</span>';
+  return '<span class="badge b-' + (d < 0 ? 'bad' : d <= 30 ? 'warn' : 'soft') + '">' + (d < 0 ? 'Vencido hace ' + (-d) + ' d' : d === 0 ? 'Vence hoy' : 'Vence en ' + d + ' d') + '</span>';
+}
 export function listStock() {
   const L = stockFiltrado();
   if (!L.length) return '<div class="card empty">Ningún ítem coincide con el filtro.</div>';
@@ -116,7 +123,8 @@ export function listStock() {
     const sub = [catLabel(r.categoria), r.ubicacion, costoDe(r) ? money(costoDe(r)) + ' c/u' : '', r.codigo].filter(Boolean).map(esc).join(' · ');
     const extra = t === 'herramienta' ? (r.prestadaA ? '<span class="badge b-warn">Prestada a ' + esc(r.prestadaA) + '</span>' : '') :
       (cob != null ? '<span class="small ' + (cob < 10 ? 'bad' : 'muted') + '">alcanza ~' + (cob >= 365 ? '+1 año' : cob + ' d') + '</span>' : (stockDe(r) > 0 && q != null && q >= 90 ? '<span class="small muted">quieto hace ' + q + ' d</span>' : ''));
-    return '<div class="card tap" onclick="repuestoForm(\'' + r.id + '\')"><div class="row between"><div class="grow" style="min-width:0"><b>' + esc(r.nombre) + '</b><div class="small muted">' + sub + '</div>' + (extra ? '<div>' + extra + '</div>' : '') + '</div>' +
+    const ve = venceTexto(r);
+    return '<div class="card tap" onclick="repuestoForm(\'' + r.id + '\')"><div class="row between"><div class="grow" style="min-width:0"><b>' + esc(r.nombre) + '</b><div class="small muted">' + sub + '</div>' + (extra ? '<div>' + extra + '</div>' : '') + (ve ? '<div>' + ve + '</div>' : '') + '</div>' +
     '<div class="right" style="text-align:right"><span class="badge b-' + (bajo ? (stockDe(r) <= 0 ? 'bad' : 'warn') : reponer ? 'warn' : 'ok') + '">' + num1(stockDe(r)) + ' ' + esc(unidades(r, stockDe(r))) + '</span><div class="small muted" style="margin-top:4px">' + money(valorItem(r, m)) + '</div></div></div></div>';
   }).join('');
 }

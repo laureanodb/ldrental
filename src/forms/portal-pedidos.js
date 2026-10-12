@@ -15,10 +15,11 @@ const fechaHora = isoStr => { try { const d = new Date(isoStr); return d.toLocal
 /* ---------- Turnos de service ---------- */
 export function seccionTurnos(c) {
   const L = (c.turnosService || []).slice().reverse().slice(0, 5);
-  if (!L.length) return '';
-  return '<div class="sec-t">Turnos pedidos por el chofer</div>' + L.map(t => '<div class="card row between"><div style="min-width:0"><div>' + esc(t.motivo || 'Service') + '</div><div class="small muted">Pedido el ' + fdate(t.pedidoEl) +
+  const btn = c.vendido ? '' : '<button class="btn sec sm" onclick="agendarServiceForm(\'' + c.id + '\')">Agendar service</button>';
+  if (!L.length) return '<div class="sec-t row between">Turnos de service' + btn + '</div><div class="small muted" style="margin-bottom:12px">Sin turnos. Si lo agendás acá, el chofer lo ve en su portal y te aparece un aviso para recordárselo el día antes.</div>';
+  return '<div class="sec-t row between">Turnos de service' + btn + '</div>' + L.map(t => '<div class="card row between"><div style="min-width:0"><div>' + esc(t.motivo || 'Service') + '</div><div class="small muted">' + (t.origen === 'empresa' ? 'Agendado el ' : 'Pedido el ') + fdate(t.pedidoEl) +
     (t.fecha ? ' · para el ' + fdate(t.fecha) + (t.hora ? ' ' + esc(t.hora) : '') : '') + (t.fechaConfirmada ? ' · confirmado ' + fdate(t.fechaConfirmada) + (t.horaConfirmada ? ' ' + esc(t.horaConfirmada) : '') : '') + '</div></div>' +
-    (t.estado === 'pedido' ? '<button class="btn sm" onclick="turnoServiceForm(\'' + c.id + '\',\'' + t.id + '\')">Responder</button>' : badge(t.estado === 'confirmado' ? 'ok' : 'mute', t.estado === 'confirmado' ? 'Confirmado' : 'Rechazado')) + '</div>').join('');
+    (t.estado === 'pedido' ? '<button class="btn sm" onclick="turnoServiceForm(\'' + c.id + '\',\'' + t.id + '\')">Responder</button>' : (t.estado === 'confirmado' && t.fechaConfirmada >= iso(today()) ? '<button class="btn sec sm" onclick="recordarServiceView(\'' + c.id + '\',\'' + t.id + '\')">' + (t.recordado ? 'Avisado ✓' : 'Avisar') + '</button>' : badge(t.estado === 'confirmado' ? 'ok' : 'mute', t.estado === 'confirmado' ? 'Confirmado' : 'Rechazado'))) + '</div>').join('');
 }
 export function turnoServiceForm(carId, tid) {
   const c = carDe(carId); const t = c && (c.turnosService || []).find(x => x.id === tid); if (!t) return;

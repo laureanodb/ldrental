@@ -4,6 +4,19 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-10-12', items: [
+    'Choferes: reclamos y sugerencias (también desde el portal), llamados con motivo y "Llamar y anotar", aviso de cumpleaños y aniversario con el saludo armado, racha de semanas seguidas sin atrasarse y si abrió el portal después de mandarle el link.',
+    'Service: agendalo desde la ficha del auto y el día antes te aparece un aviso para recordárselo al chofer por WhatsApp. El chofer lo ve destacado en su portal.',
+    'Cobros: avisa si el monto no es el que corresponde y se pueden cargar varios seguidos con "Guardar y cargar otro".',
+    'Portal del chofer: cargar un gasto que pagó él (si lo aprobás se descuenta), avisar que se atrasa y qué día paga, avisar que devuelve el auto, reclamos, y en los financiados una barra con cuánto le falta.',
+    'Financiados: pago por mes con descuento o recargo, arreglos grandes sumados a las cuotas y ranking de cuánto rinde cada dólar puesto.',
+    'Compra y venta: checklist mecánico para revisar un usado, a quién le compraste cada auto y cómo salió, cuánto pierde de valor cada 10.000 km, cuándo conviene comprar otro y el precio mínimo de venta.',
+    'Taller y pañol: checklists por tipo de trabajo que cargan las tareas de la orden, y vencimiento de líquidos y baterías con aviso.',
+    'Mensajes programados por WhatsApp para una fecha y agradecimiento armado cuando un chofer avisa una falla.',
+    'Reportes: chequeo trimestral del negocio con IA, cuánto tardás en resolver cada cosa, km de la flota por semana, services a tiempo y cuánto duran los choferes según edad y experiencia.',
+    'App: papelera para recuperar lo borrado en 30 días, filtros que se recuerdan, pantalla de inicio a elección, recorrido de ayuda y vista más ancha en la compu.',
+    'GPS: conexión con la plataforma del GPS para tener los km reales, aviso si un auto sale de la zona, batería baja, y excesos de velocidad y maniobras bruscas por chofer.',
+  ] },
   { v: '2026-10-08', items: [
     'Órdenes de trabajo del taller (Más → Órdenes de trabajo o desde la ficha del auto): tareas, repuestos del pañol, horas del mecánico, fotos de antes y después; al cerrarla descuenta el pañol y queda en el historial.',
     'Ficha del auto: semáforo de papeles, cédulas de autorizado a conducir, turno de VTV, mediciones de batería y cubiertas (con estimación por foto), códigos de falla con escáner Bluetooth y aviso de "auto problema". Valores de mercado de toda la flota en Más.',

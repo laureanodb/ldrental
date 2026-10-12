@@ -10,6 +10,8 @@
 // - resumen: los movimientos de un resumen de Mercado Pago o del banco en PDF.
 // - tablero: km del odómetro, nivel de combustible y luces de falla encendidas.
 // - cubierta: profundidad estimada del dibujo y si el desgaste es desparejo.
+// - chequeo: no lee un archivo; recibe { texto } con los números del negocio y las
+//   respuestas del dueño, y devuelve un diagnóstico corto (dónde está flojo y qué hacer).
 // No guarda nada: la app muestra lo leído y el usuario confirma.
 // Necesita el secreto ANTHROPIC_API_KEY (el mismo que usa el bot).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -44,7 +46,26 @@ Leés documentos (fotos o PDF) y devolvés solo lo que se ve en el documento, si
 - Montos como número, sin símbolos ni separadores de miles: "$ 150.000,50" es 150000.5.
 - Si un dato no aparece o no se lee bien, dejá "" en los textos y 0 en los números.`;
 
+const REGLAS_CHEQUEO = `Sos un asesor de negocios para el dueño de una flota chica de autos en Argentina que alquila y financia autos a choferes de aplicaciones (Uber, DiDi, Cabify).
+Te pasan los números de la empresa y las respuestas del dueño a 5 preguntas. Respondé en español rioplatense, claro y directo, sin tecnicismos ni frases hechas.
+Basate solo en los datos que te pasan; si falta algo, decilo. Nada de consejos genéricos: cada punto tiene que salir de un número o de una respuesta.`;
+
 const ESQUEMAS: Record<string, { instruccion: string; schema: any; maxTokens: number }> = {
+  chequeo: {
+    instruccion: 'Hacé el chequeo trimestral del negocio: un resumen de dos o tres oraciones, hasta 4 puntos flojos (cada uno con por qué lo decís y qué hacer este mes), hasta 3 cosas que están bien, y la única cosa más importante para hacer ya.',
+    maxTokens: 6000,
+    schema: {
+      type: 'object',
+      properties: {
+        resumen: { type: 'string' },
+        flojos: { type: 'array', items: { type: 'object', properties: { tema: { type: 'string' }, por_que: { type: 'string' }, que_hacer: { type: 'string' } }, required: ['tema', 'por_que', 'que_hacer'], additionalProperties: false } },
+        bien: { type: 'array', items: { type: 'string' } },
+        prioridad: { type: 'string' },
+      },
+      required: ['resumen', 'flojos', 'bien', 'prioridad'],
+      additionalProperties: false,
+    },
+  },
   comprobante: {
     instruccion: 'Es un comprobante de pago (transferencia, Mercado Pago, depósito o recibo). Sacá el monto pagado, la fecha del pago, el medio, quién pagó, a quién y el número de operación. Si no es un comprobante de pago, poné es_comprobante en false.',
     maxTokens: 4000,
@@ -170,6 +191,14 @@ const ESQUEMAS: Record<string, { instruccion: string; schema: any; maxTokens: nu
 };
 
 function limpiar(tipo: string, d: any) {
+  if (tipo === 'chequeo') {
+    return {
+      resumen: txtOk(d.resumen, 800),
+      flojos: (Array.isArray(d.flojos) ? d.flojos : []).slice(0, 4).map((f: any) => ({ tema: txtOk(f.tema, 80), porQue: txtOk(f.por_que, 400), queHacer: txtOk(f.que_hacer, 400) })),
+      bien: (Array.isArray(d.bien) ? d.bien : []).slice(0, 3).map((t: unknown) => txtOk(t, 200)),
+      prioridad: txtOk(d.prioridad, 300),
+    };
+  }
   if (tipo === 'comprobante') {
     return {
       esComprobante: Boolean(d.es_comprobante), monto: numOk(d.monto), moneda: d.moneda === 'USD' ? 'USD' : 'ARS', fecha: fechaOk(d.fecha),
@@ -238,7 +267,10 @@ Deno.serve(async (req) => {
     if (!esq) return json({ ok: false, error: 'Tipo inválido' }, 400);
 
     let mediaType = '', datos = '';
-    if (body.path) {
+    const esChequeo = tipo === 'chequeo';
+    if (esChequeo) {
+      if (!txtOk(body.texto, 20000)) return json({ ok: false, error: 'Faltan los datos del chequeo' }, 400);
+    } else if (body.path) {
       const path = String(body.path);
       const { data: blob, error } = await sb.storage.from(BUCKET).download(path);
       if (error || !blob) return json({ ok: false, error: 'No se encontró el archivo' }, 404);
@@ -251,16 +283,16 @@ Deno.serve(async (req) => {
       mediaType = m[1]; datos = m[2];
       if (datos.length * 0.75 > MAX_BYTES) return json({ ok: false, error: 'El archivo es muy pesado para leerlo' }, 400);
     }
-    if (!IMAGENES.includes(mediaType) && mediaType !== 'application/pdf') return json({ ok: false, error: 'Solo se pueden leer fotos (JPG, PNG, WEBP) o PDF' }, 400);
+    if (!esChequeo && !IMAGENES.includes(mediaType) && mediaType !== 'application/pdf') return json({ ok: false, error: 'Solo se pueden leer fotos (JPG, PNG, WEBP) o PDF' }, 400);
 
-    const adjunto = mediaType === 'application/pdf'
+    const adjunto = esChequeo ? { type: 'text', text: 'Datos del negocio:\n' + txtOk(body.texto, 20000) } : mediaType === 'application/pdf'
       ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: datos } }
       : { type: 'image', source: { type: 'base64', media_type: mediaType, data: datos } };
     const usaFallback = /^claude-(opus-5|fable-5|sonnet-5-5)/.test(IA_MODEL);
     const params: any = {
       model: IA_MODEL,
       max_tokens: esq.maxTokens,
-      system: REGLAS,
+      system: esChequeo ? REGLAS_CHEQUEO : REGLAS,
       messages: [{ role: 'user', content: [adjunto, { type: 'text', text: esq.instruccion }] }],
       output_config: { format: { type: 'json_schema', schema: esq.schema } },
     };

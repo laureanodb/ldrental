@@ -41,6 +41,9 @@ h2{font-size:17px;margin:22px 0 8px;}
 .muted{color:var(--muted);}
 .small{font-size:13px;}
 .right{text-align:right;}
+.card.row>.right{min-width:0;max-width:60%;}
+.card.row>.right .badge{white-space:normal;}
+.card.row>.grow{min-width:0;}
 .tap{cursor:pointer;}
 .tap:active{background:var(--soft);}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
@@ -136,3 +139,20 @@ nav .dot{position:absolute;top:2px;left:calc(50% + 8px);background:var(--bad);co
 .tabs{display:flex;gap:4px;overflow-x:auto;margin-bottom:10px;-webkit-overflow-scrolling:touch;}
 .tabs .tab{flex:none;background:var(--soft);color:var(--muted);border:0;padding:8px 14px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
 .tabs .tab.on{background:var(--btn);color:var(--btn-ink);}
+
+/* Vista para la compu: menú a la izquierda, más ancho y listas en columnas. */
+@media (min-width:1000px){
+  nav{top:0;right:auto;width:200px;flex-direction:column;justify-content:flex-start;gap:2px;border-top:0;border-right:1px solid var(--line);padding:18px 10px;}
+  nav button{flex:0 0 auto;flex-direction:row;justify-content:flex-start;gap:12px;font-size:15px;padding:10px 12px;border-radius:10px;}
+  nav button.on{background:var(--soft);}
+  nav button.on::before{display:none;}
+  nav .dot{position:static;margin-left:auto;}
+  .app{max-width:1240px;margin:0 0 0 200px;padding:24px 36px 60px;}
+  #list{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px;align-items:start;}
+  #list>.card{margin-bottom:0;}
+  .grid{grid-template-columns:repeat(4,1fr);}
+  .sheet{top:4%;bottom:auto;max-width:880px;max-height:92%;border-radius:18px;}
+  .fab-bar{bottom:24px;right:28px;}
+  .toast{bottom:24px;}
+  .two{gap:14px;}
+}
