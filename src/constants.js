@@ -4,6 +4,9 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-10-19', items: [
+    'Multas → Consultar multas: ronda auto por auto en CABA, Provincia (InfraccionesBA), rutas nacionales y los municipios que elijas. Copia la patente, abre la página oficial y anotás el resultado. Si hay multas, subís una captura y la IA las carga solas, sin repetir las que ya estaban y asignadas al chofer que tenía el auto ese día.',
+  ] },
   { v: '2026-10-12', items: [
     'Choferes: reclamos y sugerencias (también desde el portal), llamados con motivo y "Llamar y anotar", aviso de cumpleaños y aniversario con el saludo armado, racha de semanas seguidas sin atrasarse y si abrió el portal después de mandarle el link.',
     'Service: agendalo desde la ficha del auto y el día antes te aparece un aviso para recordárselo al chofer por WhatsApp. El chofer lo ve destacado en su portal.',

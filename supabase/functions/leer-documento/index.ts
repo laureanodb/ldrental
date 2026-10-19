@@ -10,6 +10,8 @@
 // - resumen: los movimientos de un resumen de Mercado Pago o del banco en PDF.
 // - tablero: km del odómetro, nivel de combustible y luces de falla encendidas.
 // - cubierta: profundidad estimada del dibujo y si el desgaste es desparejo.
+// - multas: captura o PDF de una consulta de infracciones (CABA, Provincia, municipios):
+//   la lista de actas con fecha, monto, tipo, lugar, vencimiento y estado.
 // - chequeo: no lee un archivo; recibe { texto } con los números del negocio y las
 //   respuestas del dueño, y devuelve un diagnóstico corto (dónde está flojo y qué hacer).
 // No guarda nada: la app muestra lo leído y el usuario confirma.
@@ -51,6 +53,38 @@ Te pasan los números de la empresa y las respuestas del dueño a 5 preguntas. R
 Basate solo en los datos que te pasan; si falta algo, decilo. Nada de consejos genéricos: cada punto tiene que salir de un número o de una respuesta.`;
 
 const ESQUEMAS: Record<string, { instruccion: string; schema: any; maxTokens: number }> = {
+  multas: {
+    instruccion: 'Es una captura o PDF del resultado de una consulta de multas de tránsito (Ciudad de Buenos Aires, Provincia de Buenos Aires, un municipio o Seguridad Vial). Listá cada acta o infracción que aparezca, con su número, fecha de la infracción, monto a pagar (si hay descuento por pago voluntario, el monto con descuento), descripción, lugar, organismo que la labró, fecha de vencimiento y si figura pagada o pendiente. Clasificá el tipo. Si dice que no hay infracciones, devolvé la lista vacía y explicalo en observaciones. Poné la patente consultada si se ve.',
+    maxTokens: 8000,
+    schema: {
+      type: 'object',
+      properties: {
+        patente: { type: 'string' },
+        multas: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              acta: { type: 'string' },
+              fecha: { type: 'string', description: 'AAAA-MM-DD o ""' },
+              monto: { type: 'number' },
+              descripcion: { type: 'string' },
+              lugar: { type: 'string' },
+              organismo: { type: 'string' },
+              vencimiento: { type: 'string', description: 'AAAA-MM-DD o ""' },
+              estado: { type: 'string', enum: ['pendiente', 'pagada', 'otro'] },
+              tipo: { type: 'string', enum: ['velocidad', 'estacionamiento', 'semaforo', 'documentacion', 'carril', 'telefono', 'otro'] },
+            },
+            required: ['acta', 'fecha', 'monto', 'descripcion', 'lugar', 'organismo', 'vencimiento', 'estado', 'tipo'],
+            additionalProperties: false,
+          },
+        },
+        observaciones: { type: 'string' },
+      },
+      required: ['patente', 'multas', 'observaciones'],
+      additionalProperties: false,
+    },
+  },
   chequeo: {
     instruccion: 'Hacé el chequeo trimestral del negocio: un resumen de dos o tres oraciones, hasta 4 puntos flojos (cada uno con por qué lo decís y qué hacer este mes), hasta 3 cosas que están bien, y la única cosa más importante para hacer ya.',
     maxTokens: 6000,
@@ -191,6 +225,17 @@ const ESQUEMAS: Record<string, { instruccion: string; schema: any; maxTokens: nu
 };
 
 function limpiar(tipo: string, d: any) {
+  if (tipo === 'multas') {
+    return {
+      patente: txtOk(d.patente, 12).toUpperCase().replace(/[\s-]/g, ''),
+      multas: (Array.isArray(d.multas) ? d.multas : []).slice(0, 60).map((m: any) => ({
+        acta: txtOk(m.acta, 40), fecha: fechaOk(m.fecha), monto: numOk(m.monto), descripcion: txtOk(m.descripcion, 200), lugar: txtOk(m.lugar, 120),
+        organismo: txtOk(m.organismo, 80), vencimiento: fechaOk(m.vencimiento), estado: m.estado === 'pagada' ? 'pagada' : 'pendiente',
+        tipo: ['velocidad', 'estacionamiento', 'semaforo', 'documentacion', 'carril', 'telefono'].includes(m.tipo) ? m.tipo : 'otro',
+      })),
+      observaciones: txtOk(d.observaciones, 300),
+    };
+  }
   if (tipo === 'chequeo') {
     return {
       resumen: txtOk(d.resumen, 800),

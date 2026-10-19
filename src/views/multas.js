@@ -2,6 +2,7 @@ import { S, ui } from '../state.js';
 import { esc, money, fdate } from '../utils.js';
 import { carById, driverName, estadoMultaCls, badge } from '../calc.js';
 import { MULTA_ESTADOS } from '../constants.js';
+import { pendientes, activas } from '../forms/consulta-multas.js';
 
 export function multasFiltradas() {
   let L = S.multas.slice();
@@ -21,13 +22,13 @@ function seccionResumen(L) {
 export function viewMultas() {
   if (!S.multas.length) {
     return '<h1>Multas</h1><p class="sub">Todas las infracciones de la flota</p>' +
-    '<div class="row" style="margin-bottom:14px"><button class="btn grow" onclick="multaForm()">+ Registrar multa</button></div>' +
+    '<div class="row" style="margin-bottom:14px"><button class="btn grow" onclick="multaForm()">+ Registrar multa</button><button class="btn sec" onclick="consultaMultasView()">Consultar multas</button></div>' +
     '<div class="card empty">Todavía no hay multas registradas.</div>';
   }
   const L = multasFiltradas();
   const cars = S.cars.filter(c => !c.vendido).slice().sort((a, b) => String(a.patente).localeCompare(String(b.patente)));
   let h = '<h1>Multas</h1><p class="sub">Todas las infracciones de la flota</p>' +
-  '<div class="row" style="margin-bottom:14px"><button class="btn grow" onclick="multaForm()">+ Registrar multa</button></div>';
+  '<div class="row" style="margin-bottom:14px"><button class="btn grow" onclick="multaForm()">+ Registrar multa</button><button class="btn sec" onclick="consultaMultasView()">Consultar multas' + (activas().length && pendientes().length ? ' (' + pendientes().length + ')' : '') + '</button></div>';
   h += seccionResumen(L);
   h += '<div class="two" style="margin:10px 0"><label class="f"><span>Auto</span><select onchange="ui.muAuto=this.value;render()"><option value="">Todos los autos</option>' + cars.map(c => '<option value="' + c.id + '"' + (ui.muAuto === c.id ? ' selected' : '') + '>' + esc(c.patente) + '</option>').join('') + '</select></label>' +
   '<label class="f"><span>Estado</span><select onchange="ui.muEstado=this.value;render()"><option value="">Todos</option>' + MULTA_ESTADOS.map(x => '<option value="' + x[0] + '"' + (ui.muEstado === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>';

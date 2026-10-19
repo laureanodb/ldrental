@@ -21,6 +21,7 @@ import { papeleraView, restaurarPapelera } from './forms/papelera.js';
 import { elegirPantallaInicio, limpiarFiltrosGuardados, cargarPreferencias } from './preferencias.js';
 import { recorridoApp } from './recorrido.js';
 import { gpsView, generarClaveGps, copiarUrlGps, guardarConfigGps, zonaGpsForm, ubicacionZonaGps, guardarZonaGps, borrarZonaGps } from './forms/gps.js';
+import { consultaMultasView, rondaMultas, abrirConsultaMulta, resultadoConsultaMulta, cargarMultaManual, terminarConMultas, leerCapturaMultas, guardarMultasLeidas, lugaresMultasView, guardarLugaresMultas } from './forms/consulta-multas.js';
 import { aprobarGastoChofer, rechazarGastoChofer, cerrarAvisoAtraso, cerrarDevolucion } from './forms/pedidos-chofer.js';
 import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
 import { calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, escenarioFlotaForm, calcularEscenarioFlota } from './forms/calculadora.js';
@@ -82,6 +83,7 @@ import { syncDriveUI } from './google-drive.js';
 Object.assign(window, {
   agendarServiceForm, guardarServiceAgendado, recordarServiceView, marcarServiceRecordado, agregarReclamo, resolverReclamo, borrarReclamo, llamarYAnotar, saludoView, mandarSaludo, marcarSaludado,
   aprobarGastoChofer, rechazarGastoChofer, cerrarAvisoAtraso, cerrarDevolucion,
+  consultaMultasView, rondaMultas, abrirConsultaMulta, resultadoConsultaMulta, cargarMultaManual, terminarConMultas, leerCapturaMultas, guardarMultasLeidas, lugaresMultasView, guardarLugaresMultas,
   gpsView, generarClaveGps, copiarUrlGps, guardarConfigGps, zonaGpsForm, ubicacionZonaGps, guardarZonaGps, borrarZonaGps,
   elegirPantallaInicio, limpiarFiltrosGuardados, toast, recorridoApp,
   papeleraView, restaurarPapelera,

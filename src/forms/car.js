@@ -5,6 +5,7 @@ import { seguroPaga, seguroPendiente, seguroPendienteDesde, isContract, calc, fi
 import { seccionOrdenes } from './ordenes.js';
 import { seccionTurnos } from './portal-pedidos.js';
 import { campoGpsId } from './gps.js';
+import { seccionConsultaAuto } from './consulta-multas.js';
 import { camposOrigenCompra, datosOrigenCompra, seccionPrecioMinimo } from './compras.js';
 import { camposFinanciado, seccionCargosFinanciados, onFrecuencia, datosFinanciado } from './financiados-ui.js';
 import { seccionPapeles, seccionCedulas, seccionVtv, seccionBateria, seccionCubiertas, seccionValorMercado, campoSeguroApps, seccionCodigosFalla, badgeAutoProblema, completarAuto } from './auto-extra.js';
@@ -595,7 +596,7 @@ export function carForm(id) {
     gastos += '<button class="btn sec block" style="margin:8px 0 20px" onclick="gastoForm(\'' + c.id + '\')">+ Agregar gasto</button>';
     const MU = de('multas', 'carId', c.id).filter(m => m.carId === c.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
     const estLabel = e => (MULTA_ESTADOS.find(x => x[0] === e) || [0, e])[1];
-    gastos += '<div class="sec-t">Multas</div>';
+    gastos += '<div class="sec-t">Multas</div>' + seccionConsultaAuto(c);
     if (MU.length) gastos += MU.map(m => '<div class="card row tap" onclick="multaForm(\'' + c.id + '\',\'' + m.id + '\')"><div class="grow"><div>' + money(m.monto) + ' <span class="small muted">' + fdate(m.fecha) + '</span></div><div class="small muted">' + esc(m.choferId ? driverName(m.choferId) : 'Sin asignar') + '</div></div>' + badge(estadoMultaCls(m.estado), estLabel(m.estado)) + (canDelete() ? '<button class="btn danger sm" onclick="event.stopPropagation();confirmDel(this,()=>delMulta(\'' + m.id + '\'))">Borrar</button>' : '') + '</div>').join('');
     else gastos += '<div class="small muted" style="margin-bottom:8px">Sin multas registradas.</div>';
     gastos += '<button class="btn sec block" style="margin:8px 0 20px" onclick="multaForm(\'' + c.id + '\')">+ Registrar multa</button>';
