@@ -35,13 +35,15 @@ export function calc(c) {
   const paid = de('payments', 'carId', c.id).filter(p => p.carId === c.id && p.tipo === kind && p.fecha >= c.inicio).reduce((a, p) => a + (+p.monto || 0), 0);
   const ajustes = (c.ajustesDeuda || []).reduce((a, x) => a + (+x.monto || 0), 0);
   // Plan mensual: se cuentan los meses empezados; los arreglos financiados suman sus cuotas.
-  const due = (esMensual(c) ? vencidoMensual(c) : weeks * c.monto) + cargosVencidos(c);
+  // La deuda inicial (lo que ya debía al arrancar) se suma desde el primer día.
+  const inicial = Math.max(0, +c.deudaInicial || 0);
+  const due = (esMensual(c) ? vencidoMensual(c) : weeks * c.monto) + cargosVencidos(c) + inicial;
   const adelantoDisponible = c.choferId ? saldoSemanaAdelantada(c.choferId) : 0;
   const debtSinAdelanto = Math.max(0, due - paid - ajustes);
   r.weeks = weeks; r.paid = paid; r.due = due; r.ajustes = ajustes;
   r.adelantoAplicado = Math.min(adelantoDisponible, debtSinAdelanto);
   r.debt = Math.max(0, debtSinAdelanto - adelantoDisponible); r.late = r.debt / c.monto;
-  if (c.tipo === 'financiado') { r.total = totalPlan(c) + totalCargos(c); r.saldo = Math.max(0, r.total - paid); }
+  if (c.tipo === 'financiado') { r.total = totalPlan(c) + totalCargos(c) + inicial; r.saldo = Math.max(0, r.total - paid); }
   return r;
 }
 

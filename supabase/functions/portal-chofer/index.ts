@@ -117,7 +117,7 @@ const fechaValida = (v: unknown) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || ''))
 // Semanas seguidas (de la más reciente para atrás) en que lo pagado cubrió todo lo que correspondía.
 function rachaAuto(c: any, payments: any[], hoy: Date): number {
   const kind = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';
-  const monto = +c.monto || 0;
+  const monto = +c.monto || 0, inicial = Math.max(0, +c.deudaInicial || 0);
   const transcurridos = diasEntre(c.inicio, hoy);
   if (transcurridos < 0 || !monto) return 0;
   const movs = payments.filter((p: any) => p.carId === c.id && p.tipo === kind && p.fecha >= c.inicio).map((p: any) => [p.fecha, +p.monto || 0])
@@ -126,10 +126,10 @@ function rachaAuto(c: any, payments: any[], hoy: Date): number {
   let completas = Math.floor(transcurridos / 7);
   if (c.tipo === 'financiado' && +c.cuotas) completas = Math.min(completas, +c.cuotas);
   let racha = 0;
-  if (!(c.tipo === 'financiado' && +c.cuotas && completas >= +c.cuotas) && pagadoHasta(hoy.toISOString().slice(0, 10)) >= (completas + 1) * monto - 1) racha++;
+  if (!(c.tipo === 'financiado' && +c.cuotas && completas >= +c.cuotas) && pagadoHasta(hoy.toISOString().slice(0, 10)) >= (completas + 1) * monto + inicial - 1) racha++;
   for (let k = completas - 1; k >= 0; k--) {
     const fin = new Date(c.inicio + 'T00:00:00'); fin.setDate(fin.getDate() + k * 7 + 6);
-    if (pagadoHasta(fin.toISOString().slice(0, 10)) >= (k + 1) * monto - 1) racha++; else break;
+    if (pagadoHasta(fin.toISOString().slice(0, 10)) >= (k + 1) * monto + inicial - 1) racha++; else break;
   }
   return racha;
 }
@@ -497,7 +497,8 @@ Deno.serve(async (req) => {
           const ajustes = (c.ajustesDeuda || []).reduce((a: number, x: any) => a + (+x.monto || 0), 0);
           const mensual = esMensual(c);
           const meses = mensual ? mesesVencidos(c.inicio, hoy) : 0;
-          const due = (mensual ? Math.min(meses * montoMensual(c), totalPlan(c)) : weeks * c.monto) + cargosVencidos(c, hoy);
+          const inicial = Math.max(0, +c.deudaInicial || 0);
+          const due = (mensual ? Math.min(meses * montoMensual(c), totalPlan(c)) : weeks * c.monto) + cargosVencidos(c, hoy) + inicial;
           const debtSinAdelanto = Math.max(0, due - paid - ajustes);
           adelantoAplicado = Math.min(adelantoRestante, debtSinAdelanto);
           adelantoRestante -= adelantoAplicado;
@@ -506,7 +507,7 @@ Deno.serve(async (req) => {
           proximo = mensual ? isoLocal(fechaMes(c.inicio, meses + 1)) : prox.toISOString().slice(0, 10);
           if (mensual) cuotaActual = meses;
           if (c.tipo === 'financiado') {
-            const total = totalPlan(c) + totalCargos(c);
+            const total = totalPlan(c) + totalCargos(c) + inicial;
             saldo = Math.max(0, total - paid);
             totalFin = total; pagadoFin = Math.min(total, paid + ajustes);
             if (c.cuotas && mensual) { cuotaActual = Math.min(cuotaActual, cuotasMensuales(c)); finFin = isoLocal(fechaMes(c.inicio, cuotasMensuales(c))); }

@@ -476,6 +476,7 @@ export function carForm(id) {
     (c.tipo === 'financiado' && cotizacion() ? '<div class="row between small muted"><span>En pesos hoy (' + esc(textoCotizacion()) + ')</span><span>' + money(enPesos(i.debt)) + (c.monto ? ' · cuota ' + money(enPesos(c.monto)) : '') + '</span></div>' : '') +
     (i.ajustes !== 0 ? '<div class="row between small muted"><span>Ajustes / condonaciones</span><span>' + (i.ajustes > 0 ? '-' + mon(i.ajustes) : '+' + mon(-i.ajustes)) + '</span></div>' : '') +
     (i.adelantoAplicado ? '<div class="row between small muted"><span>Cubierto con semana adelantada</span><span>-' + mon(i.adelantoAplicado) + '</span></div>' : '') +
+    (+c.deudaInicial ? '<div class="row between small muted"><span>Incluye deuda inicial' + (c.deudaInicialNota ? ' (' + esc(c.deudaInicialNota) + ')' : '') + '</span><span>' + mon(+c.deudaInicial) + '</span></div>' : '') +
     (c.anticipo ? '<div class="row between small muted"><span>Anticipo pagado</span><span>' + mon(c.anticipo) + '</span></div>' : '') +
     (i.saldo != null ? '<div class="row between"><span class="muted">Saldo total de la financiación</span><b>' + mon(i.saldo) + '</b></div>' : '') +
     (c.tipo === 'financiado' && c.cuotas ? '<div class="row between small muted"><span>Cuota actual</span><span>' + Math.min(i.weeks, +c.cuotas) + ' de ' + c.cuotas + '</span></div>' : '') +
@@ -519,6 +520,9 @@ export function carForm(id) {
   '<label class="f"><span>Anticipo pagado <small>opcional</small></span><input id="c_anticipo" inputmode="decimal" value="' + esc(c.anticipo || '') + '"></label></div>' +
   '<div class="two"><label class="f"><span id="lblmonto">Monto semanal</span><input id="c_monto" inputmode="decimal" value="' + esc(c.monto || '') + '" data-vs="' + esc(c.valorSemanal || '') + '" oninput="this.dataset.touched=1;onFrecuencia()"></label>' +
   '<label class="f"><span>Inicio del contrato</span><input id="c_inicio" type="date" value="' + esc(c.inicio) + '"></label></div>' +
+  '<div class="two"><label class="f"><span id="lbldeudaini">Deuda inicial <small>opcional</small></span><input id="c_deudaInicial" inputmode="decimal" placeholder="0" value="' + esc(c.deudaInicial || '') + '" data-orig="' + esc(c.deudaInicial || '') + '"></label>' +
+  '<label class="f"><span>¿De qué es? <small>opcional</small></span><input id="c_deudaInicialNota" placeholder="ej: semanas que debía antes de usar la app" value="' + esc(c.deudaInicialNota || '') + '"></label></div>' +
+  '<div class="small muted" style="margin:-4px 0 12px">Lo que el chofer ya debía al empezar a usar la app (o de un contrato anterior). Se suma a la deuda y se descuenta con los cobros, como una semana más.</div>' +
   '<div id="frecwrap"' + (c.tipo === 'financiado' ? '' : ' style="display:none"') + '>' + camposFinanciado(c) + (ex && c.tipo === 'financiado' ? seccionCargosFinanciados(c) : '') + '</div>' +
   (ex && isContract(c) && c.tipo !== 'financiado' && c.inicio && c.monto ? '<button type="button" class="btn sec sm" style="margin:-4px 0 12px" onclick="sugerirAjusteInflacion(\'' + c.id + '\')">Sugerir ajuste por inflación</button>' : '') +
   '<div class="small muted" style="margin:-4px 0 12px">Si cambia el chofer o pasa de alquiler a financiación, poné la fecha nueva de inicio. La deuda se cuenta desde ahí.</div></div>';
@@ -696,12 +700,23 @@ export function carForm(id) {
   openModal(h); onTipo($('#c_tipo'), true); renderFiles('cars', ex ? ex.id : null);
 }
 
+// Deuda que el chofer ya traía al arrancar el contrato. Si cambia el chofer o el tipo
+// de contrato y no se tocó el campo, no se arrastra la del contrato anterior.
+function datosDeudaInicial(ex, con, choferId, tipo) {
+  const el = document.getElementById('c_deudaInicial');
+  if (!el) return {};
+  const n = +String(el.value).replace(/[^\d.,-]/g, '').replace(/\./g, '').replace(',', '.') || 0;
+  const cambio = ex && (ex.choferId !== choferId || ex.tipo !== tipo);
+  if (!con || (cambio && el.value === el.dataset.orig)) return { deudaInicial: 0, deudaInicialNota: '' };
+  return { deudaInicial: Math.max(0, n), deudaInicialNota: n > 0 ? val('c_deudaInicialNota') : '' };
+}
 export function onTipo(el, init) {
   const t = el.value, con = t === 'alquiler' || t === 'financiado';
   $('#contrato').style.display = con ? '' : 'none';
   $('#finbox').style.display = t === 'financiado' ? '' : 'none';
   if (document.getElementById('frecwrap')) $('#frecwrap').style.display = t === 'financiado' ? '' : 'none';
   $('#lblmonto').textContent = t === 'financiado' ? 'Cuota semanal (en dólares)' : 'Alquiler semanal';
+  const lblDi = $('#lbldeudaini'); if (lblDi) lblDi.innerHTML = 'Deuda inicial ' + (t === 'financiado' ? '(en dólares)' : '(en pesos)') + ' <small>opcional</small>';
   const lblTotal = $('#lbltotal'); if (lblTotal) lblTotal.textContent = 'Total a pagar en cuotas (en dólares)';
   if (!init && con && el.value !== el.dataset.orig) $('#c_inicio').value = iso(today());
   const m = $('#c_monto');
@@ -763,6 +778,7 @@ export async function saveCar(btn, id) {
     choferId, monto: con ? (+val('c_monto') || 0) : 0, inicio: con ? val('c_inicio') : '',
     total: tipo === 'financiado' ? (+val('c_total') || 0) : 0, cuotas: tipo === 'financiado' ? (+val('c_cuotas') || 0) : 0,
     anticipo: tipo === 'financiado' ? (+val('c_anticipo') || 0) : 0, notas: val('c_notas'),
+    ...datosDeudaInicial(ex, con, choferId, tipo),
     ...(tipo === 'financiado' ? datosFinanciado() : { frecuencia: '' }),
     ...datosOrigenCompra(),
     tituloTransferido: document.getElementById('c_tituloTransferido') ? document.getElementById('c_tituloTransferido').checked : ((ex && ex.tituloTransferido) || false),

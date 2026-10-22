@@ -169,7 +169,7 @@ export async function marcarSaludado(id, tipo, cerrar) {
 // Una semana cuenta si al terminar (día 7) lo pagado más los ajustes cubre todas las semanas hasta esa.
 function rachaAuto(c) {
   const kind = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';
-  const inicio = parse(c.inicio), monto = +c.monto;
+  const inicio = parse(c.inicio), monto = +c.monto, inicial = Math.max(0, +c.deudaInicial || 0);
   const transcurridos = days(inicio, today());
   if (transcurridos < 0) return 0;
   const movs = de('payments', 'carId', c.id).filter(p => p.carId === c.id && p.tipo === kind && p.fecha >= c.inicio).map(p => [p.fecha, +p.monto || 0])
@@ -179,10 +179,10 @@ function rachaAuto(c) {
   const pagadoHasta = f => movs.reduce((s, m) => (m[0] <= f ? s + m[1] : s), 0);
   let racha = 0;
   // La semana en curso suma si ya está cubierta.
-  if (!(c.tipo === 'financiado' && +c.cuotas && completas >= +c.cuotas) && pagadoHasta(iso(today())) >= (completas + 1) * monto - 1) racha++;
+  if (!(c.tipo === 'financiado' && +c.cuotas && completas >= +c.cuotas) && pagadoHasta(iso(today())) >= (completas + 1) * monto + inicial - 1) racha++;
   for (let k = completas - 1; k >= 0; k--) {
     const fin = new Date(inicio); fin.setDate(fin.getDate() + k * 7 + 6);
-    if (pagadoHasta(iso(fin)) >= (k + 1) * monto - 1) racha++; else break;
+    if (pagadoHasta(iso(fin)) >= (k + 1) * monto + inicial - 1) racha++; else break;
   }
   return racha;
 }

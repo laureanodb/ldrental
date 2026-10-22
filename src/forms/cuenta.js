@@ -24,6 +24,7 @@ export function movimientosCuenta(driverId) {
     const moneda = c.tipo === 'financiado' ? 'USD' : 'ARS';
     const kind = c.tipo === 'alquiler' ? 'alquiler' : 'cuota';
     const i = calc(c);
+    if (+c.deudaInicial > 0) M.push({ fecha: c.inicio, concepto: 'Deuda inicial', detalle: [c.deudaInicialNota, c.patente].filter(Boolean).join(' · '), cargo: +c.deudaInicial, abono: 0, moneda });
     for (let k = 0; k < i.weeks; k++) {
       const f = parse(c.inicio); f.setDate(f.getDate() + 7 * k);
       M.push({ fecha: iso(f), concepto: kind === 'alquiler' ? 'Alquiler semana ' + (k + 1) : 'Cuota ' + (k + 1) + (c.cuotas ? ' de ' + c.cuotas : ''), detalle: c.patente || '', cargo: +c.monto || 0, abono: 0, moneda });

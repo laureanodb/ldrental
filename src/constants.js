@@ -4,6 +4,9 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-10-22', items: [
+    'Autos → contrato: campo "Deuda inicial" para lo que el chofer ya debía antes de usar la app. Se suma a la deuda, aparece en la cuenta corriente y en el portal del chofer, y se descuenta con los cobros.',
+  ] },
   { v: '2026-10-19', items: [
     'Multas → Consultar multas: ronda auto por auto en CABA, Provincia (InfraccionesBA), rutas nacionales y los municipios que elijas. Copia la patente, abre la página oficial y anotás el resultado. Si hay multas, subís una captura y la IA las carga solas, sin repetir las que ya estaban y asignadas al chofer que tenía el auto ese día.',
   ] },
