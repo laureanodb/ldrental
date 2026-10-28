@@ -1,5 +1,5 @@
 // Lectura de documentos con IA (Edge Function leer-documento).
-// tipo: 'comprobante' | 'poliza' | 'resumen'. Se manda el path del archivo
+// tipo: 'comprobante' | 'poliza' | 'resumen' | 'titulo' (ver leer-documento). Se manda el path del archivo
 // ya subido al bucket, o el archivo en base64 (dataURL) si no se guarda.
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { sb } from './state.js';

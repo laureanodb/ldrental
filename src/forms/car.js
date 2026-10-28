@@ -17,6 +17,7 @@ import { seccionSocios } from './socios.js';
 import { inflacionAcumulada } from '../inflacion.js';
 import { settings, featureOculta } from '../settings.js';
 import { leerDocumento, archivoADataUrl } from '../ia.js';
+import { botonTituloAuto, adjuntarTituloPendiente, descartarTituloPendiente } from './titulo-auto.js';
 import { tarjetaFirmaRemota } from '../contrato.js';
 import { cotizacion, enPesos, textoCotizacion } from '../dolar.js';
 import { de } from '../memo.js';
@@ -331,6 +332,7 @@ function tabpanel(tab, visible, content) {
 export function carForm(id) {
   const ex = de('cars', 'id', id)[0];
   const c = ex || { tipo: 'disponible', inicio: iso(today()) };
+  descartarTituloPendiente();
   let h = '<h3>' + (ex ? 'Auto ' + esc(c.patente) : 'Nuevo auto') + '</h3>';
   if (ex && c.vendido) h += '<div class="card" style="margin-bottom:10px"><span class="badge b-mute">Vendido</span></div>';
   else if (ex) {
@@ -358,6 +360,7 @@ export function carForm(id) {
     const dif = c.valorMercado - c.costoCompra;
     datos += '<div class="card row between"><span class="muted">Valor de mercado vs. invertido</span><b style="color:' + (dif >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(dif) + '</b></div>';
   }
+  datos += botonTituloAuto(ex);
   datos += '<div class="two"><label class="f"><span>Patente</span><input id="c_patente" value="' + esc(c.patente) + '" autocapitalize="characters"></label>' +
   '<label class="f"><span>Año</span><input id="c_anio" inputmode="numeric" value="' + esc(c.anio) + '"></label></div>' +
   '<div class="two"><label class="f"><span>Marca</span><input id="c_marca" value="' + esc(c.marca) + '"></label>' +
@@ -837,6 +840,7 @@ export async function saveCar(btn, id) {
   if (!(await save('cars', o))) return;
   if (o.seguroPaga === 'recupera' && seguroPaga(ex) !== 'recupera') await pasarSeguroDelMesAlChofer(o);
   if (o.gpsAlerta && !(ex && ex.gpsAlerta)) await marcarEnTaller(o.id);
+  await adjuntarTituloPendiente(o);
   closeModal(); toast('Auto guardado');
 }
 export async function toggleFavoritoAuto(id) {

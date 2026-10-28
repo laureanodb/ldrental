@@ -4,6 +4,9 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-10-28', items: [
+    'Autos → Agregar: "Cargar desde el título". Subís la foto o el PDF del título (o la cédula) y la IA completa patente, marca, modelo, año, motor, chasis, titular y fecha. Revisás, guardás y el título queda en los papeles del auto.',
+  ] },
   { v: '2026-10-22', items: [
     'Autos → contrato: campo "Deuda inicial" para lo que el chofer ya debía antes de usar la app. Se suma a la deuda, aparece en la cuenta corriente y en el portal del chofer, y se descuenta con los cobros.',
   ] },

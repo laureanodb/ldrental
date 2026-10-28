@@ -1,5 +1,5 @@
 // LD Rental — lectura de documentos con IA (Claude).
-// POST { tipo: 'comprobante'|'poliza'|'factura'|'resumen'|'tablero'|'cubierta', path?: string, archivo?: dataURL }
+// POST { tipo: 'comprobante'|'poliza'|'factura'|'resumen'|'tablero'|'cubierta'|'multas'|'titulo', path?: string, archivo?: dataURL }
 // con el token de sesión del usuario de la app (Authorization: Bearer ...).
 // Lee el archivo (del bucket de documentos si viene `path`, o el que manda la
 // app en base64) y devuelve los datos que encontró:
@@ -12,6 +12,8 @@
 // - cubierta: profundidad estimada del dibujo y si el desgaste es desparejo.
 // - multas: captura o PDF de una consulta de infracciones (CABA, Provincia, municipios):
 //   la lista de actas con fecha, monto, tipo, lugar, vencimiento y estado.
+// - titulo: título del automotor o cédula: patente, marca, modelo, año, motor,
+//   chasis, combustible, titulares y fecha de inscripción, para dar de alta el auto.
 // - chequeo: no lee un archivo; recibe { texto } con los números del negocio y las
 //   respuestas del dueño, y devuelve un diagnóstico corto (dónde está flojo y qué hacer).
 // No guarda nada: la app muestra lo leído y el usuario confirma.
@@ -97,6 +99,30 @@ const ESQUEMAS: Record<string, { instruccion: string; schema: any; maxTokens: nu
         prioridad: { type: 'string' },
       },
       required: ['resumen', 'flojos', 'bien', 'prioridad'],
+      additionalProperties: false,
+    },
+  },
+  titulo: {
+    instruccion: 'Es un título del automotor (DNRPA, Registro de la Propiedad Automotor) o una cédula de identificación del automotor (verde o azul). Sacá el dominio (patente), la marca, el modelo, el tipo de vehículo, el año del modelo, el número de motor, el número de chasis (o VIN), el combustible si figura, los titulares con su porcentaje y la fecha de inscripción o de emisión. Marca y modelo escribilos con mayúscula inicial como se dicen normalmente ("Volkswagen", "Gol Trend 1.6 Trendline"), sin repetir la marca dentro del modelo. En motor y chasis copiá solo el número, sin la marca del motor, y sin espacios. Si es una cédula, en titulares poné el titular que figura. Si no es un título ni una cédula de un vehículo, poné es_titulo en false.',
+    maxTokens: 3000,
+    schema: {
+      type: 'object',
+      properties: {
+        es_titulo: { type: 'boolean' },
+        tipo_documento: { type: 'string', enum: ['titulo', 'cedula', 'otro'] },
+        patente: { type: 'string' },
+        marca: { type: 'string' },
+        modelo: { type: 'string' },
+        tipo_vehiculo: { type: 'string', description: 'Sedán 4 puertas, pick-up, rural, etc., o ""' },
+        anio: { type: 'number', description: 'Año del modelo, o 0' },
+        numero_motor: { type: 'string' },
+        numero_chasis: { type: 'string' },
+        combustible: { type: 'string', enum: ['nafta', 'diesel', 'gnc', 'electrico', 'hibrido', 'desconocido'] },
+        titulares: { type: 'array', items: { type: 'object', properties: { nombre: { type: 'string' }, porcentaje: { type: 'number' } }, required: ['nombre', 'porcentaje'], additionalProperties: false } },
+        fecha_inscripcion: { type: 'string', description: 'AAAA-MM-DD o ""' },
+        observaciones: { type: 'string', description: 'Algo que convenga revisar (prenda, embargo, datos ilegibles), o ""' },
+      },
+      required: ['es_titulo', 'tipo_documento', 'patente', 'marca', 'modelo', 'tipo_vehiculo', 'anio', 'numero_motor', 'numero_chasis', 'combustible', 'titulares', 'fecha_inscripcion', 'observaciones'],
       additionalProperties: false,
     },
   },
@@ -234,6 +260,18 @@ function limpiar(tipo: string, d: any) {
         tipo: ['velocidad', 'estacionamiento', 'semaforo', 'documentacion', 'carril', 'telefono'].includes(m.tipo) ? m.tipo : 'otro',
       })),
       observaciones: txtOk(d.observaciones, 300),
+    };
+  }
+  if (tipo === 'titulo') {
+    const anio = Math.round(numOk(d.anio));
+    return {
+      esTitulo: Boolean(d.es_titulo), tipoDocumento: ['titulo', 'cedula'].includes(d.tipo_documento) ? d.tipo_documento : 'otro',
+      patente: txtOk(d.patente, 12).toUpperCase().replace(/[^A-Z0-9]/g, ''), marca: txtOk(d.marca, 40), modelo: txtOk(d.modelo, 80), tipoVehiculo: txtOk(d.tipo_vehiculo, 60),
+      anio: anio >= 1950 && anio <= new Date().getFullYear() + 1 ? anio : 0,
+      numeroMotor: txtOk(d.numero_motor, 30).toUpperCase().replace(/\s/g, ''), numeroChasis: txtOk(d.numero_chasis, 30).toUpperCase().replace(/\s/g, ''),
+      combustible: ['nafta', 'diesel', 'gnc', 'electrico', 'hibrido'].includes(d.combustible) ? d.combustible : '',
+      titulares: (Array.isArray(d.titulares) ? d.titulares : []).slice(0, 6).map((t: any) => ({ nombre: txtOk(t.nombre, 100), porcentaje: numOk(t.porcentaje) })).filter((t: any) => t.nombre),
+      fechaInscripcion: fechaOk(d.fecha_inscripcion), observaciones: txtOk(d.observaciones, 300),
     };
   }
   if (tipo === 'chequeo') {
