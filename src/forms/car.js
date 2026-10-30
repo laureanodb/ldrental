@@ -17,7 +17,7 @@ import { seccionSocios } from './socios.js';
 import { inflacionAcumulada } from '../inflacion.js';
 import { settings, featureOculta } from '../settings.js';
 import { leerDocumento, archivoADataUrl } from '../ia.js';
-import { botonTituloAuto, adjuntarTituloPendiente, descartarTituloPendiente } from './titulo-auto.js';
+import { botonTituloAuto, adjuntarTituloPendiente, descartarTituloPendiente, normalizarCilindrada } from './titulo-auto.js';
 import { tarjetaFirmaRemota } from '../contrato.js';
 import { cotizacion, enPesos, textoCotizacion } from '../dolar.js';
 import { de } from '../memo.js';
@@ -362,11 +362,12 @@ export function carForm(id) {
   }
   datos += botonTituloAuto(ex);
   datos += '<div class="two"><label class="f"><span>Patente</span><input id="c_patente" value="' + esc(c.patente) + '" autocapitalize="characters"></label>' +
-  '<label class="f"><span>Año</span><input id="c_anio" inputmode="numeric" value="' + esc(c.anio) + '"></label></div>' +
+  '<label class="f"><span>Color</span><input id="c_color" value="' + esc(c.color) + '"></label></div>' +
   '<div class="two"><label class="f"><span>Marca</span><input id="c_marca" value="' + esc(c.marca) + '"></label>' +
   '<label class="f"><span>Modelo</span><input id="c_modelo" value="' + esc(c.modelo) + '"></label></div>' +
-  '<div class="two"><label class="f"><span>Color</span><input id="c_color" value="' + esc(c.color) + '"></label>' +
-  '<label class="f"><span>Transmisión</span><select id="c_transmision"><option value="">Sin especificar</option>' + TRANSMISIONES.map(x => '<option value="' + x[0] + '"' + (c.transmision === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
+  '<div class="two"><label class="f"><span>Año</span><input id="c_anio" inputmode="numeric" value="' + esc(c.anio) + '"></label>' +
+  '<label class="f"><span>Cilindrada <small>en litros</small></span><input id="c_cilindrada" inputmode="decimal" placeholder="ej: 1.6" value="' + esc(c.cilindrada || '') + '"></label></div>' +
+  '<label class="f"><span>Transmisión</span><select id="c_transmision"><option value="">Sin especificar</option>' + TRANSMISIONES.map(x => '<option value="' + x[0] + '"' + (c.transmision === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
   '<div class="two"><label class="f"><span>VIN / chasis</span><input id="c_vin" value="' + esc(c.vin) + '"></label>' +
   '<label class="f"><span>Número de motor</span><input id="c_numeroMotor" value="' + esc(c.numeroMotor) + '"></label></div>' +
   '<label class="f"><span>Etiquetas <small>separadas por coma</small></span><input id="c_tags" value="' + esc((c.tags || []).join(', ')) + '" placeholder="ej: premium, ejecutivo, nuevo"></label>' +
@@ -793,7 +794,7 @@ export async function saveCar(btn, id) {
     dondeDuerme: val('c_dondeDuerme'), dondeDuermeMaps: val('c_dondeDuermeMaps'),
     gpsTipo: val('c_gpsTipo'), gpsId: val('c_gpsId'), gpsAlerta: document.getElementById('c_gpsAlerta').checked,
     form08: document.getElementById('c_form08').checked,
-    color: val('c_color'), transmision: val('c_transmision'), vin: val('c_vin'), numeroMotor: val('c_numeroMotor'),
+    color: val('c_color'), cilindrada: normalizarCilindrada(val('c_cilindrada')), transmision: val('c_transmision'), vin: val('c_vin'), numeroMotor: val('c_numeroMotor'),
     tags: val('c_tags').split(',').map(s => s.trim()).filter(Boolean),
     gncInstaladoEmpresa: document.getElementById('c_gncInstaladoEmpresa').checked,
     gncInstalador: val('c_gncInstalador'), gncFechaInstalacion: val('c_gncFechaInstalacion'),
