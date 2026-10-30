@@ -13,7 +13,8 @@ export function altaRapidaAutoForm() {
   const h = '<h3>Nuevo auto</h3>' +
   '<div class="small muted" style="margin-bottom:10px">Cargá lo básico y creá el auto. El resto (documentación, seguro, mantenimiento...) lo completás después en la ficha.</div>' +
   botonTituloAuto(null, 'nr') +
-  '<label class="f"><span>Patente</span><input id="nr_patente" autocapitalize="characters"></label>' +
+  '<div class="two"><label class="f"><span>Patente</span><input id="nr_patente" autocapitalize="characters"></label>' +
+  '<label class="f"><span>Color</span><input id="nr_color" placeholder="ej: Gris plata"></label></div>' +
   '<div class="two"><label class="f"><span>Marca</span><input id="nr_marca" placeholder="ej: Chevrolet"></label>' +
   '<label class="f"><span>Modelo</span><input id="nr_modelo" placeholder="ej: Onix LT"></label></div>' +
   '<div class="two"><label class="f"><span>Año</span><input id="nr_anio" inputmode="numeric" placeholder="ej: 2021"></label>' +
@@ -49,7 +50,7 @@ export async function guardarAltaRapidaAuto() {
   const choferId = (tipo === 'alquiler' || tipo === 'financiado') ? val('nr_chofer') : '';
   const o = {
     ...datosTituloPendiente(),
-    id: uid(), patente, marca, modelo, anio: String(anio), cilindrada, tipo, choferId,
+    id: uid(), patente, marca, modelo, anio: String(anio), cilindrada, color: val('nr_color').trim(), tipo, choferId,
     inicio: choferId ? iso(today()) : '', monto: 0,
     historialChoferes: choferId ? [{ choferId, desde: iso(today()), hasta: null }] : [],
   };

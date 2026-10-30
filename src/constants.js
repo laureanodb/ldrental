@@ -5,7 +5,7 @@ export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sa
 
 export const CHANGELOG = [
   { v: '2026-10-30', items: [
-    'Autos → Agregar: ahora se cargan marca, modelo, año y cilindrada al crear el auto, y desde ahí también se puede cargar desde el título. La cilindrada también está en la ficha.',
+    'Autos → Agregar: ahora se cargan marca, modelo, año, cilindrada y color al crear el auto, y desde ahí también se puede cargar desde el título. La cilindrada también está en la ficha.',
   ] },
   { v: '2026-10-28', items: [
     'Autos → Agregar: "Cargar desde el título". Subís la foto o el PDF del título (o la cédula) y la IA completa patente, marca, modelo, año, motor, chasis, titular y fecha. Revisás, guardás y el título queda en los papeles del auto.',
