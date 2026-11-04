@@ -15,6 +15,7 @@ import { checkChangelog } from './changelog.js';
 import { cargarDolar } from './dolar.js';
 import { biometricRegistrado } from './biometric.js';
 import { tocarDatos } from './memo.js';
+import { nuevaContrasenaForm } from './forms/contrasena.js';
 
 export function viewSetup() {
   return '<div class="login">' + brandH1() + '<div class="card"><b>Falta configurar la conexión</b><p class="small muted">Completá VITE_SUPABASE_URL y VITE_SUPABASE_KEY en el archivo .env, con los datos de tu proyecto de Supabase.</p></div></div>';
@@ -24,7 +25,9 @@ export function viewLogin() {
   (biometricRegistrado() ? '<button class="btn block" style="margin-bottom:10px" onclick="loginConBiometria()">Entrar con huella / rostro</button><div class="small muted" style="text-align:center;margin-bottom:14px">o con tu contraseña</div>' : '') +
   '<label class="f"><span>Email</span><input id="l_email" type="email" autocomplete="username" inputmode="email" autocapitalize="none"></label>' +
   '<label class="f"><span>Contraseña</span><input id="l_pass" type="password" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doLogin()"></label>' +
-  '<button class="btn block" onclick="doLogin()">Entrar</button><div id="l_err" class="small" style="color:var(--bad);margin-top:10px"></div></div>';
+  '<button class="btn block" onclick="doLogin()">Entrar</button>' +
+  '<button class="btn sec block" style="margin-top:8px;border:0;background:transparent" onclick="olvideContrasena()">¿Olvidaste tu contraseña?</button>' +
+  '<div id="l_err" class="small" style="color:var(--bad);margin-top:10px"></div></div>';
 }
 export async function doLogin() {
   const email = val('l_email'), password = document.getElementById('l_pass').value;
@@ -101,15 +104,21 @@ export function stop() {
 export async function init() {
   render();
   if (!configured()) return;
+  // Si se entra con el link de "olvidé mi contraseña", hay que pedir la nueva.
+  // Se mira antes de crear el cliente, que limpia la dirección al leer el link.
+  let recuperando = /type=recovery/.test(location.hash + location.search);
   setSb(createClient(SUPABASE_URL, SUPABASE_KEY));
   setAs(makeStorage());
   const g = await sb.auth.getSession();
   S.user = (g.data && g.data.session) ? g.data.session.user : null;
   sb.auth.onAuthStateChange((ev, session) => {
+    if (ev === 'PASSWORD_RECOVERY') recuperando = true;
     const u = session ? session.user : null;
     const changed = (u && u.id) !== (S.user && S.user.id);
     S.user = u;
     if (changed) setTimeout(() => { if (u) start(); else { stop(); render(); } }, 0);
+    if (recuperando && u) { recuperando = false; setTimeout(nuevaContrasenaForm, 600); }
   });
   if (S.user) start(); else render();
+  if (recuperando && S.user) { recuperando = false; setTimeout(nuevaContrasenaForm, 600); }
 }

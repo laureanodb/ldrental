@@ -13,6 +13,7 @@ function renderUsuarios(list) {
   '<div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">' +
   '<select onchange="cambiarRol(\'' + p.id + '\',this.value)"' + (p.id === S.user.id ? ' disabled' : '') + '><option value="empleado"' + (p.rol === 'empleado' ? ' selected' : '') + '>Empleado</option><option value="supervisor"' + (p.rol === 'supervisor' ? ' selected' : '') + '>Supervisor</option><option value="admin"' + (p.rol === 'admin' ? ' selected' : '') + '>Admin</option></select>' +
   (p.activo ? '<input type="date" id="us_hasta_' + p.id + '" style="width:auto" title="Hasta (dejar vacío = indefinido)">' : '') +
+  '<button class="btn sec sm" onclick="' + (p.id === S.user.id ? 'cambiarMiContrasenaForm()' : 'contrasenaUsuarioForm(\'' + p.id + '\',\'' + esc(p.email).replace(/'/g, '') + '\')') + '">Cambiar contraseña</button>' +
   '<button class="btn sec sm"' + (p.id === S.user.id ? ' disabled' : '') + ' onclick="toggleActivo(\'' + p.id + '\',' + !p.activo + ')">' + (p.activo ? 'Revocar acceso' : 'Restaurar acceso') + '</button>' +
   '</div></div>').join('') + '</div>';
 }
