@@ -17,6 +17,7 @@ import { seccionSocios } from './socios.js';
 import { inflacionAcumulada } from '../inflacion.js';
 import { settings, featureOculta } from '../settings.js';
 import { leerDocumento, archivoADataUrl } from '../ia.js';
+import { avisoAlquilerBajo } from './corregir-montos.js';
 import { botonTituloAuto, adjuntarTituloPendiente, descartarTituloPendiente, normalizarCilindrada } from './titulo-auto.js';
 import { tarjetaFirmaRemota } from '../contrato.js';
 import { cotizacion, enPesos, textoCotizacion } from '../dolar.js';
@@ -282,6 +283,7 @@ export async function guardarValorSemanal(carId, volver) {
   const c = de('cars', 'id', carId)[0]; if (!c) return;
   const nuevo = +val('vs_monto') || 0;
   if (!nuevo) { toast('Cargá el valor semanal'); return; }
+  const bajoAlq = avisoAlquilerBajo('alquiler', nuevo); if (bajoAlq) { toast(bajoAlq); return; }
   let o;
   if (c.tipo === 'alquiler') {
     const anterior = +c.monto || 0;
@@ -836,6 +838,7 @@ export async function saveCar(btn, id) {
   if (con) {
     if (!o.choferId) { toast('Elegí el chofer (cargalo primero en Choferes)'); return; }
     if (!o.monto || !o.inicio) { toast('Completá el monto semanal y la fecha de inicio'); return; }
+    const bajoAlq = avisoAlquilerBajo(tipo, o.monto); if (bajoAlq) { toast(bajoAlq); return; }
     if (tipo === 'financiado' && !o.cuotas) { toast('Completá la cantidad de cuotas'); return; }
   }
   if (!(await save('cars', o))) return;

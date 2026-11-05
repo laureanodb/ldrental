@@ -5,6 +5,7 @@ import { alertasMensajes } from './forms/mensajes.js';
 import { alertaChequeo } from './forms/reportes-extra.js';
 import { alertasGps } from './forms/gps.js';
 import { alertaConsultaMultas } from './forms/consulta-multas.js';
+import { alertaMontosSinCeros } from './forms/corregir-montos.js';
 import { S } from './state.js';
 import { isSnoozed } from './snooze.js';
 import { parse, today, fdate, days } from './utils.js';
@@ -21,5 +22,5 @@ function alertasVencePanol() {
 }
 
 export function alertasExtra() {
-  return [...alertasChoferes(), ...alertasPedidosChofer(), ...alertasMensajes(), ...alertasVencePanol(), ...alertaChequeo(), ...alertasGps(), ...alertaConsultaMultas()];
+  return [...alertasChoferes(), ...alertasPedidosChofer(), ...alertasMensajes(), ...alertasVencePanol(), ...alertaChequeo(), ...alertasGps(), ...alertaConsultaMultas(), ...alertaMontosSinCeros()];
 }

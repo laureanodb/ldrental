@@ -4,6 +4,10 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-11-05', items: [
+    'Montos: ahora se pueden escribir con los puntos de miles ("360.000" es trescientos sesenta mil; antes se guardaba 360). Vale para todos los campos de montos y km.',
+    'Más → Cobros → Corregir montos cargados sin los ceros: lista los alquileres, deudas iniciales y cobros que quedaron por debajo de $ 1.000 y los corrige todos juntos, desde el principio de cada contrato.',
+  ] },
   { v: '2026-11-04', items: [
     'Contraseñas: cada uno cambia la suya en Más → Cambiar mi contraseña; en la entrada está "¿Olvidaste tu contraseña?" (llega un mail con un link); y el admin le pone una nueva a cualquier usuario desde Más → Usuarios.',
   ] },

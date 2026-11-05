@@ -65,7 +65,7 @@ export function viewMas() {
     ['Cómo salió cada compra (por vendedor)', 'comprasPorVendedorView()'],
     ['Mantenimiento preventivo en lote', 'mantenimientoLoteForm()'],
   ]);
-  if (canVerFinanzas()) h += grupo('Cobros', [['Cruzar con el resumen de Mercado Pago o del banco', "goMas('cruce')"]]);
+  if (canVerFinanzas()) h += grupo('Cobros', [['Cruzar con el resumen de Mercado Pago o del banco', "goMas('cruce')"], ['Corregir montos cargados sin los ceros', 'corregirMontosView()']]);
   h += grupo('Análisis', [['Chequeo trimestral del negocio (IA)', 'chequeoView()'], ['Cuánto tardás en resolver cada cosa', 'tiemposRespuestaView()'], ['Km de la flota por semana', 'kmFlotaView()'], ['Services hechos a tiempo', 'servicesATiempoView()'], ['Cuánto duran los choferes (edad y experiencia)', 'duracionChoferesView()'], ['Tablero semanal por auto', "goMas('tablero')"], ['Reportes', "goMas('reportes')"], ['Reporte personalizado', 'reportePersonalizadoForm()'], ['Metas de la flota', 'metasForm()']].concat(canVerFinanzas() ? [['Rendimiento de las financiaciones', 'rankingFinanciacionesView()']] : []));
   h += grupo('Herramientas', [
     ['Recordatorios', 'recordatoriosView()'],

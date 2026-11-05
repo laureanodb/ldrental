@@ -6,6 +6,7 @@ import { openModal, toast } from '../modal.js';
 import { carForm, actualizarHistorialChoferes, actualizarHistorialMonto } from './car.js';
 import { driverForm } from './driver.js';
 import { de } from '../memo.js';
+import { avisoAlquilerBajo } from './corregir-montos.js';
 
 function campos(prefix, tipo, c) {
   return '<label class="f"><span>Tipo</span><select id="' + prefix + '_tipo" onchange="onAsignacionTipo(\'' + prefix + '\')"><option value="alquiler"' + (tipo === 'alquiler' ? ' selected' : '') + '>Alquiler</option><option value="financiado"' + (tipo === 'financiado' ? ' selected' : '') + '>Financiado</option></select></label>' +
@@ -46,6 +47,7 @@ export async function guardarAsignacionChofer(carId) {
   const c = carById(carId); if (!c) return;
   const choferId = val('ac_chofer');
   if (!choferId) { toast('Elegí un chofer'); return; }
+  const bajoAc = avisoAlquilerBajo(val('ac_tipo'), +val('ac_monto') || 0); if (bajoAc) { toast(bajoAc); return; }
   const anterior = S.cars.find(x => x.choferId === choferId && !x.vendido && x.id !== carId);
   if (anterior) await liberarAuto(anterior);
   const tipo = val('ac_tipo');
@@ -87,6 +89,7 @@ export async function guardarAsignacionAuto(driverId) {
   const carId = val('aa_auto');
   if (!carId) { toast('Elegí un auto'); return; }
   const c = de('cars', 'id', carId)[0]; if (!c) return;
+  const bajoAa = avisoAlquilerBajo(val('aa_tipo'), +val('aa_monto') || 0); if (bajoAa) { toast(bajoAa); return; }
   const anterior = S.cars.find(x => x.choferId === driverId && !x.vendido && x.id !== carId);
   if (anterior) await liberarAuto(anterior);
   const tipo = val('aa_tipo');
