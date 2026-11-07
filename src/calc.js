@@ -570,10 +570,15 @@ function _alerts() {
     const key = 'car:' + c.id + ':parado'; if (isSnoozed(key)) return;
     out.push({ who: c.patente || 'Auto sin patente', sub: 'Auto parado sin generar ingresos', kind: 'car', id: c.id, key, d: 0, cls: 'warn', t: dias + ' días disponible sin asignar' });
   });
+  // Tareas: cada uno ve las suyas; el admin ve también las del equipo que se atrasaron.
+  const yoEmail = ((S.user && S.user.email) || '').toLowerCase();
   S.recordatorios.filter(r => !r.hecho && r.fecha).forEach(r => {
     const s = vs(r.fecha); if (!s) return;
+    const mia = r.asignadoA ? r.asignadoA.toLowerCase() === yoEmail : !r.creadoPor || r.creadoPor.toLowerCase() === yoEmail;
+    const esAdmin = !S.profilesEnabled || Boolean(S.profile && S.profile.rol === 'admin');
+    if (!mia && !(esAdmin && s.d < 0)) return;
     const key = 'recordatorio:' + r.id; if (isSnoozed(key)) return;
-    out.push(Object.assign({ who: r.texto, sub: 'Recordatorio', kind: 'recordatorio', id: r.id, key }, s));
+    out.push(Object.assign({ who: r.texto, sub: mia ? 'Tarea' : 'Tarea de ' + String(r.asignadoA || r.creadoPor || '').split('@')[0] + ' atrasada', kind: 'recordatorio', id: r.id, key }, s));
   });
   activeCars().forEach(c => {
     if (!alertaRoturaProbable(c)) return;

@@ -18,6 +18,8 @@ import { inflacionAcumulada } from '../inflacion.js';
 import { settings, featureOculta } from '../settings.js';
 import { leerDocumento, archivoADataUrl } from '../ia.js';
 import { avisoAlquilerBajo } from './corregir-montos.js';
+import { fichaCompletaCard, camposAuto } from './ficha-completa.js';
+import { seccionPatenteAuto } from './consulta-patente.js';
 import { botonTituloAuto, adjuntarTituloPendiente, descartarTituloPendiente, normalizarCilindrada } from './titulo-auto.js';
 import { tarjetaFirmaRemota } from '../contrato.js';
 import { cotizacion, enPesos, textoCotizacion } from '../dolar.js';
@@ -344,6 +346,7 @@ export function carForm(id) {
     const eAceite = aceite ? estadoPlanItem(c, aceite) : null;
     h += '<div class="card" style="margin-bottom:10px">' + badge(estGen, estLabel) + (eAceite ? ' ' + badge(eAceite.cls, 'Aceite: ' + textoRestante(eAceite)) : '') + badgeAutoProblema(c) + '</div>';
   }
+  if (ex && !c.vendido) h += fichaCompletaCard(camposAuto(c));
   if (ex && !c.vendido) {
     const asigActual = c.choferId ? (c.historialChoferes || []).slice().reverse().find(hh => hh.choferId === c.choferId && !hh.hasta) : null;
     const tiempoConChofer = asigActual ? days(parse(asigActual.desde), today()) : null;
@@ -357,7 +360,7 @@ export function carForm(id) {
   }
 
   /* ---- Datos ---- */
-  let datos = ex ? seccionPapeles(c) : '';
+  let datos = ex ? seccionPapeles(c) + seccionPatenteAuto(c) : '';
   if (ex && c.tipo !== 'financiado' && c.valorMercado && c.costoCompra) {
     const dif = c.valorMercado - c.costoCompra;
     datos += '<div class="card row between"><span class="muted">Valor de mercado vs. invertido</span><b style="color:' + (dif >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(dif) + '</b></div>';

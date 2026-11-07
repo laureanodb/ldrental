@@ -16,6 +16,7 @@ import { cargarDolar } from './dolar.js';
 import { biometricRegistrado } from './biometric.js';
 import { tocarDatos } from './memo.js';
 import { nuevaContrasenaForm } from './forms/contrasena.js';
+import { ejecutarAtajo } from './atajos.js';
 
 export function viewSetup() {
   return '<div class="login">' + brandH1() + '<div class="card"><b>Falta configurar la conexión</b><p class="small muted">Completá VITE_SUPABASE_URL y VITE_SUPABASE_KEY en el archivo .env, con los datos de tu proyecto de Supabase.</p></div></div>';
@@ -54,6 +55,7 @@ export async function start() {
   await Promise.all([...PRIORITY_COLS.map(load), loadOwnProfile()]);
   S.ready = true; render();
   checkChangelog();
+  ejecutarAtajo();
   iniciarAlertasSupervisor();
   cargarSettingsServidor().then(changed => { if (changed) render(); });
   cargarDolar().then(() => render());

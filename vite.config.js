@@ -34,6 +34,13 @@ export default defineConfig({
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
+        // Al mantener apretado el ícono en el celular (src/atajos.js).
+        shortcuts: [
+          { name: 'Cobrar', short_name: 'Cobrar', url: './?atajo=cobrar', icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }] },
+          { name: 'Nuevo gasto', short_name: 'Gasto', url: './?atajo=gasto', icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }] },
+          { name: 'Buscar', short_name: 'Buscar', url: './?atajo=buscar', icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }] },
+          { name: 'Agenda de hoy', short_name: 'Agenda', url: './?atajo=agenda', icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }] },
+        ],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],

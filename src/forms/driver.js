@@ -17,6 +17,8 @@ import { seccionReclamos, MOTIVOS_CONTACTO, motivoContacto, ultimoContacto, rach
 import { seccionPedidosChofer } from './pedidos-chofer.js';
 import { estadoPortalVisto } from './mensajes.js';
 import { seccionManejoChofer } from './gps.js';
+import { fichaCompletaCard, camposChofer } from './ficha-completa.js';
+import { campoReferidoPor } from './referidos.js';
 
 function telRow(t) {
   t = t || {};
@@ -54,6 +56,7 @@ export function driverForm(id) {
     const estLabel = { ok: 'Todo al día', soft: 'Todo al día', warn: 'Algo pendiente', bad: 'Requiere atención' }[estGen];
     h += '<div class="card" style="margin-bottom:10px">' + badge(estGen, estLabel) + '</div>';
   }
+  if (ex && !d.inactivo && !d.prospecto) h += fichaCompletaCard(camposChofer(d));
   if (ex) h += seccionPedidosChofer(d);
   if (ex && !d.prospecto) {
     const uc = ultimoContacto(d);
@@ -92,7 +95,8 @@ export function driverForm(id) {
   '<label class="f"><span>Nombre y apellido</span><input id="d_nombre" value="' + esc(d.nombre) + '"></label>' +
   '<label class="chk"><input type="checkbox" id="d_prospecto" onchange="document.getElementById(\'etapaBox\').style.display=this.checked?\'\':\'none\'"' + (d.prospecto ? ' checked' : '') + '><span>Es un prospecto (todavía no firmó contrato)</span></label>' +
   '<div id="etapaBox" style="display:' + (d.prospecto ? '' : 'none') + '"><label class="f"><span>Etapa del embudo</span><select id="d_etapaProspecto">' + ETAPAS_PROSPECTO.map(x => '<option value="' + x[0] + '"' + (d.etapaProspecto === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
-  '<label class="f"><span>Referido por</span><input id="d_referidoPor" value="' + esc(d.referidoPor) + '"></label>' +
+  campoReferidoPor(d) +
+  '<label class="f"><span>Referido por otra persona <small>opcional</small></span><input id="d_referidoPor" value="' + esc(d.referidoPor) + '"></label>' +
   '<label class="f"><span>Canal de origen</span><select id="d_canalOrigen" onchange="document.getElementById(\'canalOrigenOtroBox\').style.display=this.value===\'otro\'?\'\':\'none\'"><option value="">Sin especificar</option>' + CANALES_PROSPECTO.map(x => '<option value="' + x[0] + '"' + (d.canalOrigen === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label>' +
   '<div id="canalOrigenOtroBox" style="display:' + (d.canalOrigen === 'otro' ? '' : 'none') + '"><label class="f"><span>¿Cuál?</span><input id="d_canalOrigenOtro" value="' + esc(d.canalOrigenOtro) + '"></label></div>' +
   '<div class="two"><label class="f"><span>DNI</span><input id="d_dni" inputmode="numeric" value="' + esc(d.dni) + '"></label>' +
@@ -272,7 +276,7 @@ export async function saveDriver(id) {
     garanteNombre: val('d_garanteNombre'), garanteTel: val('d_garanteTel'),
     contactoEmergencia: { nombre: val('d_emerg_nombre'), tel: val('d_emerg_tel') },
     otrosTelefonos, inactivo: (ex || {}).inactivo || false, favorito: (ex || {}).favorito || false, prospecto: document.getElementById('d_prospecto').checked,
-    etapaProspecto: val('d_etapaProspecto'), referidoPor: val('d_referidoPor'), onboarding,
+    etapaProspecto: val('d_etapaProspecto'), referidoPor: val('d_referidoPor'), referidoPorId: val('d_referidoPorId'), onboarding,
     canalOrigen: val('d_canalOrigen'), canalOrigenOtro: val('d_canalOrigenOtro'),
     fotoPerfil: val('d_fotoPerfilData'),
     files: (ex || {}).files || []

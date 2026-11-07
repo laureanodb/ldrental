@@ -26,6 +26,12 @@ import { leerTituloAuto } from './forms/titulo-auto.js';
 import { cambiarMiContrasenaForm, guardarMiContrasena, olvideContrasena, guardarNuevaContrasena, contrasenaUsuarioForm, generarContrasena, guardarContrasenaUsuario } from './forms/contrasena.js';
 import { corregirMontosView, aplicarCorreccionMontos } from './forms/corregir-montos.js';
 import { instalarNormalizadorNumeros } from './numeros.js';
+import { datosFaltantesView } from './forms/ficha-completa.js';
+import { consultaPatenteView, rondaPatente, pasoPatente, cambiarLugarPatente, abrirConsultaPatente, resultadoPatente, guardarDeudaPatente, patentePagada, gastoPatente, lugaresPatenteView, guardarLugaresPatente, quitarLugarPatente } from './forms/consulta-patente.js';
+import { referidosView, guardarReglaReferido, darPremioReferido } from './forms/referidos.js';
+import { agendaView } from './forms/agenda.js';
+import { cajaChicaView, guardarCajaChica } from './forms/caja-chica.js';
+import { patrimonioView, guardarPatrimonio } from './forms/patrimonio.js';
 import { aprobarGastoChofer, rechazarGastoChofer, cerrarAvisoAtraso, cerrarDevolucion } from './forms/pedidos-chofer.js';
 import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
 import { calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, escenarioFlotaForm, calcularEscenarioFlota } from './forms/calculadora.js';
@@ -85,7 +91,7 @@ import { syncDriveUI } from './google-drive.js';
    que se resuelven en el scope global, así que las funciones que referencian
    necesitan quedar colgadas de window. */
 instalarNormalizadorNumeros();
-Object.assign(window, { corregirMontosView, aplicarCorreccionMontos, cambiarMiContrasenaForm, guardarMiContrasena, olvideContrasena, guardarNuevaContrasena, contrasenaUsuarioForm, generarContrasena, guardarContrasenaUsuario, leerTituloAuto,
+Object.assign(window, { patrimonioView, guardarPatrimonio, cajaChicaView, guardarCajaChica, agendaView, referidosView, guardarReglaReferido, darPremioReferido, consultaPatenteView, rondaPatente, pasoPatente, cambiarLugarPatente, abrirConsultaPatente, resultadoPatente, guardarDeudaPatente, patentePagada, gastoPatente, lugaresPatenteView, guardarLugaresPatente, quitarLugarPatente, datosFaltantesView, corregirMontosView, aplicarCorreccionMontos, cambiarMiContrasenaForm, guardarMiContrasena, olvideContrasena, guardarNuevaContrasena, contrasenaUsuarioForm, generarContrasena, guardarContrasenaUsuario, leerTituloAuto,
   agendarServiceForm, guardarServiceAgendado, recordarServiceView, marcarServiceRecordado, agregarReclamo, resolverReclamo, borrarReclamo, llamarYAnotar, saludoView, mandarSaludo, marcarSaludado,
   aprobarGastoChofer, rechazarGastoChofer, cerrarAvisoAtraso, cerrarDevolucion,
   consultaMultasView, rondaMultas, abrirConsultaMulta, resultadoConsultaMulta, cargarMultaManual, terminarConMultas, leerCapturaMultas, guardarMultasLeidas, lugaresMultasView, guardarLugaresMultas,

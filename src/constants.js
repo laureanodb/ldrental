@@ -4,6 +4,17 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-11-07', items: [
+    'Ficha completa: cada auto y cada chofer muestra qué porcentaje de sus datos está cargado y qué le falta. En Más → Datos que faltan cargar está la lista general y lo que más falta en toda la flota.',
+    'Deuda de patente: ronda de consulta en AGIP, ARBA o el municipio, auto por auto, como la de multas. Anotás si está al día o cuánto debe, te avisa antes de que venza y lo pasás a gasto con un toque.',
+    'Aviso de km raros: si un auto hace muchos más o muchos menos km que lo normal para él, o si el km bajó, te aparece en el Panel.',
+    'Premio por referido: en la ficha del chofer nuevo elegís qué chofer lo trajo. Cuando cumple las semanas elegidas, te avisa y das la semana bonificada como descuento en la deuda del que lo trajo.',
+    'Tareas para el equipo: los recordatorios ahora se pueden asignar a alguien del equipo y a un auto. Cada uno ve las suyas en el Panel y las marca como hechas.',
+    'Agenda de hoy y mañana (o 7 días): cobros que vencen, promesas de pago, devoluciones, turnos de taller, tareas, vencimientos y cumpleaños en una sola pantalla.',
+    'Caja chica: la plata que le das a alguien del equipo, los gastos que hace con su ticket (quedan también como gastos del auto o generales) y lo que devuelve, con el saldo de cada uno.',
+    'Patrimonio de la empresa: autos a valor de mercado más lo que te deben, menos lo que debés, con una foto por mes.',
+    'Atajos: si mantenés apretado el ícono de la app en el celular aparecen Cobrar, Nuevo gasto, Buscar y Agenda (hay que volver a instalar el ícono para que aparezcan).',
+  ] },
   { v: '2026-11-05', items: [
     'Montos: ahora se pueden escribir con los puntos de miles ("360.000" es trescientos sesenta mil; antes se guardaba 360). Vale para todos los campos de montos y km.',
     'Más → Cobros → Corregir montos cargados sin los ceros: lista los alquileres, deudas iniciales y cobros que quedaron por debajo de $ 1.000 y los corrige todos juntos, desde el principio de cada contrato.',
