@@ -60,7 +60,13 @@ function destinatarios(m) {
     return true;
   });
 }
-const personalizar = (texto, d) => String(texto || '').replace(/\{nombre\}/gi, primerNombre(d)).replace(/\{empresa\}/gi, empresa());
+// {deuda} y {patente} salen del auto del chofer (el primero con contrato).
+function autoDeChofer(d) { return de('cars', 'choferId', d.id).find(c => c.choferId === d.id && !c.vendido && isContract(c)) || null; }
+const personalizar = (texto, d) => {
+  const c = autoDeChofer(d), i = c ? calc(c) : null;
+  return String(texto || '').replace(/\{nombre\}/gi, primerNombre(d)).replace(/\{empresa\}/gi, empresa())
+    .replace(/\{patente\}/gi, (c && c.patente) || '').replace(/\{deuda\}/gi, i ? (c.tipo === 'financiado' ? 'US$ ' : '$ ') + Math.round(i.debt).toLocaleString('es-AR') : '$ 0');
+};
 const lista = () => settings.mensajesProgramados || [];
 async function guardarLista(L) { saveSettings({ mensajesProgramados: L }); }
 
@@ -83,10 +89,30 @@ export function mensajesProgramadosView() {
     '<div class="sec-t">Nuevo mensaje</div>' +
     '<div class="two"><label class="f"><span>Día</span><input id="mp_fecha" type="date" value="' + hoy + '"></label>' +
     '<label class="f"><span>Para</span><select id="mp_destino">' + DESTINOS.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label></div>' +
-    '<label class="f"><span>Mensaje <small>{nombre} se reemplaza por el nombre de cada chofer</small></span><textarea id="mp_texto" rows="4" placeholder="Hola {nombre}, te recordamos que el lunes es feriado y la oficina está cerrada."></textarea></label>' +
+    '<label class="f"><span>Mensaje <small>{nombre}, {patente} y {deuda} se completan para cada chofer</small></span><textarea id="mp_texto" rows="4" placeholder="Hola {nombre}, te recordamos que el lunes es feriado y la oficina está cerrada."></textarea></label>' +
     '<button class="btn block" onclick="guardarMensajeProgramado()">Programar</button>' +
     (viejos.length ? '<div class="sec-t">Ya enviados</div>' + viejos.map(fila).join('') : '') +
     '<button class="btn sec block" style="margin-top:10px" onclick="closeModal()">Cerrar</button>');
+}
+// Mensaje a todos ahora: arma la lista para mandarlo uno por uno por WhatsApp.
+export function mensajeATodosForm() {
+  openModal('<h3>Mensaje a los choferes</h3>' +
+    '<div class="small muted" style="margin-bottom:10px">Escribís el mensaje una vez y después tocás cada chofer: se abre WhatsApp con el mensaje listo y con su nombre. Queda anotado a quién ya le mandaste.</div>' +
+    '<label class="f"><span>Para</span><select id="mt_destino">' + DESTINOS.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label>' +
+    '<label class="f"><span>Mensaje <small>podés usar {nombre}, {patente} y {deuda}</small></span><textarea id="mt_texto" rows="5" placeholder="Hola {nombre}, el lunes la oficina abre a las 10."></textarea></label>' +
+    '<div id="mt_cuantos" class="small muted" style="margin-bottom:8px"></div>' +
+    '<div class="row"><button class="btn grow" onclick="armarMensajeATodos()">Armar la lista</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>' +
+    '<button class="btn sec sm block" style="margin-top:8px" onclick="mensajesProgramadosView()">Programarlo para otro día</button>');
+  const sel = document.getElementById('mt_destino');
+  const contar = () => { const n = destinatarios({ destino: sel.value }).length; document.getElementById('mt_cuantos').textContent = n + (n === 1 ? ' chofer con teléfono' : ' choferes con teléfono'); };
+  sel.addEventListener('change', contar); contar();
+}
+export async function armarMensajeATodos() {
+  const texto = val('mt_texto');
+  if (!texto) { toast('Escribí el mensaje'); return; }
+  const m = { id: uid(), fecha: iso(today()), texto, destino: val('mt_destino'), creado: iso(today()), enviados: {} };
+  await guardarLista(lista().concat([m]));
+  enviarMensajeProgramado(m.id);
 }
 export async function guardarMensajeProgramado() {
   const texto = val('mp_texto'), fecha = val('mp_fecha');

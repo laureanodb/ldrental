@@ -101,6 +101,8 @@ export function render() {
   if (!modoConsultaActivo()) bindFabScroll();
   renderList();
   programarRecorrido();
+  // Si está abierta la pantalla para la oficina, que muestre los datos nuevos.
+  if (document.getElementById('po') && window.refrescarPantallaOficina) window.refrescarPantallaOficina();
 }
 export function renderList() {
   const el = $('#list'); if (!el) return;

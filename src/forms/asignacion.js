@@ -7,6 +7,7 @@ import { carForm, actualizarHistorialChoferes, actualizarHistorialMonto } from '
 import { driverForm } from './driver.js';
 import { de } from '../memo.js';
 import { avisoAlquilerBajo } from './corregir-montos.js';
+import { bienvenidaForm } from './bienvenida.js';
 
 function campos(prefix, tipo, c) {
   return '<label class="f"><span>Tipo</span><select id="' + prefix + '_tipo" onchange="onAsignacionTipo(\'' + prefix + '\')"><option value="alquiler"' + (tipo === 'alquiler' ? ' selected' : '') + '>Alquiler</option><option value="financiado"' + (tipo === 'financiado' ? ' selected' : '') + '>Financiado</option></select></label>' +
@@ -61,7 +62,7 @@ export async function guardarAsignacionChofer(carId) {
     montoHistorial: actualizarHistorialMonto(c, monto),
     valorSemanal: tipo === 'alquiler' ? monto : (+c.valorSemanal || 0),
   });
-  if (await save('cars', o)) { toast('Chofer asignado: ' + driverName(choferId)); carForm(carId); }
+  if (await save('cars', o)) { toast('Chofer asignado: ' + driverName(choferId)); bienvenidaForm(carId); }
 }
 export async function quitarChofer(carId) {
   const c = carById(carId); if (!c) return;
@@ -103,7 +104,7 @@ export async function guardarAsignacionAuto(driverId) {
     montoHistorial: actualizarHistorialMonto(c, monto),
     valorSemanal: tipo === 'alquiler' ? monto : (+c.valorSemanal || 0),
   });
-  if (await save('cars', o)) { toast('Auto asignado: ' + (c.patente || '')); driverForm(driverId); }
+  if (await save('cars', o)) { toast('Auto asignado: ' + (c.patente || '')); bienvenidaForm(c.id, 'chofer'); }
 }
 export async function quitarAutoDeChofer(driverId, carId) {
   const c = de('cars', 'id', carId)[0]; if (!c) return;

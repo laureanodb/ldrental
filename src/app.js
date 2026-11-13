@@ -32,6 +32,18 @@ import { referidosView, guardarReglaReferido, darPremioReferido } from './forms/
 import { agendaView } from './forms/agenda.js';
 import { cajaChicaView, guardarCajaChica } from './forms/caja-chica.js';
 import { patrimonioView, guardarPatrimonio } from './forms/patrimonio.js';
+import { bienvenidaForm, enviarBienvenida, copiarBienvenida, bienvenidaConfigForm, guardarBienvenidaConfig, volverTextoBienvenida } from './forms/bienvenida.js';
+import { mensajeATodosForm, armarMensajeATodos } from './forms/mensajes.js';
+import { guiasView, agregarGuia, guardarGuias } from './forms/guias.js';
+import { danosView, clickMapaDano, nuevoDanoForm, guardarDano, repararDano } from './forms/danos.js';
+import { fichasModeloView, fichaModeloForm, guardarFichaModelo } from './forms/ficha-modelo.js';
+import { metaSemanalView } from './forms/meta-semanal.js';
+import { pantallaOficina, salirPantallaOficina, refrescarPantallaOficina } from './forms/pantalla-oficina.js';
+import { denunciaSiniestroView, copiarDenuncia, pdfDenuncia } from './forms/denuncia.js';
+import { elegirLetra, aplicarLetra } from './preferencias.js';
+import { vencimientosAlCalendario } from './ics.js';
+import { agendaAlCalendario } from './forms/agenda.js';
+import { sitioEmpresaForm, guardarSitioEmpresa } from './forms/sitio-empresa.js';
 import { aprobarGastoChofer, rechazarGastoChofer, cerrarAvisoAtraso, cerrarDevolucion } from './forms/pedidos-chofer.js';
 import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
 import { calculadoraForm, calcularComparacion, roiAutoForm, calcularRoi, escenarioFlotaForm, calcularEscenarioFlota } from './forms/calculadora.js';
@@ -91,7 +103,8 @@ import { syncDriveUI } from './google-drive.js';
    que se resuelven en el scope global, así que las funciones que referencian
    necesitan quedar colgadas de window. */
 instalarNormalizadorNumeros();
-Object.assign(window, { patrimonioView, guardarPatrimonio, cajaChicaView, guardarCajaChica, agendaView, referidosView, guardarReglaReferido, darPremioReferido, consultaPatenteView, rondaPatente, pasoPatente, cambiarLugarPatente, abrirConsultaPatente, resultadoPatente, guardarDeudaPatente, patentePagada, gastoPatente, lugaresPatenteView, guardarLugaresPatente, quitarLugarPatente, datosFaltantesView, corregirMontosView, aplicarCorreccionMontos, cambiarMiContrasenaForm, guardarMiContrasena, olvideContrasena, guardarNuevaContrasena, contrasenaUsuarioForm, generarContrasena, guardarContrasenaUsuario, leerTituloAuto,
+aplicarLetra();
+Object.assign(window, { sitioEmpresaForm, guardarSitioEmpresa, vencimientosAlCalendario, agendaAlCalendario, elegirLetra, denunciaSiniestroView, copiarDenuncia, pdfDenuncia, pantallaOficina, salirPantallaOficina, refrescarPantallaOficina, metaSemanalView, fichasModeloView, fichaModeloForm, guardarFichaModelo, danosView, clickMapaDano, nuevoDanoForm, guardarDano, repararDano, guiasView, agregarGuia, guardarGuias, mensajeATodosForm, armarMensajeATodos, bienvenidaForm, enviarBienvenida, copiarBienvenida, bienvenidaConfigForm, guardarBienvenidaConfig, volverTextoBienvenida, patrimonioView, guardarPatrimonio, cajaChicaView, guardarCajaChica, agendaView, referidosView, guardarReglaReferido, darPremioReferido, consultaPatenteView, rondaPatente, pasoPatente, cambiarLugarPatente, abrirConsultaPatente, resultadoPatente, guardarDeudaPatente, patentePagada, gastoPatente, lugaresPatenteView, guardarLugaresPatente, quitarLugarPatente, datosFaltantesView, corregirMontosView, aplicarCorreccionMontos, cambiarMiContrasenaForm, guardarMiContrasena, olvideContrasena, guardarNuevaContrasena, contrasenaUsuarioForm, generarContrasena, guardarContrasenaUsuario, leerTituloAuto,
   agendarServiceForm, guardarServiceAgendado, recordarServiceView, marcarServiceRecordado, agregarReclamo, resolverReclamo, borrarReclamo, llamarYAnotar, saludoView, mandarSaludo, marcarSaludado,
   aprobarGastoChofer, rechazarGastoChofer, cerrarAvisoAtraso, cerrarDevolucion,
   consultaMultasView, rondaMultas, abrirConsultaMulta, resultadoConsultaMulta, cargarMultaManual, terminarConMultas, leerCapturaMultas, guardarMultasLeidas, lugaresMultasView, guardarLugaresMultas,

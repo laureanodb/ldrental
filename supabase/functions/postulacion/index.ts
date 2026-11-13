@@ -1,4 +1,6 @@
 // LD Rental — alta pública de prospectos (formulario de postulación).
+// GET devuelve los datos públicos de la página de la empresa (nombre, logo y los textos
+// que se cargan en la app); no expone nada más de app_settings.
 // Recibe nombre/teléfono/canal de origen/tipo de licencia/experiencia
 // desde un formulario público (sin login, ver src/postulacion.js) y crea
 // un chofer marcado como prospecto en etapa "Contacto inicial". Usa el
@@ -14,8 +16,27 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 }
 
+const txt = (v: unknown, max = 300) => String(v || '').trim().slice(0, max);
+const lista = (v: unknown) => (Array.isArray(v) ? v : String(v || '').split('\n')).map((x: unknown) => txt(x, 200)).filter(Boolean).slice(0, 12);
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
+  // GET: datos públicos para la página de la empresa (lo que se carga en Más → Página de la empresa).
+  if (req.method === 'GET') {
+    try {
+      const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      const { data: row } = await sb.from('app_settings').select('data').eq('id', 'main').maybeSingle();
+      const cfg = (row && row.data) || {};
+      const s = cfg.sitioEmpresa || {};
+      return json({
+        ok: true, companyName: txt(cfg.companyName, 80), companyLogo: String(cfg.companyLogo || '').slice(0, 400000),
+        sitio: { titulo: txt(s.titulo, 120), bajada: txt(s.bajada, 400), quienes: txt(s.quienes, 1500), requisitos: lista(s.requisitos), beneficios: lista(s.beneficios),
+          zona: txt(s.zona, 160), horario: txt(s.horario, 160), whatsapp: txt(s.whatsapp, 40), instagram: txt(s.instagram, 80), direccion: txt(s.direccion, 160) },
+      });
+    } catch (e) {
+      return json({ ok: false, error: String(e) }, 500);
+    }
+  }
   if (req.method !== 'POST') return json({ ok: false, error: 'Método no permitido' }, 405);
   try {
     const body = await req.json().catch(() => ({}));

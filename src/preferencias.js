@@ -42,3 +42,17 @@ export function limpiarFiltrosGuardados() {
   try { localStorage.removeItem(KEY_FILTROS); } catch (e) {}
   location.reload();
 }
+
+// Tamaño de letra de este celular: agranda toda la app (texto, botones y espacios juntos).
+const KEY_LETRA = 'ld-letra';
+export const TAMANOS_LETRA = [['normal', 'Normal', 1], ['grande', 'Grande', 1.15], ['muy', 'Muy grande', 1.3]];
+export function tamanoLetra() { try { return localStorage.getItem(KEY_LETRA) || 'normal'; } catch (e) { return 'normal'; } }
+export function aplicarLetra() {
+  const t = TAMANOS_LETRA.find(x => x[0] === tamanoLetra()) || TAMANOS_LETRA[0];
+  document.documentElement.style.setProperty('--zoom-letra', String(t[2]));
+  document.documentElement.classList.toggle('letra-grande', t[2] !== 1);
+}
+export function elegirLetra(k) {
+  try { localStorage.setItem(KEY_LETRA, k); } catch (e) {}
+  aplicarLetra();
+}

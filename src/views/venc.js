@@ -31,7 +31,8 @@ function calendarioVenc(A) {
 
 export function viewVenc() {
   const A = alerts();
-  let h = '<h1>Vencimientos</h1><p class="sub">Documentación de autos y licencias de choferes</p>';
+  let h = '<h1>Vencimientos</h1><p class="sub">Documentación de autos y licencias de choferes</p>' +
+    '<button class="btn sec sm" style="margin-bottom:10px" onclick="vencimientosAlCalendario()">Pasar los próximos 90 días al calendario del celular</button>';
   if (!A.length) return h + '<div class="card empty"><b>Sin fechas cargadas</b>Cargá VTV, seguro, patente y licencias en cada auto y chofer.</div>';
   const sug = sugerenciasAnticipacionVenc();
   if (sug.length) {

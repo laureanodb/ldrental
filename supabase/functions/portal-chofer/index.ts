@@ -3,7 +3,7 @@
 // en el chofer, devuelve su deuda, próximo pago, cronograma de cuotas si
 // es financiado, datos del auto asignado, los últimos pagos, sus multas
 // pendientes y la config compartida (branding, protocolo de emergencia,
-// anuncios) desde app_settings, y links de descarga (1 hora) de la credencial
+// anuncios y guías para el chofer) desde app_settings, y links de descarga (1 hora) de la credencial
 // de circulación y el certificado de cobertura del seguro de su auto. No
 // expone nada de otros choferes ni de la operación en general.
 // POST { id, t, accion, ... } valida el mismo token. Acciones:
@@ -584,6 +584,7 @@ Deno.serve(async (req) => {
       pago: { alias: cfg.pagoAlias || '', cbu: cfg.pagoCbu || '', titular: cfg.pagoTitular || '', cuit: cfg.pagoCuit || '', banco: cfg.pagoBanco || '', nota: cfg.pagoNota || '' },
       companyName: cfg.companyName || '', companyLogo: cfg.companyLogo || '', companyPhone: cfg.companyPhone || '',
       telefonoEmergencia: cfg.telefonoEmergencia || '', protocoloEmergencia: cfg.protocoloEmergencia || '', anuncios: cfg.anuncios || [],
+      guias: (Array.isArray(cfg.guiasChofer) ? cfg.guiasChofer : []).slice(0, 20).map((g: any) => ({ titulo: txt(g.titulo, 120), texto: txt(g.texto, 4000) })),
     });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);

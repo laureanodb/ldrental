@@ -4,6 +4,19 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-11-13', items: [
+    'Bienvenida: al asignarle un auto a un chofer se arma el mensaje de WhatsApp con su link del portal, el monto, el día de cobro, el teléfono de emergencia y tus reglas. El texto base se cambia en Más → Mensaje de bienvenida.',
+    'Mensaje a todos los choferes (Más → Comunicación): lo escribís una vez y lo mandás por WhatsApp uno por uno, con su nombre, patente y deuda.',
+    'Guías para el chofer: textos tuyos (qué hacer en un choque, cuidado del auto, GNC) que el chofer ve en su portal.',
+    'Mapa de daños: en la ficha del auto marcás golpes y rayones en un dibujo, con foto, fecha y el chofer que lo tenía. Ves cuáles son nuevos desde la última entrega.',
+    'Ficha técnica por modelo: aceite, filtros, pastillas, cubiertas, batería y lámparas, cargado una vez para todos los autos iguales.',
+    'Pantalla para la oficina: tablero grande que se actualiza solo (cobrado hoy y en la semana, deuda, flota y quién paga hoy).',
+    'Cobranza de la semana: lo que vence de lunes a domingo contra lo cobrado, día por día. También aparece en el Panel.',
+    'Denuncia de siniestro: desde el siniestro se arma la denuncia para el seguro con los datos del auto, la póliza, el chofer y el tercero, en PDF o para copiar.',
+    'Página de la empresa: página pública para que te conozcan y se postulen, con tus textos (Más → Página de la empresa).',
+    'Letra grande: en Más elegís el tamaño de letra para ese celular.',
+    'Al calendario: la Agenda y los vencimientos de los próximos 90 días se pasan al calendario del celular con un toque.',
+  ] },
   { v: '2026-11-07', items: [
     'Ficha completa: cada auto y cada chofer muestra qué porcentaje de sus datos está cargado y qué le falta. En Más → Datos que faltan cargar está la lista general y lo que más falta en toda la flota.',
     'Deuda de patente: ronda de consulta en AGIP, ARBA o el municipio, auto por auto, como la de multas. Anotás si está al día o cuánto debe, te avisa antes de que venza y lo pasás a gasto con un toque.',

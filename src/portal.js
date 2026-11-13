@@ -156,6 +156,9 @@ function renderPortal(app, j) {
     (protocolo ? '<div class="small" style="white-space:pre-wrap;margin-top:10px">' + esc(protocolo) + '</div>' : '') +
     '</div>';
   }
+  if (j.guias && j.guias.length) {
+    h += '<div class="sec-t">Guías</div>' + j.guias.map(g => '<details class="card" style="margin-bottom:8px"><summary style="cursor:pointer"><b>' + esc(g.titulo) + '</b></summary><div class="small" style="white-space:pre-wrap;margin-top:8px">' + esc(g.texto) + '</div></details>').join('');
+  }
   if (j.cuenta && (j.cuenta.deudaARS > 0 || j.cuenta.deudaUSD > 0)) {
     h += '<div class="sec-t">Tu deuda total</div><div class="card" style="margin-bottom:14px">' +
       (j.cuenta.deudaARS > 0 ? '<div class="row between"><span class="muted">En pesos</span><b style="color:var(--bad)">' + money(j.cuenta.deudaARS) + '</b></div><div class="small muted">Suma alquiler, seguro, multas y adelantos pendientes.</div>' : '') +

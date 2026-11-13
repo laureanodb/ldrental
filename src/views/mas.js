@@ -21,6 +21,7 @@ import { ajustesCard, backupCard, saludDatosCard } from './shared.js';
 import { googleCard } from './google-ui.js';
 import { featureOculta } from '../settings.js';
 import { viewCruce } from '../forms/cruce.js';
+import { TAMANOS_LETRA, tamanoLetra } from '../preferencias.js';
 
 export function goMas(v) { ui.masView = v; render(); window.scrollTo(0, 0); }
 
@@ -51,6 +52,7 @@ export function viewMas() {
   let h = '<h1>Más</h1>';
   h += grupo('Flota', [
     ['Datos que faltan cargar (ficha completa)', 'datosFaltantesView()'],
+    ['Ficha técnica por modelo', 'fichasModeloView()'],
     ['Mantenimiento', "goMas('mantenimiento')"],
     ['Órdenes de trabajo del taller', 'ordenesView()'],
     ['Multas', "goMas('multas')"],
@@ -69,7 +71,7 @@ export function viewMas() {
   ]);
   if (canVerFinanzas()) h += grupo('Cobros', [['Cruzar con el resumen de Mercado Pago o del banco', "goMas('cruce')"], ['Corregir montos cargados sin los ceros', 'corregirMontosView()']]);
   h += grupo('Plata del negocio', [['Caja chica del equipo', 'cajaChicaView(\'\')']].concat(canVerFinanzas() ? [['Patrimonio de la empresa', 'patrimonioView()']] : []));
-  h += grupo('Análisis', [['Chequeo trimestral del negocio (IA)', 'chequeoView()'], ['Cuánto tardás en resolver cada cosa', 'tiemposRespuestaView()'], ['Km de la flota por semana', 'kmFlotaView()'], ['Services hechos a tiempo', 'servicesATiempoView()'], ['Cuánto duran los choferes (edad y experiencia)', 'duracionChoferesView()'], ['Tablero semanal por auto', "goMas('tablero')"], ['Reportes', "goMas('reportes')"], ['Reporte personalizado', 'reportePersonalizadoForm()'], ['Metas de la flota', 'metasForm()']].concat(canVerFinanzas() ? [['Rendimiento de las financiaciones', 'rankingFinanciacionesView()']] : []));
+  h += grupo('Análisis', [['Cobranza de la semana (meta)', 'metaSemanalView()'], ['Pantalla para la oficina (TV)', 'pantallaOficina()'], ['Chequeo trimestral del negocio (IA)', 'chequeoView()'], ['Cuánto tardás en resolver cada cosa', 'tiemposRespuestaView()'], ['Km de la flota por semana', 'kmFlotaView()'], ['Services hechos a tiempo', 'servicesATiempoView()'], ['Cuánto duran los choferes (edad y experiencia)', 'duracionChoferesView()'], ['Tablero semanal por auto', "goMas('tablero')"], ['Reportes', "goMas('reportes')"], ['Reporte personalizado', 'reportePersonalizadoForm()'], ['Metas de la flota', 'metasForm()']].concat(canVerFinanzas() ? [['Rendimiento de las financiaciones', 'rankingFinanciacionesView()']] : []));
   h += grupo('Herramientas', [
     ['Tareas y recordatorios (del equipo)', 'recordatoriosView()'],
     ['Agenda de hoy y mañana', 'agendaView()'],
@@ -83,7 +85,7 @@ export function viewMas() {
   ]);
   if (isAdmin() && !featureOculta('desafios')) h += grupo('Motivación', [['Desafío del mes', 'desafioMesForm()']]);
   h += grupo('Choferes', [['Premio por referido', 'referidosView()']]);
-  h += grupo('Comunicación', [['Mensajes programados por WhatsApp', 'mensajesProgramadosView()']].concat(isAdmin() ? [['Tablón de anuncios (portal del chofer)', 'anunciosForm()']] : []));
+  h += grupo('Comunicación', [['Mensaje a todos los choferes', 'mensajeATodosForm()'], ['Mensajes programados por WhatsApp', 'mensajesProgramadosView()'], ['Mensaje de bienvenida', 'bienvenidaConfigForm()'], ['Guías para el chofer (portal)', 'guiasView()'], ['Página de la empresa (web)', 'sitioEmpresaForm()']].concat(isAdmin() ? [['Tablón de anuncios (portal del chofer)', 'anunciosForm()']] : []));
   const admin = [['Ajustes', "goMas('ajustes')"], ['Copia de seguridad', "goMas('backup')"], ['Google', "goMas('google')"], ['Salud de los datos', "goMas('saluddatos')"]];
   if (canVerFinanzas() && !featureOculta('autoseguro')) admin.push(['Fondo de autoseguro', 'autoseguroForm()']);
   if (isAdmin()) admin.push(['Usuarios y permisos', 'usuariosView()'], ['Auditoría', 'auditoriaView()'], ['Bitácora de decisiones', 'bitacoraView()']);
@@ -91,6 +93,8 @@ export function viewMas() {
   if (isAdmin() || nPend) admin.unshift(['Gastos para aprobar' + (nPend ? ' (' + nPend + ')' : ''), 'aprobacionesView()']);
   admin.push(['Papelera (lo borrado en los últimos 30 días)', 'papeleraView()']);
   h += grupo('Administración', admin);
+  h += '<div class="sec-t">Tamaño de letra <span class="small muted" style="font-weight:400">en este celular</span></div><div class="row" style="gap:8px;margin-bottom:6px">' +
+    TAMANOS_LETRA.map(([k, l]) => '<button class="btn ' + (tamanoLetra() === k ? '' : 'sec ') + 'sm grow" onclick="elegirLetra(\'' + k + '\');render()">' + l + '</button>').join('') + '</div>';
   h += grupo('Cuenta', [['Cambiar mi contraseña', 'cambiarMiContrasenaForm()'], ['Cerrar sesión (' + esc(S.user && S.user.email || '') + ')', 'logout()']]);
   const ver = typeof __VERSION__ !== 'undefined' ? __VERSION__ : '';
   h += '<div class="small muted" style="text-align:center;margin:18px 0 6px">' + (ver ? 'Versión del ' + esc(ver.slice(8, 10) + '/' + ver.slice(5, 7) + ' ' + ver.slice(11)) + ' · ' : '') + '<a class="tap" style="text-decoration:underline" onclick="buscarActualizacion()">Buscar actualización</a> · <a class="tap" style="text-decoration:underline" onclick="go(\'panel\');setTimeout(()=>recorridoApp(true),300)">Ver cómo usar la app</a></div>';

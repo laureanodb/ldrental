@@ -9,12 +9,13 @@ import { isContract, calc, driverName } from '../calc.js';
 import { esMensual, fechaMes, montoMensual } from '../financiados.js';
 import { esMia } from './recordatorio.js';
 import { isAdmin, isSupervisor } from '../roles.js';
+import { descargarIcs } from '../ics.js';
 
 const DIA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const etiquetaDia = (f, hoy) => { const d = days(parse(hoy), parse(f)); return d === 0 ? 'Hoy' : d === 1 ? 'Mañana' : DIA[parse(f).getDay()].replace(/^./, x => x.toUpperCase()) + ' ' + f.slice(8, 10) + '/' + f.slice(5, 7); };
 
 // ¿Le toca pagar a este auto en la fecha f?
-function cobroEnFecha(c, f) {
+export function cobroEnFecha(c, f) {
   if (!isContract(c) || !c.inicio || !c.monto || f < c.inicio) return null;
   if (esMensual(c)) {
     for (let n = 1; n < 600; n++) { const x = iso(fechaMes(c.inicio, n)); if (x === f) return n; if (x > f) return null; }
@@ -83,6 +84,18 @@ export function agendaView(r) {
     h += E.length ? E.map(e => '<div class="card row" style="gap:10px"><div class="grow tap" style="min-width:0" onclick="' + (e.boton ? '' : e.accion) + '"><span class="badge b-' + e.cls + '">' + esc(e.tipo) + '</span> <b>' + esc(e.texto) + '</b>' + (e.sub ? '<div class="small muted">' + esc(e.sub) + '</div>' : '') + '</div>' +
       (e.boton ? '<button class="btn sec sm" onclick="' + e.accion + '">' + e.boton + '</button>' : '') + '</div>').join('') : '<div class="small muted" style="margin-bottom:8px">Nada agendado.</div>';
   }
-  h += '<div class="row" style="margin-top:10px"><button class="btn sec grow" onclick="recordatoriosView()">+ Nueva tarea</button><button class="btn sec" onclick="closeModal()">Cerrar</button></div>';
+  h += '<button class="btn sec block" style="margin-top:10px" onclick="agendaAlCalendario()">Pasar ' + (rango === 2 ? 'hoy y mañana' : 'estos 7 días') + ' al calendario del celular</button>' +
+    '<div class="row" style="margin-top:8px"><button class="btn sec grow" onclick="recordatoriosView()">+ Nueva tarea</button><button class="btn sec" onclick="closeModal()">Cerrar</button></div>';
   openModal(h);
+}
+
+// Todo lo de la agenda visible, al calendario del celular (cumpleaños y cobros incluidos).
+export function agendaAlCalendario() {
+  const E = [];
+  for (let i = 0; i < rango; i++) {
+    const d = today(); d.setDate(d.getDate() + i);
+    const f = iso(d);
+    eventosDelDia(f).forEach((e, k) => E.push({ id: 'agenda-' + f + '-' + k + '-' + e.tipo, titulo: e.tipo + ': ' + e.texto, fecha: f, descripcion: e.sub }));
+  }
+  descargarIcs(E, 'agenda-ldrental');
 }

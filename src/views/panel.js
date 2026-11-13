@@ -9,6 +9,7 @@ import { render } from '../nav.js';
 import { toast } from '../modal.js';
 import { tarjetaMetas } from '../forms/control.js';
 import { tarjetaMisTareas } from '../forms/recordatorio.js';
+import { tarjetaMetaSemanal } from '../forms/meta-semanal.js';
 
 export function viewPanel() {
   const flota = activeCars();
@@ -63,7 +64,7 @@ export function viewPanel() {
   };
   const activos = (settings.panelKpis && settings.panelKpis.length) ? settings.panelKpis : Object.keys(kpis);
   h += '<div class="grid">' + activos.filter(k => kpis[k]).map(k => kpis[k]).join('') + '</div>';
-  h += tarjetaMisTareas() + '<button class="btn sec block" style="margin-bottom:12px" onclick="agendaView()">Agenda de hoy y mañana</button>';
+  h += tarjetaMetaSemanal() + tarjetaMisTareas() + '<button class="btn sec block" style="margin-bottom:12px" onclick="agendaView()">Agenda de hoy y mañana</button>';
   if (ui.showDesgloseCobrado) {
     const porMetodo = cobradoDelMesPorMetodo(0);
     const metodoLabel = m => m === 'sin_especificar' ? 'Sin especificar' : ((METODOS_PAGO.find(x => x[0] === m) || [0, m])[1]);

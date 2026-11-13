@@ -20,6 +20,9 @@ import { leerDocumento, archivoADataUrl } from '../ia.js';
 import { avisoAlquilerBajo } from './corregir-montos.js';
 import { fichaCompletaCard, camposAuto } from './ficha-completa.js';
 import { seccionPatenteAuto } from './consulta-patente.js';
+import { bienvenidaForm } from './bienvenida.js';
+import { seccionDanos } from './danos.js';
+import { seccionFichaModelo } from './ficha-modelo.js';
 import { botonTituloAuto, adjuntarTituloPendiente, descartarTituloPendiente, normalizarCilindrada } from './titulo-auto.js';
 import { tarjetaFirmaRemota } from '../contrato.js';
 import { cotizacion, enPesos, textoCotizacion } from '../dolar.js';
@@ -360,7 +363,7 @@ export function carForm(id) {
   }
 
   /* ---- Datos ---- */
-  let datos = ex ? seccionPapeles(c) + seccionPatenteAuto(c) : '';
+  let datos = ex ? seccionPapeles(c) + seccionPatenteAuto(c) + seccionDanos(c) + seccionFichaModelo(c) : '';
   if (ex && c.tipo !== 'financiado' && c.valorMercado && c.costoCompra) {
     const dif = c.valorMercado - c.costoCompra;
     datos += '<div class="card row between"><span class="muted">Valor de mercado vs. invertido</span><b style="color:' + (dif >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(dif) + '</b></div>';
@@ -848,6 +851,8 @@ export async function saveCar(btn, id) {
   if (o.seguroPaga === 'recupera' && seguroPaga(ex) !== 'recupera') await pasarSeguroDelMesAlChofer(o);
   if (o.gpsAlerta && !(ex && ex.gpsAlerta)) await marcarEnTaller(o.id);
   await adjuntarTituloPendiente(o);
+  // Chofer nuevo en el contrato: ofrecer el mensaje de bienvenida.
+  if (con && o.choferId && (!ex || ex.choferId !== o.choferId)) { toast('Auto guardado'); bienvenidaForm(o.id); return; }
   closeModal(); toast('Auto guardado');
 }
 export async function toggleFavoritoAuto(id) {

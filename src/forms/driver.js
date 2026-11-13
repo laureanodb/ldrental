@@ -64,7 +64,7 @@ export function driverForm(id) {
     const autoAsignado = S.cars.find(c => c.choferId === d.id && !c.vendido);
     h += '<div class="card" style="margin-bottom:10px">' + (autoAsignado ?
       '<div class="row between"><div><div class="small muted">Auto asignado</div><b>' + esc(autoAsignado.patente) + '</b></div>' +
-      '<div class="row"><button class="btn sec sm" onclick="carForm(\'' + autoAsignado.id + '\')">Ver</button><button class="btn sec sm" onclick="asignarAutoForm(\'' + d.id + '\')">Cambiar</button>' +
+      '<div class="row"><button class="btn sec sm" onclick="bienvenidaForm(\'' + autoAsignado.id + '\',\'chofer\')">Bienvenida</button><button class="btn sec sm" onclick="carForm(\'' + autoAsignado.id + '\')">Ver</button><button class="btn sec sm" onclick="asignarAutoForm(\'' + d.id + '\')">Cambiar</button>' +
       (autoAsignado.tipo === 'alquiler' ? '<button class="btn danger sm" onclick="confirmDel(this,()=>quitarAutoDeChofer(\'' + d.id + '\',\'' + autoAsignado.id + '\'))">Quitar</button>' : '') + '</div></div>' +
       valorSemanalRow(autoAsignado, d.id)
       : '<div class="row between"><span class="muted">Sin auto asignado</span><button class="btn sm" onclick="asignarAutoForm(\'' + d.id + '\')">Asignar auto</button></div>') +

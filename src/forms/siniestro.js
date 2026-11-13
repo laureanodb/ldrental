@@ -56,6 +56,7 @@ export function siniestroForm(carId, editId) {
   '</div>' +
   '<label class="f"><span>Notas</span><textarea id="si_notas">' + esc(ex ? ex.notas : '') + '</textarea></label>' +
   '<div class="sec-t">Archivos</div><div id="files"></div><div id="fstatus" class="small" style="margin:-4px 0 12px;overflow-wrap:anywhere"></div>' +
+  (ex ? '<button class="btn sec block" style="margin-bottom:8px" onclick="denunciaSiniestroView(\'' + ex.id + '\')">Armar la denuncia para el seguro</button>' : '') +
   '<div class="row"><button class="btn grow" onclick="saveSiniestro(' + (ex ? "'" + ex.id + "'" : 'null') + ')">Guardar</button><button class="btn sec" onclick="carForm(\'' + c.id + '\')">Cancelar</button></div>';
   openModal(h);
   renderFiles('siniestros', ex ? ex.id : null);

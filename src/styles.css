@@ -156,3 +156,6 @@ nav .dot{position:absolute;top:2px;left:calc(50% + 8px);background:var(--bad);co
   .toast{bottom:24px;}
   .two{gap:14px;}
 }
+
+/* Letra grande (Más → Cuenta): agranda todo junto, por celular. */
+html.letra-grande body{zoom:var(--zoom-letra,1);}

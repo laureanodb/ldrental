@@ -36,6 +36,9 @@ if (portalMatch) {
   });
 } else if (location.hash.match(/^#\/postulacion/)) {
   import('./postulacion.js').then(m => m.initPostulacion());
+} else if (location.hash.match(/^#\/empresa/) || (/^(www\.)?ldrental\.com\.ar$/i.test(location.hostname) && !location.hash)) {
+  // Página pública de la empresa: en www.ldrental.com.ar o con #/empresa en cualquier dirección.
+  import('./empresa.js').then(m => m.initEmpresa());
 } else {
   import('./app.js');
 }
