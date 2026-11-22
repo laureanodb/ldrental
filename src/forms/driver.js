@@ -19,7 +19,7 @@ import { estadoPortalVisto } from './mensajes.js';
 import { seccionManejoChofer } from './gps.js';
 import { fichaCompletaCard, camposChofer } from './ficha-completa.js';
 import { campoReferidoPor } from './referidos.js';
-import { normalizarTelAR, dniValido, mismoTel, mismoDni, avisarUnaVez } from '../validar.js';
+import { normalizarTelAR, dniValido, cuitValido, mismoTel, mismoDni, avisarUnaVez } from '../validar.js';
 import { urlPortal, linkVencido, nuevoToken } from './portal-ajustes.js';
 import { membrete, pies, proximoNumero } from '../membrete.js';
 
@@ -106,6 +106,8 @@ export function driverForm(id) {
   '<div class="two"><label class="f"><span>DNI</span><input id="d_dni" inputmode="numeric" value="' + esc(d.dni) + '"></label>' +
   '<label class="f"><span>Vence la licencia</span><input id="d_lic" type="date" value="' + esc(d.licVenc) + '"></label></div>' +
   '<label class="f"><span>Tipo de licencia</span><input id="d_tipoLicencia" placeholder="ej: B1, profesional..." value="' + esc(d.tipoLicencia) + '"></label>' +
+  '<div class="two"><label class="f"><span>CUIT/CUIL <small>para facturarle</small></span><input id="d_cuit" inputmode="numeric" value="' + esc(d.cuit || '') + '"></label>' +
+  '<label class="f"><span>Condición ante el IVA</span><select id="d_condIva">' + [['', 'Sin especificar'], ['6', 'Monotributista'], ['5', 'Consumidor final'], ['1', 'Responsable inscripto'], ['4', 'Exento']].map(x => '<option value="' + x[0] + '"' + (String(d.condicionIva || '') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label></div>' +
   '<label class="f"><span>Vence el certificado de antecedentes</span><input id="d_antecedentesVenc" type="date" value="' + esc(d.antecedentesVenc) + '"></label>' +
   '<label class="f"><span>Teléfono <small>con código de país, ej: +5491155551234</small></span><input id="d_tel" type="tel" value="' + esc(d.tel) + '"></label>' +
   '<div class="two"><label class="f"><span>Fecha de nacimiento</span><input id="d_nac" type="date" value="' + esc(d.fechaNacimiento) + '"></label>' +
@@ -261,6 +263,8 @@ export async function saveDriver(id) {
   const repDni = dni && S.drivers.find(x => x.id !== id && mismoDni(x.dni, dni));
   if (repDni) { toast('Ya existe un chofer con ese DNI: ' + repDni.nombre + (repDni.inactivo ? ' (inactivo)' : '')); return; }
   if (dni && !dniValido(dni) && avisarUnaVez('dni' + id, 'El DNI tiene que tener 7 u 8 números.', toast)) return;
+  const cuitCh = val('d_cuit').replace(/\D/g, '');
+  if (cuitCh && !cuitValido(cuitCh) && avisarUnaVez('cuit' + id, 'El CUIT/CUIL no es válido (revisá los números).', toast)) return;
   // Teléfonos siempre en formato de WhatsApp (+549…), así los links nunca fallan.
   const tel = normalizarTelAR(val('d_tel'));
   if (tel && !/^\+?[\d\s()-]{6,}$/.test(tel)) { toast('El teléfono no parece válido. Usá solo números, espacios, +, - o paréntesis'); return; }
@@ -276,7 +280,7 @@ export async function saveDriver(id) {
   // Se parte del registro guardado para no perder lo que no está en el formulario
   // (link del portal, comprobantes, comunicaciones, adelantos, etc.).
   const o = Object.assign({}, ex || {}, {
-    id: id || uid(), nombre, dni, licVenc: val('d_lic'), tipoLicencia: val('d_tipoLicencia'), antecedentesVenc: val('d_antecedentesVenc'), tel, domicilio: val('d_dom'), notas: val('d_notas'), docs,
+    id: id || uid(), nombre, dni, cuit: val('d_cuit').replace(/\D/g, ''), condicionIva: val('d_condIva'), licVenc: val('d_lic'), tipoLicencia: val('d_tipoLicencia'), antecedentesVenc: val('d_antecedentesVenc'), tel, domicilio: val('d_dom'), notas: val('d_notas'), docs,
     fechaNacimiento: val('d_nac'), fechaIngreso: val('d_ingreso'), rating: val('d_rating'),
     domicilioMaps: val('d_domMaps'), nacionalidad: val('d_nacionalidad'), estadoCivil: val('d_estadoCivil'),
     referenciaNombre: val('d_refNombre'), referenciaTel: normalizarTelAR(val('d_refTel')), nivelEstudios: val('d_estudios'),

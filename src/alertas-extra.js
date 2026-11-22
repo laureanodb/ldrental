@@ -11,6 +11,7 @@ import { alertasKmRaros } from './forms/km-raros.js';
 import { alertasReferidos } from './forms/referidos.js';
 import { alertaCierreMes } from './forms/cierre-mes.js';
 import { alertasSensibles } from './sensibles.js';
+import { alertaPruebaCopia } from './forms/prueba-copia.js';
 import { S } from './state.js';
 import { isSnoozed } from './snooze.js';
 import { parse, today, fdate, days } from './utils.js';
@@ -27,5 +28,5 @@ function alertasVencePanol() {
 }
 
 export function alertasExtra() {
-  return [...alertasChoferes(), ...alertasPedidosChofer(), ...alertasMensajes(), ...alertasVencePanol(), ...alertaChequeo(), ...alertasGps(), ...alertaConsultaMultas(), ...alertaMontosSinCeros(), ...alertasPatente(), ...alertasKmRaros(), ...alertasReferidos(), ...alertaCierreMes(), ...alertasSensibles()];
+  return [...alertasChoferes(), ...alertasPedidosChofer(), ...alertasMensajes(), ...alertasVencePanol(), ...alertaChequeo(), ...alertasGps(), ...alertaConsultaMultas(), ...alertaMontosSinCeros(), ...alertasPatente(), ...alertasKmRaros(), ...alertasReferidos(), ...alertaCierreMes(), ...alertasSensibles(), ...alertaPruebaCopia()];
 }

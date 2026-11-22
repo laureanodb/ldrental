@@ -17,6 +17,9 @@ verify_jwt = false
 [functions.leer-documento]
 verify_jwt = true
 
+[functions.facturar-arca]
+verify_jwt = true
+
 [functions.usuarios-admin]
 verify_jwt = true
 

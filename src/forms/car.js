@@ -259,7 +259,7 @@ export function carForm(id) {
       contrato += tarjetaFirmaRemota(c);
       if ((c.contratoHistorial || []).length > 1) {
         contrato += '<details style="margin-bottom:8px"><summary class="small muted" style="cursor:pointer">Historial de contratos (' + c.contratoHistorial.length + ')</summary>' +
-        c.contratoHistorial.slice().reverse().map(h => '<div class="row between small" style="padding:2px 0"><span>' + (h.renovacion ? 'Renovación · ' : '') + fdate(h.fecha) + '</span><span class="muted">' + (h.tipo === 'financiado' ? moneyUSD(h.monto) : money(h.monto)) + (h.cuotas ? ' · ' + h.cuotas + ' cuotas' : '') + (h.pdfId ? ' · <a class="tap" style="text-decoration:underline" onclick="viewFile(\'' + h.pdfId + '\',\'' + esc(h.pdfName || 'contrato.pdf') + '\')">ver PDF</a>' : '') + '</span></div>').join('') + '</details>';
+        c.contratoHistorial.slice().reverse().map(h => '<div class="row between small" style="padding:2px 0"><span>' + (h.renovacion ? 'Renovación · ' : '') + fdate(h.fecha) + '</span><span class="muted">' + (h.tipo === 'financiado' ? moneyUSD(h.monto) : money(h.monto)) + (h.cuotas ? ' · ' + h.cuotas + ' cuotas' : '') + (h.versionModelo ? ' · modelo v' + h.versionModelo : '') + (h.pdfId ? ' · <a class="tap" style="text-decoration:underline" onclick="viewFile(\'' + h.pdfId + '\',\'' + esc(h.pdfName || 'contrato.pdf') + '\')">ver PDF</a>' : '') + '</span></div>').join('') + '</details>';
       }
     }
     if (canVerFinanzas() && !featureOculta('socios')) contrato += seccionSocios(c);

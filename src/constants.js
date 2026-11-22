@@ -24,6 +24,12 @@ export const CHANGELOG = [
     'Modo práctica: la app con datos de ejemplo para aprender o capacitar a alguien, sin tocar nada real. Desde el ingreso o Más → Herramientas.',
     'Qué ve cada rol (Más → Usuarios): el administrador elige qué secciones ven el supervisor y el empleado.',
     'Revisar instalación (Más → Administración): prueba tablas, archivos y funciones de Supabase y dice qué falta configurar.',
+    'Bloqueo por inactividad: si la app queda sin usar 15 minutos, pide la huella o la contraseña (se cambia en Ajustes).',
+    'Prueba mensual de la copia de seguridad: la app revisa sola la última copia automática y avisa si falta algo.',
+    'Modelo de contrato con versión: tus cláusulas, quién lo revisó y qué versión firmó cada chofer.',
+    'Facturación electrónica con ARCA: cada cobro se puede facturar desde la lista de cobros, con su PDF y el QR.',
+    'Exportación mensual para el contador (Excel o CSV) con ingresos y gastos.',
+    'CUIT y condición ante el IVA en la ficha del chofer.',
   ] },
   { v: '2026-11-13', items: [
     'Bienvenida: al asignarle un auto a un chofer se arma el mensaje de WhatsApp con su link del portal, el monto, el día de cobro, el teléfono de emergencia y tus reglas. El texto base se cambia en Más → Mensaje de bienvenida.',

@@ -8,6 +8,8 @@
 --      La app los pasa sola a esta tabla la primera vez que la encuentra.
 --   2. app_errores: los errores que tiene la app en los celulares, para poder arreglarlos.
 --      Cualquier usuario activo puede anotar un error; solo el administrador los ve.
+--   3. arca_config: la clave, el certificado y el ticket de acceso de la facturación
+--      electrónica. No la puede leer nadie desde la app: solo la función facturar-arca.
 
 -- 1) Caja chica ---------------------------------------------------------
 create table if not exists public.cajachica (
@@ -59,3 +61,12 @@ end $$;
 drop trigger if exists app_errores_limpiar on public.app_errores;
 create trigger app_errores_limpiar after insert on public.app_errores
   for each statement execute function public.limpiar_app_errores();
+
+-- 3) Facturación electrónica (ARCA) -------------------------------------
+-- Con RLS activado y sin políticas: desde la app no se puede leer ni escribir.
+create table if not exists public.arca_config (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table public.arca_config enable row level security;

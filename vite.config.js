@@ -20,7 +20,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
+        id: './',
         name: 'LD Rental',
+        categories: ['business', 'productivity'],
+        orientation: 'portrait',
         short_name: 'LD Rental',
         description: 'Autos, choferes, cobros y vencimientos en un solo lugar.',
         lang: 'es',

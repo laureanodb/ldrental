@@ -63,7 +63,7 @@ id text primary key, data jsonb, updated_at timestamptz
 Colecciones (`COLS` en `src/constants.js`): cars, drivers, payments, gastos, proveedores,
 sanciones, prospectos, inspecciones, mantenimientos, multas, depositos, siniestros,
 gastosrecurrentes, recordatorios, encuestas, repuestos. Aparte: `app_settings`,
-`profiles`, `audit_log`, `cajachica`, `app_errores`, `push_subscriptions`.
+`profiles`, `audit_log`, `cajachica`, `app_errores`, `push_subscriptions`, `arca_config` (solo la función de ARCA).
 
 **Permisos (RLS):** cualquier usuario activo lee y escribe; borrar, solo administrador o
 supervisor (`can_delete()`); auditoría y errores, solo el administrador los lee.
@@ -84,6 +84,7 @@ mes cerrado solo los toca un administrador, y queda en la auditoría como cambio
 | `gps-webhook` | Recibe posiciones del GPS (clave propia). | sí |
 | `leer-documento` | Lee títulos, pólizas, facturas y comprobantes con IA (secreto `ANTHROPIC_API_KEY`). | no |
 | `usuarios-admin` | Cambiar contraseñas y crear usuarios (solo administrador). | no |
+| `facturar-arca` | Facturación electrónica con ARCA (WSAA + WSFEv1). Genera la clave y el pedido de certificado; guarda clave, certificado y ticket en `arca_config` (sin acceso desde la app). Homologación por defecto. | no |
 | `push-diario`, `push-semanal` | Notificaciones. | tarea programada |
 | `backup-semanal` | Copia semanal a Storage. | tarea programada |
 | `whatsapp-resumen`, `whatsapp-webhook` | WhatsApp Business (opcional). | — |

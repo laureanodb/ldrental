@@ -7,6 +7,7 @@ import { COLS } from '../constants.js';
 import { esc } from '../utils.js';
 import { openModal } from '../modal.js';
 import { isAdmin } from '../roles.js';
+import { settings } from '../settings.js';
 
 // Versión que tiene que tener publicada cada función (la que está en supabase/functions).
 const VERSIONES = { 'portal-chofer': '2026-11-22', postulacion: '2026-11-22' };
@@ -52,6 +53,13 @@ export async function revisarInstalacion() {
   const st = await sb.storage.from(BUCKET).list('', { limit: 1 }).catch(e => ({ error: e }));
   out.push(fila(st && !st.error ? 'ok' : 'bad', 'Archivos (fotos y PDF)', st && !st.error ? '' : 'No se puede leer el espacio de archivos "' + esc(BUCKET) + '". Revisá en Supabase → Storage que exista y tenga sus permisos.')); pintar();
 
+  // 4b. Copias automáticas
+  const bk = await sb.storage.from(BUCKET).list('backups', { limit: 100, sortBy: { column: 'name', order: 'desc' } }).catch(e => ({ error: e }));
+  const ultimas = bk && !bk.error ? (bk.data || []).filter(f => /\.json$/.test(f.name)).sort((a, b) => String(b.name).localeCompare(String(a.name))) : [];
+  const fechaBk = ultimas.length ? (/copia-(\d{4}-\d{2}-\d{2})/.exec(ultimas[0].name) || [])[1] : '';
+  const diasBk = fechaBk ? Math.round((Date.now() - new Date(fechaBk + 'T12:00:00')) / 864e5) : null;
+  out.push(fila(diasBk != null && diasBk <= 10 ? 'ok' : 'warn', 'Copia de seguridad automática', diasBk == null ? 'No hay copias automáticas. Programá la función backup-semanal (ver la guía).' : 'La última es de hace ' + diasBk + ' día(s)' + (diasBk > 10 ? ': no se están haciendo todas las semanas.' : '.') + (settings.pruebaCopia ? ' Última prueba de restauración: ' + (settings.pruebaCopia.ok ? 'completa' : 'con problemas') + '.' : '')));
+
   // 5. Ajustes compartidos
   const cfg = await sb.from('app_settings').select('id').eq('id', 'main').maybeSingle();
   out.push(fila(cfg && cfg.data ? 'ok' : 'warn', 'Ajustes compartidos', cfg && cfg.data ? '' : 'Todavía no se guardaron. Entrá a Más → Ajustes y guardá algo (por ejemplo el nombre de la empresa).'));
@@ -65,6 +73,10 @@ export async function revisarInstalacion() {
     const u = await llamar('usuarios-admin', { method: 'POST', headers: { Authorization: 'Bearer ' + token, apikey: SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: '__diagnostico__' }) });
     out.push(fila(u.status === 404 || !u.j ? 'bad' : 'ok', 'Cambio de contraseñas de usuarios', u.status === 404 || !u.j ? faltaFuncion('usuarios-admin') : ''));
     pintar();
+  }
+  if (token && settings.arca) {
+    const a = await llamar('facturar-arca', { method: 'POST', headers: { Authorization: 'Bearer ' + token, apikey: SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ accion: 'estado', cuit: settings.pagoCuit || '' }, settings.arca)) });
+    out.push(fila(a.status === 404 || !a.j ? 'bad' : a.j.ok ? 'ok' : 'warn', 'Facturación electrónica (ARCA)', a.status === 404 || !a.j ? faltaFuncion('facturar-arca') : a.j.ok ? (a.j.modo === 'produccion' ? 'Producción' : 'Modo prueba') + ' · certificado vence ' + esc(a.j.certificadoVence || '—') : a.j.error === 'sin_certificado' ? 'Falta el certificado: Más → Facturación electrónica, pasos 1 y 2.' : esc(a.j.error)));
   }
   const po = await llamar('postulacion');
   out.push(fila(!po.j ? 'bad' : po.j.version === VERSIONES.postulacion ? 'ok' : 'warn', 'Formulario de postulación',

@@ -68,6 +68,7 @@ export function ajustesCard() {
   '<label class="f"><span>Puntos de licencia: límite de aviso</span><input id="a_puntosLimite" inputmode="numeric" value="' + settings.puntosLimite + '"></label></div>' +
   '<label class="f"><span>Auto disponible sin asignar: avisar a los <small>días</small></span><input id="a_autoParadoDias" inputmode="numeric" value="' + settings.autoParadoDias + '"></label>' +
   '<label class="f"><span>Cobros: solo admin puede borrar/editar los de más de <small>días</small></span><input id="a_cobroEdicionDias" inputmode="numeric" value="' + settings.cobroEdicionDias + '"></label>' +
+  '<label class="f"><span>Bloquear la app si no se usa por <small>minutos, en este celular (0 = nunca)</small></span><input id="a_bloqueoMin" inputmode="numeric" value="' + (settings.bloqueoMinutos === undefined ? 15 : settings.bloqueoMinutos) + '"></label>' +
   '<label class="f"><span>Avisar si el almacenamiento de archivos supera <small>MB</small></span><input id="a_almacenamientoMB" inputmode="numeric" value="' + settings.almacenamientoAvisoMB + '"></label>' +
   '<div class="two"><label class="f"><span>Vigencia de contrato de alquiler <small>meses</small></span><input id="a_vigenciaAlquiler" inputmode="numeric" value="' + settings.vigenciaContratoAlquilerMeses + '"></label>' +
   '<label class="f"><span>Vigencia de contrato financiado <small>meses</small></span><input id="a_vigenciaFinanciado" inputmode="numeric" value="' + settings.vigenciaContratoFinanciadoMeses + '"></label></div>' +
@@ -139,6 +140,7 @@ export function saveAjustes() {
     autoParadoDias: +val('a_autoParadoDias') || settings.autoParadoDias,
     cobroEdicionDias: +val('a_cobroEdicionDias') || settings.cobroEdicionDias,
     almacenamientoAvisoMB: +val('a_almacenamientoMB') || settings.almacenamientoAvisoMB,
+    bloqueoMinutos: Math.max(0, Math.round(+val('a_bloqueoMin') || 0)),
     vigenciaContratoAlquilerMeses: +val('a_vigenciaAlquiler') || settings.vigenciaContratoAlquilerMeses,
     vigenciaContratoFinanciadoMeses: +val('a_vigenciaFinanciado') || settings.vigenciaContratoFinanciadoMeses,
     autoseguroCostoEstimadoMensual: +val('a_autoseguroCosto') || 0,
@@ -265,6 +267,7 @@ export function backupCard() {
   '<div class="row">' + '<button class="btn grow" onclick="backup()">Descargar copia</button>' + '<label class="btn sec grow filebtn">Restaurar copia<input id="restoreIn" type="file" onchange="pickRestore(this)"></label></div></div>' +
   '<div class="card"><div class="row between"><span class="muted">Uso de datos</span><b>' + u.registros + ' registros · ' + fmtBytes(u.bytes) + '</b></div>' +
   u.porColeccion.slice(0, 6).map(x => '<div class="row between small" style="padding:2px 0"><span class="muted">' + esc(x.col) + '</span><span>' + x.n + ' · ' + fmtBytes(x.bytes) + '</span></div>').join('') +
+  (isAdmin() ? '<button class="btn sec block" style="margin-top:8px" onclick="probarCopiaAhora()">Probar la última copia automática</button>' + (settings.pruebaCopia ? '<div class="small muted" style="margin-top:4px">Última prueba: ' + fdate(settings.pruebaCopia.fecha) + ' · ' + (settings.pruebaCopia.ok ? '✓ completa' : '✗ con problemas') + '</div>' : '') : '') +
   (isAdmin() ? '<button class="btn sec block" style="margin-top:8px" onclick="buscarArchivosHuerfanos()">Buscar archivos huérfanos</button>' : '') +
   (isAdmin() ? '<button class="btn sec block" style="margin-top:8px" onclick="archivarCobrosViejosForm()">Archivar cobros viejos</button>' : '') + '</div>' +
   (canVerFinanzas() ? '<div class="card"><div class="small muted" style="margin-bottom:10px">Exportá todos los datos a un archivo Excel (una hoja por sección) para analizarlos o compartirlos.</div>' +

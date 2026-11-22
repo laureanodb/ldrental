@@ -68,6 +68,8 @@ export async function start() {
   cargarSettingsServidor().then(changed => { if (changed) render(); verificarCierreForzado(); });
   cargarSensibles().then(hay => { if (hay) render(); });
   cargarCajaChica().catch(() => {});
+  // Una vez por mes, probar sola la última copia automática (cuando ya cargó todo).
+  setTimeout(() => import('./forms/prueba-copia.js').then(m => m.pruebaMensualCopia()).then(hizo => { if (hizo) render(); }).catch(() => {}), 60000);
   if (!vigilandoVuelta) {
     vigilandoVuelta = true;
     // Al volver a la app: ajustes nuevos (cierres de sesión, meses cerrados) y cambios para revisar.

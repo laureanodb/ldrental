@@ -69,3 +69,13 @@ export async function loginConBiometria() {
     if (err) { err.style.color = 'var(--bad)'; err.textContent = 'No se pudo verificar la biometría.'; }
   }
 }
+// Solo confirma que es la misma persona (para desbloquear la app), sin tocar la sesión.
+export async function verificarBiometria() {
+  let data; try { data = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { data = null; }
+  if (!data || !data.credentialId) return false;
+  try {
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const a = await navigator.credentials.get({ publicKey: { challenge, allowCredentials: [{ id: unb64(data.credentialId), type: 'public-key' }], userVerification: 'required', timeout: 60000 } });
+    return Boolean(a);
+  } catch (e) { return false; }
+}

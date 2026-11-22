@@ -12,8 +12,14 @@ import { membrete, pies, proximoNumero } from './membrete.js';
 
 let renovando = false;
 
+// Modelo de contrato con número de versión: cambia cada vez que se cambia el texto, y cada
+// contrato generado o firmado guarda qué versión se usó (Más → Modelo de contrato).
+export function modeloContrato() {
+  const m = settings.contratoModelo || {};
+  return { version: +m.version || 1, clausulas: Array.isArray(m.clausulas) ? m.clausulas : [], revisadoPor: m.revisadoPor || '', revisadoEl: m.revisadoEl || '' };
+}
 async function registrarGeneracionContrato(c, doc, filename) {
-  const entry = { fecha: iso(today()), tipo: c.tipo, monto: +c.monto || 0, cuotas: c.cuotas || null, total: c.total || null, renovacion: renovando };
+  const entry = { fecha: iso(today()), choferId: c.choferId || '', versionModelo: modeloContrato().version, tipo: c.tipo, monto: +c.monto || 0, cuotas: c.cuotas || null, total: c.total || null, renovacion: renovando };
   if (as) {
     try {
       const blob = doc.output('blob');
@@ -135,17 +141,23 @@ export function textoContrato(c, d) {
     P.push(n + '. Depósito de garantía: el chofer deberá constituir un depósito de garantía de ' + money(d.depositoObjetivo) + ', que será retenido por la empresa durante la vigencia del contrato y devuelto al finalizar el mismo, descontando cualquier daño, deuda o incumplimiento pendiente.'); n++;
   }
   P.push(n + '. Uso del vehículo: el chofer se compromete a utilizar el vehículo exclusivamente para actividades de transporte autorizadas, mantenerlo en buen estado y comunicar de inmediato cualquier siniestro, rotura o inconveniente.'); n++;
-  P.push(n + '. Rescisión: cualquiera de las partes podrá rescindir este contrato con aviso previo, quedando pendientes de liquidación los montos adeudados hasta la fecha de finalización.');
-  return { titulo: 'Contrato de ' + (c.tipo === 'financiado' ? 'financiación de vehículo' : 'alquiler de vehículo'), parrafos: P };
+  P.push(n + '. Rescisión: cualquiera de las partes podrá rescindir este contrato con aviso previo, quedando pendientes de liquidación los montos adeudados hasta la fecha de finalización.'); n++;
+  const m = modeloContrato();
+  m.clausulas.filter(x => String(x || '').trim()).forEach(x => { P.push(n + '. ' + String(x).trim()); n++; });
+  return { titulo: 'Contrato de ' + (c.tipo === 'financiado' ? 'financiación de vehículo' : 'alquiler de vehículo'), parrafos: P, version: m.version };
 }
 // Arma el PDF. firma: imagen PNG (dataURL). pie: líneas extra debajo de la firma (datos de la firma remota).
-async function pdfContrato(titulo, parrafos, fecha, firmaData, pie) {
+async function pdfContrato(titulo, parrafos, fecha, firmaData, pie, version) {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const margin = 15, width = 210 - margin * 2;
   const numero = proximoNumero('contrato');
   let y = membrete(doc, { titulo: 'Contrato', numero });
-  doc.setFontSize(12); doc.text(titulo, margin, y); y += 10;
+  doc.setFontSize(12); doc.text(titulo, margin, y); y += 5;
+  const m = modeloContrato(), v = version || m.version;
+  doc.setFontSize(8); doc.setTextColor(110);
+  doc.text('Modelo de contrato versión ' + v + (v === m.version && m.revisadoPor ? ' · revisado por ' + m.revisadoPor + (m.revisadoEl ? ' el ' + fdate(m.revisadoEl) : '') : ''), margin, y);
+  doc.setTextColor(0); y += 7;
   doc.setFontSize(10);
   const parrafo = txt => {
     const lines = doc.splitTextToSize(txt, width);
@@ -221,7 +233,7 @@ export async function mandarContratoAFirmar(carId) {
   const d = de('drivers', 'id', c.choferId)[0]; if (!d) { toast('Chofer no encontrado'); return; }
   if (!d.portalToken) { toast('Primero generá el link del portal en la ficha del chofer (solapa Datos)'); return; }
   const t = textoContrato(c, d);
-  const firmaRemota = { id: uid(), estado: 'pendiente', creado: new Date().toISOString(), choferId: d.id, titulo: t.titulo, parrafos: t.parrafos, renovacion: renovando, tipo: c.tipo, monto: +c.monto || 0, cuotas: c.cuotas || null, total: c.total || null };
+  const firmaRemota = { id: uid(), estado: 'pendiente', creado: new Date().toISOString(), choferId: d.id, titulo: t.titulo, parrafos: t.parrafos, versionModelo: t.version, renovacion: renovando, tipo: c.tipo, monto: +c.monto || 0, cuotas: c.cuotas || null, total: c.total || null };
   if (!(await save('cars', Object.assign({}, c, { firmaRemota })))) return;
   renovando = false;
   avisoFirmaRemota(carId);
@@ -258,13 +270,13 @@ export async function descargarContratoFirmado(carId) {
     const cuando = new Date(f.firmadoEn);
     const hora = cuando.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     const pie = ['Firmado digitalmente desde el portal del chofer el ' + hora + ' (hora de Argentina) por ' + (f.nombreFirmante || '') + (f.dniFirmante ? ', DNI ' + f.dniFirmante : '') + ', quien declaró haber leído y aceptado el contrato.' + (f.ip ? ' IP: ' + f.ip + '.' : ''), 'Código de verificación: ' + f.id];
-    const doc = await pdfContrato(f.titulo, f.parrafos, iso(cuando), firma, pie);
+    const doc = await pdfContrato(f.titulo, f.parrafos, iso(cuando), firma, pie, f.versionModelo);
     const filename = 'contrato-firmado-' + c.patente + '-' + iso(cuando) + '.pdf';
     doc.save(filename);
     if (!f.pdfId && as) {
       try {
         const up = await as.upload(doc.output('blob'));
-        const entry = { fecha: iso(cuando), tipo: f.tipo, monto: f.monto, cuotas: f.cuotas, total: f.total, renovacion: f.renovacion, pdfId: up.id, pdfName: filename, firmadoPorPortal: true };
+        const entry = { fecha: iso(cuando), choferId: f.choferId || c.choferId || '', versionModelo: f.versionModelo || null, tipo: f.tipo, monto: f.monto, cuotas: f.cuotas, total: f.total, renovacion: f.renovacion, pdfId: up.id, pdfName: filename, firmadoPorPortal: true };
         await save('cars', Object.assign({}, c, { firmaRemota: Object.assign({}, f, { pdfId: up.id, pdfName: filename }), contratoHistorial: (c.contratoHistorial || []).concat([entry]) }));
       } catch (e) { /* el PDF igual se descargó */ }
     }

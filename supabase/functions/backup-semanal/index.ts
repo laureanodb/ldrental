@@ -29,6 +29,10 @@ Deno.serve(async () => {
 
     const payload: Record<string, unknown> = { app: 'mi-flota', version: 1, fecha: new Date().toISOString() };
     for (const col of COLS) payload[col] = await fetchAll(sb, col);
+    // También los ajustes compartidos y la caja chica (si ya existe su tabla).
+    const cfg = await sb.from('app_settings').select('data').eq('id', 'main').maybeSingle();
+    if (!cfg.error && cfg.data) payload.ajustes = cfg.data.data || {};
+    try { payload.cajachica = await fetchAll(sb, 'cajachica'); } catch (_) { /* la tabla todavía no existe */ }
 
     const filename = 'backups/copia-' + new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10) + '-' + Date.now() + '.json';
     const body = new Blob([JSON.stringify(payload)], { type: 'application/json' });

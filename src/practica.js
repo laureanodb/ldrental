@@ -37,18 +37,18 @@ function datosEjemplo() {
     auto('pc1', 'AE 123 BC', 'Fiat', 'Cronos', 2022, 'Blanco', 'alquiler', 'pd1', 300000, 63, 84500),
     auto('pc2', 'AD 456 FG', 'Chevrolet', 'Onix', 2021, 'Gris', 'alquiler', 'pd2', 280000, 35, 102300, { vtv: enDias(6) }),
     auto('pc3', 'AF 789 HJ', 'Toyota', 'Etios', 2020, 'Negro', 'alquiler', 'pd3', 260000, 120, 141000),
-    auto('pc4', 'AC 321 KL', 'Volkswagen', 'Voyage', 2019, 'Rojo', 'financiado', 'pd4', 350000, 50, 120000, { cuotas: 104 }),
+    auto('pc4', 'AC 321 KL', 'Volkswagen', 'Voyage', 2019, 'Rojo', 'financiado', 'pd4', 250, 50, 120000, { cuotas: 104 }),
     auto('pc5', 'AB 654 MN', 'Renault', 'Logan', 2018, 'Plata', 'taller', '', 0, 0, 160500),
     auto('pc6', 'AG 987 PQ', 'Peugeot', '208', 2023, 'Azul', 'disponible', '', 0, 0, 31000, { valorSemanal: 320000 }),
   ];
   const payments = [];
   let n = 0;
-  const pago = (carId, choferId, dias, monto, metodo, tipo) => payments.push({ id: 'pp' + (++n), carId, choferId, fecha: haceDias(dias), monto, tipo: tipo || 'alquiler', metodo: metodo || 'transferencia', depositado: dias > 7 });
+  const pago = (carId, choferId, dias, monto, metodo, tipo) => payments.push({ id: 'pp' + (++n), carId, choferId, fecha: haceDias(dias), monto, tipo: tipo || 'alquiler', metodo: metodo || 'transferencia', depositado: dias > 7, ...(tipo === 'cuota' ? { cotizacionDia: 1200, cotizacionDiaNombre: 'Dólar blue' } : {}) });
   // Martín: al día. Lucía: debe una semana. Jorge: debe dos. Carla: financiado al día.
   for (let s = 0; s <= 9; s++) pago('pc1', 'pd1', 63 - s * 7, 300000, s % 2 ? 'efectivo' : 'transferencia');
   for (let s = 0; s <= 3; s++) pago('pc2', 'pd2', 35 - s * 7, 280000, 'mercadopago');
   for (let s = 0; s <= 15; s++) pago('pc3', 'pd3', 120 - s * 7, 260000);
-  for (let s = 0; s <= 7; s++) pago('pc4', 'pd4', 50 - s * 7, 350000, 'transferencia', 'cuota');
+  for (let s = 0; s <= 7; s++) pago('pc4', 'pd4', 50 - s * 7, 250, 'transferencia', 'cuota');
   const gastos = [
     { id: 'pg1', carId: 'pc5', categoria: 'repuestos', fecha: haceDias(4), costo: 185000, proveedor: 'Taller El Rápido', descripcion: 'Embrague completo' },
     { id: 'pg2', carId: 'pc1', categoria: 'combustible', fecha: haceDias(10), costo: 25000, descripcion: 'Carga de GNC' },
