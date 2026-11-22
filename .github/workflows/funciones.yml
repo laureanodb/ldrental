@@ -21,7 +21,7 @@ jobs:
       # El bot de WhatsApp (whatsapp-webhook y whatsapp-resumen) no se publica desde acá.
       FUNCIONES: portal-chofer leer-documento postulacion usuarios-admin facturar-arca gps-webhook push-diario push-semanal backup-semanal
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Revisar la clave
         id: clave
         run: |
