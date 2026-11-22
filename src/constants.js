@@ -4,6 +4,18 @@ export const VENC = [['vtv', 'VTV'], ['seguro', 'Seguro'], ['impuesto', 'Impuest
 export const COLS = ['cars', 'drivers', 'payments', 'gastos', 'proveedores', 'sanciones', 'prospectos', 'inspecciones', 'mantenimientos', 'multas', 'depositos', 'siniestros', 'gastosrecurrentes', 'recordatorios', 'encuestas', 'repuestos'];
 
 export const CHANGELOG = [
+  { v: '2026-11-22', items: [
+    'Si dos personas editan lo mismo a la vez, la app junta los cambios; si tocaron el mismo dato, te pregunta cuál dejar.',
+    'Cierre de mes (Más → Administración): un mes cerrado ya no se puede tocar salvo el administrador, y queda registrado.',
+    'Aviso de cambios sensibles: pagos borrados, montos cambiados y ajustes a favor hechos por otra persona aparecen en Alertas.',
+    'Validación de DNI, CUIT, CBU, patente y teléfono (se pasa solo al formato de WhatsApp) y aviso de choferes repetidos.',
+    'Cerrar sesión en todos los dispositivos, propio o de otro usuario.',
+    'Portal del chofer: color de la marca, horario y teléfono de atención, términos de uso, vencimiento de links y mensajes claros si falla.',
+    'Postulación: protección contra envíos automáticos y límite por conexión.',
+    'Errores de la app: si algo falla queda registrado y el administrador lo ve en Más → Errores de la app.',
+    'Todos los PDF con el mismo membrete (logo, CUIT, teléfono, dirección), número correlativo y página X de Y.',
+    'Acta de entrega y de devolución del auto: km, combustible, elementos, daños, fotos y firma de los dos en el celular. Queda el PDF en los archivos del auto.',
+  ] },
   { v: '2026-11-13', items: [
     'Bienvenida: al asignarle un auto a un chofer se arma el mensaje de WhatsApp con su link del portal, el monto, el día de cobro, el teléfono de emergencia y tus reglas. El texto base se cambia en Más → Mensaje de bienvenida.',
     'Mensaje a todos los choferes (Más → Comunicación): lo escribís una vez y lo mandás por WhatsApp uno por uno, con su nombre, patente y deuda.',
@@ -181,7 +193,7 @@ export function normCar(c) {
 }
 
 export const DCATS = [...DOCS.map(x => [x[0], x[1].replace(/ \(.*\)/, '')]), ['otro', 'Otro']];
-export const CCATS = [['cedula', 'Cédula / tarjeta'], ['titulo', 'Título / boleto de compra'], ['seguro', 'Póliza de seguro'], ['seguroCredencial', 'Credencial de circulación del seguro'], ['seguroCertificado', 'Certificado de cobertura del seguro'], ['vtv', 'VTV'], ['patente', 'Comprobante de impuesto automotor'], ['contrato', 'Contrato'], ['manual', 'Manual del auto'], ['fotos', 'Fotos del auto'], ['otro', 'Otro']];
+export const CCATS = [['cedula', 'Cédula / tarjeta'], ['titulo', 'Título / boleto de compra'], ['seguro', 'Póliza de seguro'], ['seguroCredencial', 'Credencial de circulación del seguro'], ['seguroCertificado', 'Certificado de cobertura del seguro'], ['vtv', 'VTV'], ['patente', 'Comprobante de impuesto automotor'], ['contrato', 'Contrato'], ['acta', 'Acta de entrega/devolución'], ['manual', 'Manual del auto'], ['fotos', 'Fotos del auto'], ['otro', 'Otro']];
 export const MCATS = [['factura', 'Factura del taller'], ['foto', 'Foto del trabajo'], ['otro', 'Otro'], ['antes', 'Foto de antes'], ['despues', 'Foto de después']];
 export const TCATS = [['acta', 'Foto del acta/infracción'], ['comprobante', 'Comprobante de pago'], ['otro', 'Otro']];
 export const ACCEPT = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];

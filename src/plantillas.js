@@ -8,6 +8,7 @@ import { settings } from './settings.js';
 import { toast, openModal } from './modal.js';
 import { save } from './data.js';
 import { de } from './memo.js';
+import { membrete, pies, proximoNumero } from './membrete.js';
 
 const PLANTILLAS = [
   ['intimacion_pago', 'Intimación de pago', d => 'Por medio de la presente, se intima a Ud. a regularizar en el plazo de 48 (cuarenta y ocho) horas la deuda que mantiene por el uso del vehículo asignado, la cual asciende a ' + money(driverDebt(d.id)) + ' a la fecha. Vencido dicho plazo sin que se verifique el pago, se procederá conforme a las cláusulas del contrato suscripto, incluyendo la eventual recuperación del vehículo y las acciones legales que correspondan.'],
@@ -58,8 +59,8 @@ export async function generarPlantilla(driverId) {
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const margin = 15, width = 210 - margin * 2;
-    let y = 20;
-    doc.setFontSize(15); doc.text(settings.companyName || 'LD Rental', margin, y); y += 8;
+    const numero = proximoNumero('carta');
+    let y = membrete(doc, { titulo: plantilla[1], numero });
     doc.setFontSize(12); doc.text(plantilla[1], margin, y); y += 10;
     doc.setFontSize(10);
     const parrafo = txt => {
@@ -75,6 +76,7 @@ export async function generarPlantilla(driverId) {
     if (y > 250) { doc.addPage(); y = 20; }
     doc.text('Firma: _________________________', margin, y); y += 10;
     doc.setFontSize(8); doc.setTextColor(140); doc.text('Generado por ' + (settings.companyName || 'LD Rental') + '. Revisar con un abogado antes de enviar si el caso lo requiere.', margin, y);
+    pies(doc, numero);
     doc.save('carta-' + tipo + '-' + (d.nombre || 'chofer').replace(/\s+/g, '-').toLowerCase() + '-' + iso(today()) + '.pdf');
     const cartasHistorial = (d.cartasHistorial || []).concat([{ id: uid(), fecha: iso(today()), tipo, titulo: plantilla[1], enviada: false, medio: '' }]);
     await save('drivers', Object.assign({}, d, { cartasHistorial }));

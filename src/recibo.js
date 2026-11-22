@@ -5,6 +5,8 @@ import { settings } from './settings.js';
 import { toast } from './modal.js';
 import { METODOS_PAGO } from './constants.js';
 import { de } from './memo.js';
+import { save } from './data.js';
+import { membrete, pies, proximoNumero } from './membrete.js';
 
 const metodoLabel = m => ((METODOS_PAGO.find(x => x[0] === m) || [])[1]) || '';
 
@@ -15,10 +17,8 @@ async function construirRecibo(paymentId) {
   const chofer = driverName(p.choferId);
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a5' });
-  let y = 18;
-  doc.setFontSize(16); doc.text(settings.companyName || 'LD Rental', 12, y); y += 8;
-  doc.setFontSize(11); doc.text('Recibo de cobro', 12, y); y += 10;
-  doc.setFontSize(10);
+  const numero = p.reciboNumero || proximoNumero('recibo');
+  let y = membrete(doc, { titulo: 'Recibo de cobro', numero, fecha: p.fecha });
   const linea = (label, val) => { doc.text(label, 12, y); doc.text(String(val), 60, y); y += 7; };
   linea('Fecha:', fdate(p.fecha));
   linea('Auto:', c ? c.patente : '—');
@@ -31,16 +31,23 @@ async function construirRecibo(paymentId) {
   y += 4;
   doc.setFontSize(13); doc.text('Monto: ' + (p.tipo === 'cuota' ? moneyUSD(p.monto) : money(p.monto)), 12, y);
   y += 14;
-  doc.setFontSize(8); doc.setTextColor(140); doc.text('Comprobante generado por ' + (settings.companyName || 'LD Rental'), 12, y);
-  const filename = 'recibo-' + (c ? c.patente : 'auto') + '-' + p.fecha + '.pdf';
-  return { doc, filename };
+  pies(doc, numero);
+  const filename = 'recibo-' + numero + '-' + (c ? c.patente : 'auto').replace(/\s/g, '') + '.pdf';
+  return { doc, filename, numero, p };
 }
 
+// El número queda guardado en el cobro, así el mismo recibo sale siempre con el mismo número.
+async function recordarNumero(r) {
+  if (!r || !r.p || r.p.reciboNumero) return;
+  if ((settings.mesesCerrados || []).includes(String(r.p.fecha || '').slice(0, 7))) return;
+  try { await save('payments', Object.assign({}, r.p, { reciboNumero: r.numero })); } catch (e) { /* sin número guardado: no pasa nada */ }
+}
 export async function reciboPDF(paymentId) {
   try {
     const r = await construirRecibo(paymentId);
     if (!r) return;
     r.doc.save(r.filename);
+    recordarNumero(r);
     toast('Recibo generado');
   } catch (e) {
     toast('No se pudo generar el recibo: ' + ((e && e.message) || 'error'));
@@ -57,8 +64,8 @@ export async function estadoCuentaPDF(driverId) {
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const margin = 15, width = 210 - margin * 2;
-    let y = 20;
-    doc.setFontSize(15); doc.text(settings.companyName || 'LD Rental', margin, y); y += 8;
+    const numero = proximoNumero('estado');
+    let y = membrete(doc, { titulo: 'Estado de cuenta', numero });
     doc.setFontSize(12); doc.text('Estado de cuenta — ' + d.nombre, margin, y); y += 7;
     doc.setFontSize(9); doc.setTextColor(120); doc.text('Período: ' + fdate(desde) + ' al ' + fdate(hasta), margin, y); doc.setTextColor(0); y += 9;
     doc.setFontSize(10);
@@ -89,6 +96,7 @@ export async function estadoCuentaPDF(driverId) {
     if (seguro) { doc.text('Seguro a pagar: ' + money(seguro), margin, y); y += 7; }
     y += 3;
     doc.setFontSize(8); doc.setTextColor(140); doc.text('Comprobante generado por ' + (settings.companyName || 'LD Rental'), margin, y);
+    pies(doc, numero);
     doc.save('estado-cuenta-' + d.nombre.replace(/\s+/g, '-').toLowerCase() + '-' + hasta + '.pdf');
     toast('Estado de cuenta generado');
   } catch (e) {
@@ -99,6 +107,7 @@ export async function reciboCompartir(paymentId) {
   try {
     const r = await construirRecibo(paymentId);
     if (!r) return;
+    recordarNumero(r);
     if (navigator.share && navigator.canShare) {
       const blob = r.doc.output('blob');
       const file = new File([blob], r.filename, { type: 'application/pdf' });

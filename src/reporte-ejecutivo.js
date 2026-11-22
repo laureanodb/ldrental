@@ -5,6 +5,7 @@ import { toast } from './modal.js';
 import { resumenGeneral, resumenAnual, rankingRoiAutos, porcentajePerdidaGanancia, alertasTendencia, proyeccionRentabilidadTendencia, saludChoferes, activeCars, valorStock, repuestosBajoStock } from './calc.js';
 import { saldoAutoseguro } from './autoseguro.js';
 import { de } from './memo.js';
+import { membrete, pies, proximoNumero } from './membrete.js';
 
 export async function descargarReporteEjecutivo() {
   const { jsPDF } = await import('jspdf');
@@ -13,9 +14,7 @@ export async function descargarReporteEjecutivo() {
   const linea = (label, val) => { doc.text(label, 14, y); doc.text(String(val), 110, y); y += 7; };
   const titulo = (t) => { y += 4; doc.setFontSize(13); doc.setFont(undefined, 'bold'); doc.text(t, 14, y); doc.setFont(undefined, 'normal'); doc.setFontSize(10); y += 8; };
 
-  doc.setFontSize(18); doc.text(settings.companyName || 'LD Rental', 14, y); y += 8;
-  doc.setFontSize(11); doc.text('Reporte ejecutivo — ' + fdate(today().toISOString().slice(0, 10)), 14, y); y += 10;
-  doc.setFontSize(10);
+  y = membrete(doc, { titulo: 'Reporte ejecutivo' });
 
   const r = resumenGeneral();
   titulo('Resumen general');
@@ -85,6 +84,7 @@ export async function descargarReporteEjecutivo() {
     linea('Ítems bajo el mínimo', bajos.length);
   }
 
+  pies(doc, '');
   doc.save('reporte-ejecutivo-' + today().toISOString().slice(0, 10) + '.pdf');
   toast('Reporte descargado');
 }

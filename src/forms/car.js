@@ -24,6 +24,7 @@ import { seccionPatenteAuto } from './consulta-patente.js';
 import { bienvenidaForm } from './bienvenida.js';
 import { seccionDanos } from './danos.js';
 import { seccionFichaModelo } from './ficha-modelo.js';
+import { seccionActas } from './acta.js';
 import { botonTituloAuto, adjuntarTituloPendiente, descartarTituloPendiente, normalizarCilindrada } from './titulo-auto.js';
 import { tarjetaFirmaRemota } from '../contrato.js';
 import { cotizacion, enPesos, textoCotizacion } from '../dolar.js';
@@ -364,7 +365,7 @@ export function carForm(id) {
   }
 
   /* ---- Datos ---- */
-  let datos = ex ? seccionPapeles(c) + seccionPatenteAuto(c) + seccionDanos(c) + seccionFichaModelo(c) : '';
+  let datos = ex ? seccionPapeles(c) + seccionPatenteAuto(c) + seccionDanos(c) + seccionActas(c) + seccionFichaModelo(c) : '';
   if (ex && c.tipo !== 'financiado' && c.valorMercado && c.costoCompra) {
     const dif = c.valorMercado - c.costoCompra;
     datos += '<div class="card row between"><span class="muted">Valor de mercado vs. invertido</span><b style="color:' + (dif >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(dif) + '</b></div>';

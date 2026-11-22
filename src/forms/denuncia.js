@@ -7,6 +7,7 @@ import { save } from '../data.js';
 import { de } from '../memo.js';
 import { settings } from '../settings.js';
 import { TIPOS_SINIESTRO, COBERTURAS_SEGURO } from '../constants.js';
+import { membrete, pies, proximoNumero } from '../membrete.js';
 
 const v = id => ((document.getElementById(id) || {}).value || '').trim();
 const CAMPOS = [
@@ -80,10 +81,11 @@ export async function pdfDenuncia(id) {
   const s = await guardarExtra(id); if (!s) return;
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  let y = 18;
+  const numero = proximoNumero('denuncia');
+  let y = membrete(doc, { titulo: 'Denuncia de siniestro', numero });
   doc.setFontSize(10);
   textoDenuncia(s).split('\n').forEach((linea, i) => {
-    if (i === 0) { doc.setFontSize(14); doc.text(linea, 14, y); doc.setFontSize(10); y += 9; return; }
+    if (i === 0) { doc.setFontSize(13); doc.text(linea, 14, y); doc.setFontSize(10); y += 9; return; }
     if (!linea) { y += 3; return; }
     const partes = doc.splitTextToSize(linea, 182);
     if (y + partes.length * 5 > 280) { doc.addPage(); y = 18; }
@@ -92,6 +94,7 @@ export async function pdfDenuncia(id) {
   y += 14; if (y > 270) { doc.addPage(); y = 30; }
   doc.text('Firma del asegurado: ______________________', 14, y);
   doc.text('Firma del conductor: ______________________', 110, y);
+  pies(doc, numero);
   const c = de('cars', 'id', s.carId)[0] || {};
   doc.save('denuncia-siniestro-' + (c.patente || 'auto').replace(/\s/g, '') + '-' + s.fecha + '.pdf');
   toast('PDF descargado');

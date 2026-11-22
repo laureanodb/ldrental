@@ -8,6 +8,7 @@ import { TIPOS } from './constants.js';
 import { save } from './data.js';
 import { de } from './memo.js';
 import { urlPortal } from './forms/portal-ajustes.js';
+import { membrete, pies, proximoNumero } from './membrete.js';
 
 let renovando = false;
 
@@ -35,8 +36,8 @@ export async function generarConstanciaCesion(carId) {
   if (!d) { toast('Chofer no encontrado'); return; }
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  let y = 24;
-  doc.setFontSize(16); doc.text(settings.companyName || 'LD Rental', 14, y); y += 10;
+  const numero = proximoNumero('constancia');
+  let y = membrete(doc, { titulo: 'Constancia de cesión de uso', numero }) + 4;
   doc.setFontSize(13); doc.text('Constancia de cesión de uso de vehículo', 14, y); y += 12;
   doc.setFontSize(11);
   const linea = t => { doc.text(t, 14, y, { maxWidth: 180 }); y += 9; };
@@ -48,6 +49,7 @@ export async function generarConstanciaCesion(carId) {
   linea('Fecha de emisión: ' + fdate(iso(today())));
   y += 6;
   linea('Esta constancia certifica la autorización de uso del vehículo mencionado, a los fines que el interesado estime corresponder.');
+  pies(doc, numero);
   doc.save('constancia-cesion-' + (c.patente || 'auto') + '-' + iso(today()) + '.pdf');
   toast('Constancia descargada');
 }
@@ -141,8 +143,8 @@ async function pdfContrato(titulo, parrafos, fecha, firmaData, pie) {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const margin = 15, width = 210 - margin * 2;
-  let y = 20;
-  doc.setFontSize(15); doc.text(settings.companyName || 'LD Rental', margin, y); y += 8;
+  const numero = proximoNumero('contrato');
+  let y = membrete(doc, { titulo: 'Contrato', numero });
   doc.setFontSize(12); doc.text(titulo, margin, y); y += 10;
   doc.setFontSize(10);
   const parrafo = txt => {
@@ -159,7 +161,7 @@ async function pdfContrato(titulo, parrafos, fecha, firmaData, pie) {
   y += 30;
   doc.setFontSize(8);
   (pie || []).forEach(t => { doc.splitTextToSize(t, width).forEach(l => { doc.text(l, margin, y); y += 4; }); });
-  doc.setTextColor(140); doc.text('Contrato generado por ' + (settings.companyName || 'LD Rental'), margin, y + 2);
+  pies(doc, numero);
   return doc;
 }
 

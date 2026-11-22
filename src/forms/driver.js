@@ -21,6 +21,7 @@ import { fichaCompletaCard, camposChofer } from './ficha-completa.js';
 import { campoReferidoPor } from './referidos.js';
 import { normalizarTelAR, dniValido, mismoTel, mismoDni, avisarUnaVez } from '../validar.js';
 import { urlPortal, linkVencido, nuevoToken } from './portal-ajustes.js';
+import { membrete, pies, proximoNumero } from '../membrete.js';
 
 function telRow(t) {
   t = t || {};
@@ -413,10 +414,8 @@ export function liquidacionForm(id) {
 async function comprobanteLiquidacion(d, r) {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a5' });
-  let y = 18;
-  doc.setFontSize(16); doc.text(settings.companyName || 'LD Rental', 12, y); y += 8;
-  doc.setFontSize(11); doc.text('Liquidación final', 12, y); y += 10;
-  doc.setFontSize(10);
+  const numero = proximoNumero('liquidacion');
+  let y = membrete(doc, { titulo: 'Liquidación final', numero });
   const linea = (label, val) => { doc.text(label, 12, y); doc.text(String(val), 70, y); y += 7; };
   linea('Chofer:', d.nombre || '—');
   linea('Fecha:', fdate(iso(today())));
@@ -428,6 +427,7 @@ async function comprobanteLiquidacion(d, r) {
   doc.setFontSize(13); doc.text('Monto a devolver: ' + money(r.montoFinal), 12, y);
   y += 14;
   doc.setFontSize(8); doc.setTextColor(140); doc.text('Comprobante generado por ' + (settings.companyName || 'LD Rental'), 12, y);
+  pies(doc, numero);
   doc.save('liquidacion-' + String(d.nombre || 'chofer').replace(/\s+/g, '-') + '-' + iso(today()) + '.pdf');
 }
 export async function confirmarLiquidacion(id) {

@@ -13,6 +13,7 @@ import { canVerFinanzas } from '../roles.js';
 import { settings } from '../settings.js';
 import { cotizacion, enPesos, textoCotizacion } from '../dolar.js';
 import { de } from '../memo.js';
+import { membrete, pies, proximoNumero } from '../membrete.js';
 
 const metodoLabel = m => (METODOS_PAGO.find(x => x[0] === m) || [0, ''])[1];
 const mon = (m, n) => (m === 'USD' ? moneyUSD(n) : money(n));
@@ -161,9 +162,9 @@ export async function cuentaCorrientePDF(driverId) {
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const mg = 15, w = 180;
-    let y = 20;
+    const numero = proximoNumero('cuenta');
+    let y = membrete(doc, { titulo: 'Cuenta corriente', numero });
     const salto = () => { if (y > 275) { doc.addPage(); y = 20; } };
-    doc.setFontSize(15); doc.text(settings.companyName || 'LD Rental', mg, y); y += 8;
     doc.setFontSize(12); doc.text('Cuenta corriente — ' + d.nombre, mg, y); y += 6;
     doc.setFontSize(9); doc.setTextColor(120); doc.text('Al ' + fdate(iso(today())), mg, y); doc.setTextColor(0); y += 9;
     doc.setFontSize(11);
@@ -190,6 +191,7 @@ export async function cuentaCorrientePDF(driverId) {
     });
     y += 4; salto();
     doc.setFontSize(8); doc.setTextColor(140); doc.text('Generado por ' + (settings.companyName || 'LD Rental'), mg, y);
+    pies(doc, numero);
     doc.save('cuenta-corriente-' + d.nombre.replace(/\s+/g, '-').toLowerCase() + '-' + iso(today()) + '.pdf');
   } catch (e) {
     toast('No se pudo generar el PDF: ' + ((e && e.message) || 'error'));
