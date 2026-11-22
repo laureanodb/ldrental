@@ -20,6 +20,7 @@ import { ejecutarAtajo } from './atajos.js';
 import { verificarCierreForzado } from './forms/contrasena.js';
 import { cargarSensibles } from './sensibles.js';
 import { cargarCajaChica } from './forms/caja-chica.js';
+import { enPractica, crearSbPractica, USUARIO_PRACTICA } from './practica.js';
 
 export function viewSetup() {
   return '<div class="login">' + brandH1() + '<div class="card"><b>Falta configurar la conexión</b><p class="small muted">Completá VITE_SUPABASE_URL y VITE_SUPABASE_KEY en el archivo .env, con los datos de tu proyecto de Supabase.</p></div></div>';
@@ -31,7 +32,9 @@ export function viewLogin() {
   '<label class="f"><span>Contraseña</span><input id="l_pass" type="password" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doLogin()"></label>' +
   '<button class="btn block" onclick="doLogin()">Entrar</button>' +
   '<button class="btn sec block" style="margin-top:8px;border:0;background:transparent" onclick="olvideContrasena()">¿Olvidaste tu contraseña?</button>' +
-  '<div id="l_err" class="small" style="color:var(--bad);margin-top:10px"></div></div>';
+  '<div id="l_err" class="small" style="color:var(--bad);margin-top:10px"></div>' +
+  '<button class="btn sec block" style="margin-top:14px" onclick="entrarPractica()">Probar la app con datos de ejemplo</button>' +
+  '<div class="small muted" style="text-align:center;margin-top:6px">Modo práctica: nada de lo que hagas se guarda.</div></div>';
 }
 export async function doLogin() {
   const email = val('l_email'), password = document.getElementById('l_pass').value;
@@ -42,6 +45,7 @@ export async function doLogin() {
   if (r.error) { err.style.color = 'var(--bad)'; err.textContent = /invalid login/i.test(r.error.message) ? 'Email o contraseña incorrectos.' : r.error.message; }
 }
 export async function logout() {
+  if (enPractica()) { await sb.auth.signOut(); return; }
   try { localStorage.removeItem('flota-biometria'); } catch (e) {}
   await sb.auth.signOut();
 }
@@ -120,6 +124,12 @@ export function stop() {
 
 export async function init() {
   render();
+  if (enPractica()) {
+    // Modo práctica: base de datos falsa en memoria, con datos de ejemplo.
+    try { localStorage.removeItem('flota-settings-practica'); } catch (e) {}
+    setSb(crearSbPractica()); setAs(makeStorage());
+    S.user = USUARIO_PRACTICA; start(); return;
+  }
   if (!configured()) return;
   // Si se entra con el link de "olvidé mi contraseña", hay que pedir la nueva.
   // Se mira antes de crear el cliente, que limpia la dirección al leer el link.

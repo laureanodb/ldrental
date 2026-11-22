@@ -1,10 +1,12 @@
 import { $ } from './utils.js';
+import { ponerAyudaVentana } from './ayuda.js';
 import { renderFiles } from './files.js';
 
 export function openModal(html) {
   renderFiles._tried = 0;
   $('#modal').innerHTML = '<div class="scrim" onclick="closeModal()"></div><div class="sheet" role="dialog" aria-modal="true">' + html + '</div>';
   $('#modal').classList.add('open'); document.body.style.overflow = 'hidden';
+  ponerAyudaVentana($('#modal'));
 }
 export function closeModal() { $('#modal').classList.remove('open'); $('#modal').innerHTML = ''; document.body.style.overflow = ''; }
 

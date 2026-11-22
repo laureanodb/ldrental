@@ -19,6 +19,11 @@ export const CHANGELOG = [
     'Pantalla de carga con el logo mientras abre la app.',
     'Copia de seguridad más completa: ahora incluye los ajustes y la caja chica. Al restaurar podés probar la copia antes, sin cambiar nada.',
     'Más seguridad: la app solo se puede comunicar con los servicios que usa, y antes de cada publicación se corren pruebas automáticas.',
+    'Ayuda en cada pantalla: el botón ? arriba explica la pantalla, y las ventanas principales tienen su ? al lado del título.',
+    'Glosario (Más → Herramientas): qué significa cada palabra de la app.',
+    'Modo práctica: la app con datos de ejemplo para aprender o capacitar a alguien, sin tocar nada real. Desde el ingreso o Más → Herramientas.',
+    'Qué ve cada rol (Más → Usuarios): el administrador elige qué secciones ven el supervisor y el empleado.',
+    'Revisar instalación (Más → Administración): prueba tablas, archivos y funciones de Supabase y dice qué falta configurar.',
   ] },
   { v: '2026-11-13', items: [
     'Bienvenida: al asignarle un auto a un chofer se arma el mensaje de WhatsApp con su link del portal, el monto, el día de cobro, el teléfono de emergencia y tus reglas. El texto base se cambia en Más → Mensaje de bienvenida.',

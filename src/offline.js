@@ -1,5 +1,9 @@
-const QKEY = 'flota-offline-queue';
-const CKEY = 'flota-cache-';
+import { enPractica } from './practica.js';
+
+// En el modo práctica se usan otras claves: nunca se mezcla con la copia real.
+const P = enPractica() ? '-practica' : '';
+const QKEY = 'flota-offline-queue' + P;
+const CKEY = 'flota-cache' + P + '-';
 
 // La cola se guarda en localStorage (sobrevive a todo) y se mantiene una copia
 // en memoria para no releerla en cada dibujo de pantalla.
@@ -22,7 +26,7 @@ export function queueLength() { return readQueue().length; }
 /* Copia local de cada colección para abrir la app al instante y sin internet.
    Va en IndexedDB (mucho más espacio que localStorage y no traba la pantalla al
    guardar). Si el navegador no lo permite, se usa localStorage como antes. */
-const DB = 'flota-cache', STORE = 'colecciones';
+const DB = 'flota-cache' + P, STORE = 'colecciones';
 let dbProm = null;
 function abrirDB() {
   if (dbProm) return dbProm;

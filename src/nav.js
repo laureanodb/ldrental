@@ -18,6 +18,8 @@ import { settings, featureOculta } from './settings.js';
 import { modoConsultaActivo, modoConsultaHasta } from './consulta.js';
 import { nuevaPasada } from './memo.js';
 import { guardarFiltros } from './preferencias.js';
+import { enPractica } from './practica.js';
+import { puedeVer } from './roles.js';
 import { programarRecorrido } from './recorrido.js';
 
 const ICONS = {
@@ -32,7 +34,7 @@ export function renderNav() {
   if (!configured() || !S.user) { $('#nav').innerHTML = ''; return; }
   const n = urgent().length;
   const nMas = mantenimientoVencidosCount() + multasPendientesCount();
-  const items = [['panel', 'Panel'], ['autos', 'Autos'], ['choferes', 'Choferes'], ['cobros', 'Cobros'], ['venc', 'Vencimientos'], ['mas', 'Más']];
+  const items = [['panel', 'Panel'], ['autos', 'Autos'], ['choferes', 'Choferes'], ['cobros', 'Cobros'], ['venc', 'Vencimientos'], ['mas', 'Más']].filter(x => x[0] !== 'cobros' || puedeVer('cobros'));
   $('#nav').innerHTML = items.map(([k, l]) => '<button class="' + (ui.tab === k ? 'on' : '') + '" onclick="' + (k === 'autos' ? "ui.filtroAutoTipo='';" : '') + (k === 'mas' ? "ui.masView='';" : '') + 'go(\'' + k + '\')"><svg viewBox="0 0 24 24">' + ICONS[k] + '</svg>' + l + (k === 'venc' && n ? '<span class="dot">' + n + '</span>' : '') + (k === 'mas' && nMas ? '<span class="dot">' + nMas + '</span>' : '') + '</button>').join('');
 }
 export function go(t) { ui.tab = t; render(); window.scrollTo(0, 0); }
@@ -41,6 +43,10 @@ function offlineBar() {
   if (navigator.onLine && !n) return '';
   return '<div class="offlinebar row between"><span>' + (!navigator.onLine ? 'Sin conexión' : 'Conectado') + (n ? ' · ' + n + ' cambio' + (n === 1 ? '' : 's') + ' por sincronizar' : '') + '</span>' +
   (navigator.onLine && n ? '<span class="tap" style="text-decoration:underline" onclick="sincronizarAhora()">Reintentar</span>' : '') + '</div>';
+}
+function practicaBar() {
+  if (!enPractica()) return '';
+  return '<div class="offlinebar row between" style="background:#7a4dbf;color:#fff"><span>Modo práctica: datos de ejemplo, nada se guarda</span><span class="tap" style="text-decoration:underline" onclick="salirPractica()">Salir</span></div>';
 }
 function consultaBar() {
   if (!modoConsultaActivo()) return '';
@@ -56,7 +62,7 @@ function syncDot() {
 }
 function topBar() {
   return '<div class="topbar"><span class="tb-brand">' + esc(settings.companyName || 'LD Rental') + syncDot() + '</span>' +
-  '<button class="tb-search" onclick="searchView()" aria-label="Buscar"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button></div>';
+  '<span class="row" style="gap:18px"><button class="tb-search" onclick="ayudaPantalla()" aria-label="Ayuda de esta pantalla" style="font:700 17px system-ui">?</button><button class="tb-search" onclick="searchView()" aria-label="Buscar"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button></span></div>';
 }
 const FAB_CATALOG = {
   buscar: ['Buscar', 'searchView()', '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>'],
@@ -96,8 +102,9 @@ export function render() {
   if (!configured()) { app.innerHTML = viewSetup(); return; }
   if (!S.user) { app.innerHTML = viewLogin(); return; }
   if (!S.ready) { app.innerHTML = '<div class="loading">Cargando tu flota…</div>'; return; }
+  if (ui.tab === 'cobros' && !puedeVer('cobros')) ui.tab = 'panel';
   const v = { panel: viewPanel, autos: viewAutos, choferes: viewChoferes, cobros: viewCobros, venc: viewVenc, mas: viewMas }[ui.tab]();
-  app.innerHTML = offlineBar() + consultaBar() + topBar() + v + (modoConsultaActivo() ? '' : fabBar());
+  app.innerHTML = practicaBar() + offlineBar() + consultaBar() + topBar() + v + (modoConsultaActivo() ? '' : fabBar());
   if (!modoConsultaActivo()) bindFabScroll();
   renderList();
   programarRecorrido();

@@ -20,7 +20,7 @@ function renderUsuarios(list) {
 }
 export async function usuariosView() {
   if (!isAdmin()) { toast('Solo un administrador puede ver esto'); return; }
-  openModal('<h3>Usuarios</h3><div class="small muted" style="margin-bottom:12px">Para dar de alta a alguien nuevo, cargalo primero en Supabase → Authentication → Add user. Después va a aparecer acá para asignarle rol.</div><div id="us_list" class="small muted">Cargando…</div><div class="sec-t">Actividad reciente <small class="muted">últimos 30 días</small></div><div id="us_actividad" class="small muted">Cargando…</div>');
+  openModal('<h3>Usuarios</h3><div class="small muted" style="margin-bottom:12px">Para dar de alta a alguien nuevo, cargalo primero en Supabase → Authentication → Add user. Después va a aparecer acá para asignarle rol.</div><button class="btn sec block" style="margin-bottom:10px" onclick="permisosSeccionesForm()">Qué ve cada rol (secciones)</button><div id="us_list" class="small muted">Cargando…</div><div class="sec-t">Actividad reciente <small class="muted">últimos 30 días</small></div><div id="us_actividad" class="small muted">Cargando…</div>');
   const r = await sb.from('profiles').select('*').order('created_at');
   const el = $('#us_list'); if (!el) return;
   if (r.error) { el.textContent = 'No se pudo cargar: ' + r.error.message; return; }

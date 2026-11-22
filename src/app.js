@@ -42,6 +42,9 @@ import { cerrarSesionGlobal, cerrarSesionDe } from './forms/contrasena.js';
 import { portalAjustesForm, guardarPortalAjustes } from './forms/portal-ajustes.js';
 import { instalarReporteErrores, erroresView } from './errores.js';
 import { actaForm, limpiarFirmaActa, guardarActa } from './forms/acta.js';
+import { ayudaPantalla, glosarioView } from './ayuda.js';
+import { permisosSeccionesForm, guardarPermisosSecciones } from './forms/permisos.js';
+import { entrarPractica, salirPractica } from './practica.js';
 import { aprobarGastoChofer, rechazarGastoChofer, cerrarAvisoAtraso, cerrarDevolucion } from './forms/pedidos-chofer.js';
 import { recordatoriosView, saveRecordatorio, toggleHechoRecordatorio, delRecordatorio } from './forms/recordatorio.js';
 import { compararAutosForm, renderComparacionAutos } from './forms/comparar.js';
@@ -88,7 +91,7 @@ function perezoso(cargar, nombres) {
 instalarNormalizadorNumeros();
 aplicarLetra();
 instalarReporteErrores();
-Object.assign(window, { actaForm, limpiarFirmaActa, guardarActa, erroresView, portalAjustesForm, guardarPortalAjustes, cierreMesView, cerrarMes, reabrirMes, cerrarSesionGlobal, cerrarSesionDe, vencimientosAlCalendario, agendaAlCalendario, elegirLetra, metaSemanalView, fichasModeloView, fichaModeloForm, guardarFichaModelo, danosView, clickMapaDano, nuevoDanoForm, guardarDano, repararDano, mensajeATodosForm, armarMensajeATodos, bienvenidaForm, enviarBienvenida, copiarBienvenida, bienvenidaConfigForm, guardarBienvenidaConfig, volverTextoBienvenida, cajaChicaView, guardarCajaChica, agendaView, referidosView, guardarReglaReferido, darPremioReferido, consultaPatenteView, rondaPatente, pasoPatente, cambiarLugarPatente, abrirConsultaPatente, resultadoPatente, guardarDeudaPatente, patentePagada, gastoPatente, lugaresPatenteView, guardarLugaresPatente, quitarLugarPatente, datosFaltantesView, corregirMontosView, aplicarCorreccionMontos, cambiarMiContrasenaForm, guardarMiContrasena, olvideContrasena, guardarNuevaContrasena, contrasenaUsuarioForm, generarContrasena, guardarContrasenaUsuario, leerTituloAuto,
+Object.assign(window, { permisosSeccionesForm, guardarPermisosSecciones, ayudaPantalla, glosarioView, entrarPractica, salirPractica, actaForm, limpiarFirmaActa, guardarActa, erroresView, portalAjustesForm, guardarPortalAjustes, cierreMesView, cerrarMes, reabrirMes, cerrarSesionGlobal, cerrarSesionDe, vencimientosAlCalendario, agendaAlCalendario, elegirLetra, metaSemanalView, fichasModeloView, fichaModeloForm, guardarFichaModelo, danosView, clickMapaDano, nuevoDanoForm, guardarDano, repararDano, mensajeATodosForm, armarMensajeATodos, bienvenidaForm, enviarBienvenida, copiarBienvenida, bienvenidaConfigForm, guardarBienvenidaConfig, volverTextoBienvenida, cajaChicaView, guardarCajaChica, agendaView, referidosView, guardarReglaReferido, darPremioReferido, consultaPatenteView, rondaPatente, pasoPatente, cambiarLugarPatente, abrirConsultaPatente, resultadoPatente, guardarDeudaPatente, patentePagada, gastoPatente, lugaresPatenteView, guardarLugaresPatente, quitarLugarPatente, datosFaltantesView, corregirMontosView, aplicarCorreccionMontos, cambiarMiContrasenaForm, guardarMiContrasena, olvideContrasena, guardarNuevaContrasena, contrasenaUsuarioForm, generarContrasena, guardarContrasenaUsuario, leerTituloAuto,
   agendarServiceForm, guardarServiceAgendado, recordarServiceView, marcarServiceRecordado, agregarReclamo, resolverReclamo, borrarReclamo, llamarYAnotar, saludoView, mandarSaludo, marcarSaludado,
   aprobarGastoChofer, rechazarGastoChofer, cerrarAvisoAtraso, cerrarDevolucion,
   consultaMultasView, rondaMultas, abrirConsultaMulta, resultadoConsultaMulta, cargarMultaManual, terminarConMultas, leerCapturaMultas, guardarMultasLeidas, lugaresMultasView, guardarLugaresMultas,
@@ -141,6 +144,7 @@ Object.assign(window, { actaForm, limpiarFirmaActa, guardarActa, erroresView, po
 
 // Pantallas que se usan menos: se bajan recién la primera vez que se abren, así la app arranca más rápido.
 Object.assign(window,
+  perezoso(() => import('./forms/diagnostico.js'), ['revisarInstalacion']),
   perezoso(() => import('./export-excel.js'), ['exportarExcel']),
   perezoso(() => import('./forms/ajuste.js'), ['ajusteForm', 'saveAjuste', 'delAjuste']),
   perezoso(() => import('./forms/alta-rapida.js'), ['altaRapidaAutoForm', 'onAltaRapidaAutoTipo', 'guardarAltaRapidaAuto', 'altaRapidaChoferForm', 'guardarAltaRapidaChofer']),

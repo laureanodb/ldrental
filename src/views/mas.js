@@ -1,7 +1,7 @@
 import { S, ui } from '../state.js';
 import { esc } from '../utils.js';
 import { render } from '../nav.js';
-import { isAdmin, canVerFinanzas } from '../roles.js';
+import { isAdmin, canVerFinanzas, puedeVer } from '../roles.js';
 import { proveedoresView } from '../forms/proveedor.js';
 import { recordatoriosView } from '../forms/recordatorio.js';
 import { gastosGeneralesView } from '../forms/gastos-generales.js';
@@ -23,7 +23,11 @@ import { featureOculta } from '../settings.js';
 import { viewCruce } from '../forms/cruce.js';
 import { TAMANOS_LETRA, tamanoLetra } from '../preferencias.js';
 
-export function goMas(v) { ui.masView = v; render(); window.scrollTo(0, 0); }
+const SECCION_DE_VISTA = { mantenimiento: 'mantenimiento', multas: 'multas', siniestros: 'siniestros', stock: 'stock', reportes: 'reportes', tablero: 'reportes', cruce: 'cobros' };
+export function goMas(v) {
+  if (SECCION_DE_VISTA[v] && !puedeVer(SECCION_DE_VISTA[v])) { window.toast('Tu usuario no tiene esta sección', 'error'); return; }
+  ui.masView = v; render(); window.scrollTo(0, 0);
+}
 
 function backBar(title) {
   return '<div class="row between" style="margin-bottom:6px"><button class="btn sec sm" onclick="goMas(\'\')">‹ Más</button><b>' + title + '</b><span style="width:1px"></span></div>';
@@ -32,6 +36,9 @@ function tarjeta(label, action) {
   return '<div class="card row between tap" onclick="' + action + '"><span>' + label + '</span><span class="muted">›</span></div>';
 }
 function grupo(titulo, items) {
+  // Un tercer dato en el ítem es la sección: si el rol no la ve, no aparece.
+  items = items.filter(x => !x[2] || puedeVer(x[2]));
+  if (!items.length) return '';
   return '<div class="sec-t">' + titulo + '</div>' + items.map(([label, action]) => tarjeta(label, action)).join('');
 }
 
@@ -53,42 +60,44 @@ export function viewMas() {
   h += grupo('Flota', [
     ['Datos que faltan cargar (ficha completa)', 'datosFaltantesView()'],
     ['Ficha técnica por modelo', 'fichasModeloView()'],
-    ['Mantenimiento', "goMas('mantenimiento')"],
-    ['Órdenes de trabajo del taller', 'ordenesView()'],
-    ['Multas', "goMas('multas')"],
-    ['Deuda de patente (AGIP, ARBA, municipio)', 'consultaPatenteView()'],
-    ['Siniestros', "goMas('siniestros')"],
-    ['Pañol (repuestos, insumos y herramientas)', "goMas('stock')"],
-    ['Gastos generales', 'gastosGeneralesView()'],
-    ['Proveedores y talleres', 'proveedoresView()'],
+    ['Mantenimiento', "goMas('mantenimiento')", 'mantenimiento'],
+    ['Órdenes de trabajo del taller', 'ordenesView()', 'mantenimiento'],
+    ['Multas', "goMas('multas')", 'multas'],
+    ['Deuda de patente (AGIP, ARBA, municipio)', 'consultaPatenteView()', 'multas'],
+    ['Siniestros', "goMas('siniestros')", 'siniestros'],
+    ['Pañol (repuestos, insumos y herramientas)', "goMas('stock')", 'stock'],
+    ['Gastos generales', 'gastosGeneralesView()', 'gastos'],
+    ['Proveedores y talleres', 'proveedoresView()', 'gastos'],
     ['Mapa de flota', 'mapaFlotaView()'],
     ['GPS de la flota (zonas, batería, velocidad)', 'gpsView()'],
-    ['Valores de mercado', 'valoresMercadoView()'],
-    ['Autos para comprar (checklist de revisión)', 'candidatosCompraView()'],
-    ['Cuándo conviene comprar otro auto', 'calendarioComprasView()'],
-    ['Cómo salió cada compra (por vendedor)', 'comprasPorVendedorView()'],
-    ['Mantenimiento preventivo en lote', 'mantenimientoLoteForm()'],
+    ['Valores de mercado', 'valoresMercadoView()', 'compras'],
+    ['Autos para comprar (checklist de revisión)', 'candidatosCompraView()', 'compras'],
+    ['Cuándo conviene comprar otro auto', 'calendarioComprasView()', 'compras'],
+    ['Cómo salió cada compra (por vendedor)', 'comprasPorVendedorView()', 'compras'],
+    ['Mantenimiento preventivo en lote', 'mantenimientoLoteForm()', 'mantenimiento'],
   ]);
-  if (canVerFinanzas()) h += grupo('Cobros', [['Cruzar con el resumen de Mercado Pago o del banco', "goMas('cruce')"], ['Corregir montos cargados sin los ceros', 'corregirMontosView()']].concat(isAdmin() ? [['Cierre de mes', 'cierreMesView()']] : []));
-  h += grupo('Plata del negocio', [['Caja chica del equipo', 'cajaChicaView(\'\')']].concat(canVerFinanzas() ? [['Patrimonio de la empresa', 'patrimonioView()']] : []));
-  h += grupo('Análisis', [['Cobranza de la semana (meta)', 'metaSemanalView()'], ['Pantalla para la oficina (TV)', 'pantallaOficina()'], ['Chequeo trimestral del negocio (IA)', 'chequeoView()'], ['Cuánto tardás en resolver cada cosa', 'tiemposRespuestaView()'], ['Km de la flota por semana', 'kmFlotaView()'], ['Services hechos a tiempo', 'servicesATiempoView()'], ['Cuánto duran los choferes (edad y experiencia)', 'duracionChoferesView()'], ['Tablero semanal por auto', "goMas('tablero')"], ['Reportes', "goMas('reportes')"], ['Reporte personalizado', 'reportePersonalizadoForm()'], ['Metas de la flota', 'metasForm()']].concat(canVerFinanzas() ? [['Rendimiento de las financiaciones', 'rankingFinanciacionesView()']] : []));
+  if (canVerFinanzas() && puedeVer('cobros')) h += grupo('Cobros', [['Cruzar con el resumen de Mercado Pago o del banco', "goMas('cruce')"], ['Corregir montos cargados sin los ceros', 'corregirMontosView()']].concat(isAdmin() ? [['Cierre de mes', 'cierreMesView()']] : []));
+  h += grupo('Plata del negocio', [['Caja chica del equipo', 'cajaChicaView(\'\')', 'cajachica']].concat(canVerFinanzas() ? [['Patrimonio de la empresa', 'patrimonioView()']] : []));
+  h += grupo('Análisis', [['Cobranza de la semana (meta)', 'metaSemanalView()', 'reportes'], ['Pantalla para la oficina (TV)', 'pantallaOficina()', 'reportes'], ['Chequeo trimestral del negocio (IA)', 'chequeoView()', 'reportes'], ['Cuánto tardás en resolver cada cosa', 'tiemposRespuestaView()', 'reportes'], ['Km de la flota por semana', 'kmFlotaView()', 'reportes'], ['Services hechos a tiempo', 'servicesATiempoView()', 'reportes'], ['Cuánto duran los choferes (edad y experiencia)', 'duracionChoferesView()', 'reportes'], ['Tablero semanal por auto', "goMas('tablero')", 'reportes'], ['Reportes', "goMas('reportes')", 'reportes'], ['Reporte personalizado', 'reportePersonalizadoForm()', 'reportes'], ['Metas de la flota', 'metasForm()', 'reportes']].concat(canVerFinanzas() ? [['Rendimiento de las financiaciones', 'rankingFinanciacionesView()', 'reportes']] : []));
   h += grupo('Herramientas', [
-    ['Tareas y recordatorios (del equipo)', 'recordatoriosView()'],
-    ['Agenda de hoy y mañana', 'agendaView()'],
-    ['Simulador de financiación', 'simuladorFinanciacionForm()'],
-    ['Calculadora: financiar vs. alquilar', 'calculadoraForm()'],
-    ['Calculadora: ROI antes de comprar', 'roiAutoForm()'],
-    ['Simular un aumento general de la flota', 'escenarioFlotaForm()'],
-    ['Comparar autos', 'compararAutosForm()'],
-    ['Protocolo de emergencia', 'protocoloEmergenciaForm()'],
-    ['Novedades de la app', 'mostrarNovedades()'],
+    ['Tareas y recordatorios (del equipo)', 'recordatoriosView()', 'reportes'],
+    ['Agenda de hoy y mañana', 'agendaView()', 'reportes'],
+    ['Simulador de financiación', 'simuladorFinanciacionForm()', 'herramientas', 'reportes'],
+    ['Calculadora: financiar vs. alquilar', 'calculadoraForm()', 'herramientas', 'reportes'],
+    ['Calculadora: ROI antes de comprar', 'roiAutoForm()', 'herramientas', 'reportes'],
+    ['Simular un aumento general de la flota', 'escenarioFlotaForm()', 'herramientas', 'reportes'],
+    ['Comparar autos', 'compararAutosForm()', 'herramientas', 'reportes'],
+    ['Protocolo de emergencia', 'protocoloEmergenciaForm()', 'reportes'],
+    ['Novedades de la app', 'mostrarNovedades()', 'reportes'],
+    ['Glosario (qué significa cada cosa)', 'glosarioView()', 'reportes'],
+    ['Modo práctica (datos de ejemplo, para aprender)', 'entrarPractica()', 'reportes'],
   ]);
   if (isAdmin() && !featureOculta('desafios')) h += grupo('Motivación', [['Desafío del mes', 'desafioMesForm()']]);
-  h += grupo('Choferes', [['Premio por referido', 'referidosView()']]);
-  h += grupo('Comunicación', [['Mensaje a todos los choferes', 'mensajeATodosForm()'], ['Mensajes programados por WhatsApp', 'mensajesProgramadosView()'], ['Mensaje de bienvenida', 'bienvenidaConfigForm()'], ['Portal del chofer: ajustes', 'portalAjustesForm()'], ['Guías para el chofer (portal)', 'guiasView()'], ['Página de la empresa (web)', 'sitioEmpresaForm()']].concat(isAdmin() ? [['Tablón de anuncios (portal del chofer)', 'anunciosForm()']] : []));
-  const admin = [['Ajustes', "goMas('ajustes')"], ['Copia de seguridad', "goMas('backup')"], ['Google', "goMas('google')"], ['Salud de los datos', "goMas('saluddatos')"]];
+  h += grupo('Choferes', [['Premio por referido', 'referidosView()', 'comunicacion']]);
+  h += grupo('Comunicación', [['Mensaje a todos los choferes', 'mensajeATodosForm()', 'comunicacion'], ['Mensajes programados por WhatsApp', 'mensajesProgramadosView()', 'comunicacion'], ['Mensaje de bienvenida', 'bienvenidaConfigForm()', 'comunicacion'], ['Portal del chofer: ajustes', 'portalAjustesForm()', 'comunicacion'], ['Guías para el chofer (portal)', 'guiasView()', 'comunicacion'], ['Página de la empresa (web)', 'sitioEmpresaForm()', 'comunicacion']].concat(isAdmin() ? [['Tablón de anuncios (portal del chofer)', 'anunciosForm()', 'comunicacion']] : []));
+  const admin = [['Ajustes', "goMas('ajustes')", 'comunicacion'], ['Copia de seguridad', "goMas('backup')", 'comunicacion'], ['Google', "goMas('google')", 'comunicacion'], ['Salud de los datos', "goMas('saluddatos')", 'comunicacion']];
   if (canVerFinanzas() && !featureOculta('autoseguro')) admin.push(['Fondo de autoseguro', 'autoseguroForm()']);
-  if (isAdmin()) admin.push(['Usuarios y permisos', 'usuariosView()'], ['Auditoría', 'auditoriaView()'], ['Bitácora de decisiones', 'bitacoraView()'], ['Errores de la app', 'erroresView()']);
+  if (isAdmin()) admin.push(['Usuarios y permisos', 'usuariosView()'], ['Auditoría', 'auditoriaView()'], ['Bitácora de decisiones', 'bitacoraView()'], ['Errores de la app', 'erroresView()'], ['Revisar instalación (qué falta configurar)', 'revisarInstalacion()']);
   const nPend = cantidadPendientes();
   if (isAdmin() || nPend) admin.unshift(['Gastos para aprobar' + (nPend ? ' (' + nPend + ')' : ''), 'aprobacionesView()']);
   admin.push(['Papelera (lo borrado en los últimos 30 días)', 'papeleraView()']);

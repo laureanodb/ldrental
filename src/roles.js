@@ -29,3 +29,18 @@ export function puedeEditarCobro(p) {
   if (!p.fecha) return true;
   return days(parse(p.fecha), today()) <= settings.cobroEdicionDias;
 }
+
+// Qué secciones ve cada rol (lo elige el administrador en Usuarios → Qué ve cada rol).
+// Es para ordenar el trabajo de cada uno: oculta pantallas, no reemplaza los permisos de la base.
+export const SECCIONES = [
+  ['cobros', 'Cobros'], ['reportes', 'Reportes y análisis'], ['mantenimiento', 'Mantenimiento, taller y órdenes'],
+  ['multas', 'Multas y deuda de patente'], ['siniestros', 'Siniestros'], ['stock', 'Pañol'],
+  ['gastos', 'Gastos generales y proveedores'], ['cajachica', 'Caja chica'], ['comunicacion', 'Comunicación con choferes'],
+  ['herramientas', 'Herramientas y calculadoras'], ['compras', 'Compra de autos y valores de mercado'],
+];
+export const rolActual = () => (isAdmin() ? 'admin' : (S.profile && S.profile.rol) || 'empleado');
+export function puedeVer(seccion) {
+  if (isAdmin()) return true;
+  const P = (settings.permisosSecciones || {})[rolActual()] || {};
+  return P[seccion] !== false;
+}

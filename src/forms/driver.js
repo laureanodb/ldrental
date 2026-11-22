@@ -50,7 +50,7 @@ function tabpanelChofer(tab, visible, content) {
 export function driverForm(id) {
   const ex = de('drivers', 'id', id)[0];
   const d = ex || { docs: {} };
-  let h = '<h3>' + (ex ? esc(d.nombre) : 'Nuevo chofer') + '</h3>';
+  let h = '<h3' + (ex ? ' data-ayuda="Chofer"' : '') + '>' + (ex ? esc(d.nombre) : 'Nuevo chofer') + '</h3>';
   if (ex) h += seccionCambiosDatos(d);
   if (ex && d.inactivo) h += '<div class="card" style="margin-bottom:10px"><span class="badge b-mute">Inactivo</span></div>';
   if (ex && d.prospecto) h += '<div class="card row between" style="margin-bottom:10px"><span class="badge b-info">Prospecto · ' + esc((ETAPAS_PROSPECTO.find(x => x[0] === d.etapaProspecto) || [0, 'Contacto inicial'])[1]) + '</span><button class="btn sm" onclick="aprobarProspecto(\'' + d.id + '\')">Aprobar y dar de alta</button></div>';
