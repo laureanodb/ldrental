@@ -1,4 +1,4 @@
-// Mi Flota — notificación push diaria.
+// LD Rental — notificación push diaria.
 // Junta un resumen de vencimientos urgentes, choferes con deuda y multas
 // pendientes, y lo manda como notificación push a todos los dispositivos
 // suscriptos. Se dispara por un cron job de Postgres (ver sql/fase_push.sql)
@@ -85,7 +85,7 @@ Deno.serve(async () => {
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          JSON.stringify({ title: 'Mi Flota', body, url: './' })
+          JSON.stringify({ title: 'LD Rental', body, url: './' })
         );
         enviados++;
         await sb.from('push_subscriptions').update({ ultimo_envio: hoyIso }).eq('id', s.id);

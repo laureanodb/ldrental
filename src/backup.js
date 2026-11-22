@@ -7,7 +7,8 @@ import { render } from './nav.js';
 import { esc } from './utils.js';
 import { carById, driverName } from './calc.js';
 import { isAdmin } from './roles.js';
-import { settings, saveSettings } from './settings.js';
+import { settings, saveSettings, SYNC_KEYS } from './settings.js';
+import { movimientosCajaChica, restaurarCajaChica } from './forms/caja-chica.js';
 
 export async function saveFile(filename, data, type) {
   if (dl) { await dl.save({ filename, data }); return; }
@@ -17,8 +18,12 @@ export async function saveFile(filename, data, type) {
   setTimeout(() => URL.revokeObjectURL(u), 4000);
 }
 export async function backup() {
+  // 'mi-flota' es el formato del archivo de copia (nombre viejo de la app): se mantiene para que las copias viejas sigan sirviendo.
   const data = { app: 'mi-flota', version: 1, fecha: new Date().toISOString() };
   COLS.forEach(c => { data[c] = S[c]; });
+  // También los ajustes compartidos (cierres de mes, numeración, portal, etc.) y la caja chica.
+  data.ajustes = {}; SYNC_KEYS.forEach(k => { if (settings[k] !== undefined) data.ajustes[k] = settings[k]; });
+  data.cajachica = movimientosCajaChica();
   try { await saveFile('copia-flota-' + iso(today()) + '.json', JSON.stringify(data, null, 1), 'application/json'); toast('Copia descargada'); }
   catch (e) { if (!e || e.code !== 'declined') toast('No se pudo descargar la copia'); }
 }
@@ -33,11 +38,40 @@ export async function pickRestore(inp) {
   const nOtros = COLS.filter(c => !['cars', 'drivers', 'payments'].includes(c) && Array.isArray(d[c])).reduce((a, c) => a + d[c].length, 0);
   openModal('<h3>Restaurar copia</h3><div class="card"><div>Copia del ' + esc(fe) + '</div><div class="small muted">' + d.cars.length + ' autos · ' + d.drivers.length + ' choferes · ' + d.payments.length + ' cobros' + (nOtros ? ' · ' + nOtros + ' otros registros' : '') + '</div></div>' +
     '<p class="small muted">Los registros que ya existen con el mismo código se reemplazan por los de la copia. No se borra nada de lo que cargaste después.</p>' +
+    (d.ajustes ? '<label class="chk"><input type="checkbox" id="rs_ajustes"><span>Restaurar también los ajustes (nombre de la empresa, portal, cierres de mes, numeración…)</span></label>' : '') +
+    '<button class="btn sec block" style="margin:8px 0" onclick="probarRestore()">Probar la copia sin cambiar nada</button><div id="rs_prueba"></div>' +
     '<div class="row"><button class="btn grow" onclick="doRestore()">Restaurar</button><button class="btn sec" onclick="cancelRestore()">Cancelar</button></div>');
 }
 export function cancelRestore() { pendingRestore = null; closeModal(); }
+// Revisa la copia contra lo que hay ahora, sin escribir nada: qué se agregaría, qué se
+// reemplazaría, qué está dañado y qué cobros apuntan a autos o choferes que no existen.
+export function probarRestore() {
+  const d = pendingRestore; const el = document.getElementById('rs_prueba'); if (!d || !el) return;
+  const filas = [], problemas = [];
+  COLS.filter(c => Array.isArray(d[c])).forEach(c => {
+    const arr = d[c], sinId = arr.filter(x => !x || typeof x.id !== 'string' || !x.id).length;
+    const ids = new Map((S[c] || []).map(x => [x.id, x]));
+    let nuevos = 0, iguales = 0, distintos = 0;
+    arr.forEach(x => { if (!x || !x.id) return; const a = ids.get(x.id); if (!a) nuevos++; else if (JSON.stringify(a) === JSON.stringify(x)) iguales++; else distintos++; });
+    if (arr.length) filas.push('<tr><td>' + esc(c) + '</td><td style="text-align:right">' + arr.length + '</td><td style="text-align:right">' + nuevos + '</td><td style="text-align:right">' + distintos + '</td><td style="text-align:right">' + iguales + '</td></tr>');
+    if (sinId) problemas.push(sinId + ' registro(s) de ' + c + ' sin código: se saltean');
+  });
+  const autos = new Set(d.cars.map(x => x && x.id)), chof = new Set(d.drivers.map(x => x && x.id));
+  const huerf = d.payments.filter(p => p && p.carId && !autos.has(p.carId)).length;
+  if (huerf) problemas.push(huerf + ' cobro(s) de autos que no están en la copia');
+  const sinChofer = d.cars.filter(c => c && c.choferId && !chof.has(c.choferId)).length;
+  if (sinChofer) problemas.push(sinChofer + ' auto(s) con un chofer que no está en la copia');
+  const fecha = d.fecha ? new Date(d.fecha) : null;
+  const dias = fecha ? Math.round((Date.now() - fecha) / 864e5) : null;
+  el.innerHTML = '<div class="card small"><b>' + (problemas.length ? '⚠ La copia se puede restaurar, con observaciones' : '✓ La copia está sana y se puede restaurar') + '</b>' +
+    (dias != null ? '<div class="muted">Tiene ' + dias + ' día(s) de antigüedad.</div>' : '') +
+    '<table style="width:100%;margin-top:6px;border-collapse:collapse"><tr class="muted"><td>Tabla</td><td style="text-align:right">En la copia</td><td style="text-align:right">Nuevos</td><td style="text-align:right">Reemplaza</td><td style="text-align:right">Iguales</td></tr>' + filas.join('') + '</table>' +
+    (d.ajustes ? '<div class="muted" style="margin-top:6px">Incluye ajustes y ' + ((d.cajachica || []).length) + ' movimiento(s) de caja chica.</div>' : '<div class="muted" style="margin-top:6px">Es una copia vieja: no trae los ajustes ni la caja chica.</div>') +
+    (problemas.length ? '<ul style="margin:6px 0 0 18px;padding:0">' + problemas.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '') + '</div>';
+}
 export async function doRestore() {
   const d = pendingRestore; if (!d) return;
+  const conAjustes = !!(document.getElementById('rs_ajustes') || {}).checked;
   pendingRestore = null; closeModal();
   const cols = COLS.filter(c => Array.isArray(d[c]));
   const total = cols.reduce((a, c) => a + d[c].length, 0); let n = 0;
@@ -48,8 +82,13 @@ export async function doRestore() {
     if (!(await saveMany(c, arr))) { toast('Se cortó después de ' + n + ' de ' + total + '. Probá de nuevo.'); return; }
     n += arr.length;
   }
+  if (Array.isArray(d.cajachica)) n += await restaurarCajaChica(d.cajachica);
+  if (conAjustes && d.ajustes && typeof d.ajustes === 'object') {
+    const a = {}; SYNC_KEYS.forEach(k => { if (k in d.ajustes) a[k] = d.ajustes[k]; });
+    saveSettings(a);
+  }
   render();
-  toast('Copia restaurada: ' + n + ' registros');
+  toast('Copia restaurada: ' + n + ' registros' + (conAjustes ? ' y los ajustes' : ''));
 }
 
 export async function exportCSV() {

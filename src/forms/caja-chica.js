@@ -2,7 +2,7 @@
 // gastos del día. Cada gasto que hace con esa plata se carga con su ticket y queda también
 // como gasto normal (del auto o general), así cuenta en la rentabilidad. Al final devuelve
 // lo que sobró. El saldo de cada persona es: lo que le diste − lo que gastó − lo que devolvió.
-import { S } from '../state.js';
+import { S, sb } from '../state.js';
 import { esc, val, uid, iso, today, fdate, money } from '../utils.js';
 import { openModal, toast } from '../modal.js';
 import { save } from '../data.js';
@@ -12,7 +12,24 @@ import { GASTO_CATS } from '../constants.js';
 import { subirArchivoSuelto } from '../files.js';
 import { isAdmin, isSupervisor } from '../roles.js';
 
-const movs = () => settings.cajaChica || [];
+// Los movimientos van en su propia tabla (cajachica) si ya está creada en Supabase;
+// si no, siguen en los ajustes como antes. Al encontrar la tabla, se pasan solos.
+let tabla = null; // null: no se sabe todavía · false: no existe · array: filas de la tabla
+const movs = () => (Array.isArray(tabla) ? tabla : settings.cajaChica || []);
+export async function cargarCajaChica() {
+  if (!sb) return;
+  const r = await sb.from('cajachica').select('id,data').order('id').limit(5000);
+  if (r.error) { tabla = false; return; }
+  const filas = (r.data || []).map(x => Object.assign({ id: x.id }, x.data || {}));
+  const viejos = (settings.cajaChica || []).filter(m => m && m.id && !filas.some(f => f.id === m.id));
+  if (viejos.length) {
+    const up = await sb.from('cajachica').upsert(viejos.map(m => ({ id: m.id, data: m, updated_at: new Date().toISOString() })));
+    if (up.error) { tabla = false; return; }
+    filas.push(...viejos);
+    saveSettings({ cajaChica: [] });
+  }
+  tabla = filas;
+}
 const yo = () => ((S.user && S.user.email) || '').toLowerCase();
 const nombre = p => (String(p).includes('@') ? String(p).split('@')[0] : String(p));
 const TIPOS = { entrega: 'Le diste', gasto: 'Gastó', devolucion: 'Devolvió' };
@@ -29,11 +46,36 @@ export function saldos() {
   return Object.values(S2).map(x => Object.assign(x, { saldo: x.entregado - x.gastado - x.devuelto })).sort((a, b) => b.saldo - a.saldo);
 }
 // Agrega un movimiento sobre la lista más nueva que haya (por si otro cargó algo recién).
-function agregar(m) { saveSettings({ cajaChica: movs().concat([m]).slice(-1000) }); }
+async function agregar(m) {
+  if (Array.isArray(tabla)) {
+    const r = await sb.from('cajachica').upsert({ id: m.id, data: m, updated_at: new Date().toISOString() });
+    if (r.error) { toast('No se pudo guardar el movimiento: ' + r.error.message); return false; }
+    tabla.push(m); return true;
+  }
+  saveSettings({ cajaChica: movs().concat([m]).slice(-1000) }); return true;
+}
+
+// Para la copia de seguridad.
+export const movimientosCajaChica = () => movs().slice();
+export async function restaurarCajaChica(arr) {
+  const L = (arr || []).filter(m => m && m.id);
+  if (!L.length) return 0;
+  if (tabla === null) await cargarCajaChica().catch(() => { tabla = false; });
+  if (Array.isArray(tabla)) {
+    const r = await sb.from('cajachica').upsert(L.map(m => ({ id: m.id, data: m, updated_at: new Date().toISOString() })));
+    if (r.error) return 0;
+    tabla = tabla.filter(x => !L.some(m => m.id === x.id)).concat(L);
+  } else {
+    const ids = new Set(L.map(m => m.id));
+    saveSettings({ cajaChica: (settings.cajaChica || []).filter(x => !ids.has(x.id)).concat(L).slice(-1000) });
+  }
+  return L.length;
+}
 
 let persona = '';
 export function cajaChicaView(p) {
   if (p !== undefined) persona = p;
+  if (tabla === null && sb) { openModal('<h3>Caja chica</h3><div class="small muted">Cargando…</div>'); cargarCajaChica().catch(() => { tabla = false; }).then(() => cajaChicaView()); return; }
   // Un empleado ve solo su caja.
   if (!veTodo()) persona = yo();
   const L = saldos();
@@ -105,7 +147,7 @@ export async function guardarCajaChica(tipo) {
       if (!(await save('gastos', g))) return;
       m.gastoId = g.id; m.carId = carId; m.foto = archivo ? archivo.id : '';
     }
-    agregar(m);
+    if (!(await agregar(m))) return;
     toast(tipo === 'entrega' ? 'Entrega anotada' : tipo === 'gasto' ? 'Gasto cargado' : 'Devolución anotada');
     cajaChicaView(quien);
   } finally { if (btn) btn.disabled = false; }

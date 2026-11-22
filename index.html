@@ -8,9 +8,17 @@
 <meta name="description" content="Autos, choferes, cobros y vencimientos en un solo lugar.">
 <link rel="icon" href="favicon.ico">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+/* Pantalla de carga: se ve mientras baja la app y desaparece sola cuando arranca. */
+#cargando{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#eef0ee;color:#222b33;font:600 18px system-ui,-apple-system,sans-serif;z-index:1}
+#cargando img{width:84px;height:84px;border-radius:20px}
+#cargando i{width:28px;height:28px;border:3px solid #d5dade;border-top-color:#222b33;border-radius:50%;animation:gira .8s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+@media (prefers-color-scheme: dark){#cargando{background:#14191e;color:#e8ecef}#cargando i{border-color:#2e363d;border-top-color:#e8ecef}}
+</style>
 </head>
 <body>
-<div class="app" id="app"></div>
+<div class="app" id="app"><div id="cargando"><img src="icon-192.png" alt=""><span>LD Rental</span><i></i></div></div>
 <nav id="nav"></nav>
 <div id="modal"></div>
 <div id="modal2"></div>

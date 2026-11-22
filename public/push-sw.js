@@ -1,7 +1,7 @@
 self.addEventListener('push', (event) => {
   let data = {};
-  try { data = event.data ? event.data.json() : {}; } catch (e) { data = { title: 'Mi Flota', body: event.data ? event.data.text() : '' }; }
-  const title = data.title || 'Mi Flota';
+  try { data = event.data ? event.data.json() : {}; } catch (e) { data = { title: 'LD Rental', body: event.data ? event.data.text() : '' }; }
+  const title = data.title || 'LD Rental';
   const options = {
     body: data.body || '',
     icon: 'icon-192.png',

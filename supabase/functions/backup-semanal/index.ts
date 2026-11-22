@@ -1,4 +1,4 @@
-// Mi Flota — backup automático semanal.
+// LD Rental — backup automático semanal.
 // Junta todas las tablas de datos en el mismo formato que "Descargar copia"
 // de la app, y lo sube al bucket de Storage "backups". Se dispara por un
 // cron job de Postgres (ver sql/fase5_backups_automaticos.sql) o se puede

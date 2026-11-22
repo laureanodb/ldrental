@@ -15,6 +15,10 @@ export const CHANGELOG = [
     'Errores de la app: si algo falla queda registrado y el administrador lo ve en Más → Errores de la app.',
     'Todos los PDF con el mismo membrete (logo, CUIT, teléfono, dirección), número correlativo y página X de Y.',
     'Acta de entrega y de devolución del auto: km, combustible, elementos, daños, fotos y firma de los dos en el celular. Queda el PDF en los archivos del auto.',
+    'La app arranca más rápido: las pantallas que se usan poco se bajan recién la primera vez que las abrís.',
+    'Pantalla de carga con el logo mientras abre la app.',
+    'Copia de seguridad más completa: ahora incluye los ajustes y la caja chica. Al restaurar podés probar la copia antes, sin cambiar nada.',
+    'Más seguridad: la app solo se puede comunicar con los servicios que usa, y antes de cada publicación se corren pruebas automáticas.',
   ] },
   { v: '2026-11-13', items: [
     'Bienvenida: al asignarle un auto a un chofer se arma el mensaje de WhatsApp con su link del portal, el monto, el día de cobro, el teléfono de emergencia y tus reglas. El texto base se cambia en Más → Mensaje de bienvenida.',
