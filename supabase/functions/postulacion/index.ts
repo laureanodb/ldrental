@@ -16,6 +16,7 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 }
 
+const VERSION = '2026-11-22';
 const txt = (v: unknown, max = 300) => String(v || '').trim().slice(0, max);
 const lista = (v: unknown) => (Array.isArray(v) ? v : String(v || '').split('\n')).map((x: unknown) => txt(x, 200)).filter(Boolean).slice(0, 12);
 
@@ -29,7 +30,7 @@ Deno.serve(async (req) => {
       const cfg = (row && row.data) || {};
       const s = cfg.sitioEmpresa || {};
       return json({
-        ok: true, companyName: txt(cfg.companyName, 80), companyLogo: String(cfg.companyLogo || '').slice(0, 400000),
+        ok: true, version: VERSION, companyName: txt(cfg.companyName, 80), companyLogo: String(cfg.companyLogo || '').slice(0, 400000),
         sitio: { titulo: txt(s.titulo, 120), bajada: txt(s.bajada, 400), quienes: txt(s.quienes, 1500), requisitos: lista(s.requisitos), beneficios: lista(s.beneficios),
           zona: txt(s.zona, 160), horario: txt(s.horario, 160), whatsapp: txt(s.whatsapp, 40), instagram: txt(s.instagram, 80), direccion: txt(s.direccion, 160) },
       });
@@ -40,6 +41,9 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ ok: false, error: 'Método no permitido' }, 405);
   try {
     const body = await req.json().catch(() => ({}));
+    // Freno a robots: el campo "web" está oculto (una persona no lo completa) y nadie llena el formulario en menos de 3 segundos.
+    if (txt(body.web, 100)) return json({ ok: true });
+    if (body.t0 && Date.now() - +body.t0 < 3000) return json({ ok: false, error: 'Revisá los datos y probá de nuevo' }, 400);
     const nombre = String(body.nombre || '').trim().slice(0, 120);
     const tel = String(body.tel || '').trim().slice(0, 40);
     if (!nombre || !tel) return json({ ok: false, error: 'Faltan datos' }, 400);
@@ -52,9 +56,16 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const sb = createClient(supabaseUrl, serviceKey);
 
+    // Como mucho 3 postulaciones por hora desde la misma conexión.
+    const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim().slice(0, 60);
+    if (ip) {
+      const haceUnaHora = new Date(Date.now() - 3600e3).toISOString();
+      const { count } = await sb.from('drivers').select('id', { count: 'exact', head: true }).eq('data->>ip', ip).gte('updated_at', haceUnaHora);
+      if ((count || 0) >= 3) return json({ ok: false, error: 'Ya recibimos tus datos. Si necesitás algo más, escribinos por WhatsApp.' }, 429);
+    }
     const id = crypto.randomUUID();
     const data = {
-      nombre, tel, canalOrigen, canalOrigenOtro, tipoLicencia, experienciaChofer,
+      nombre, tel, canalOrigen, canalOrigenOtro, tipoLicencia, experienciaChofer, ip, postuladoEl: new Date().toISOString(),
       prospecto: true, etapaProspecto: 'contacto', docs: {}, onboarding: {}, files: [],
     };
     const { error } = await sb.from('drivers').insert({ id, data, updated_at: new Date().toISOString() });

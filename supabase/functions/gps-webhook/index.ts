@@ -16,7 +16,9 @@ import webpush from 'npm:web-push@3.6.7';
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, apikey, content-type' };
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...CORS, 'Content-Type': 'application/json' } });
 const num = (v: unknown) => (v === null || v === undefined || v === '' || !Number.isFinite(+v) ? null : +v);
-const hoyIso = () => new Date().toISOString().slice(0, 10);
+// Fecha de hoy en Argentina (UTC−3, sin horario de verano): el servidor corre en hora UTC.
+const fechaAR = (d = new Date()) => new Date(d.getTime() - 3 * 3600e3).toISOString().slice(0, 10);
+const hoyIso = () => fechaAR();
 
 // Distancia en km entre dos puntos.
 function distanciaKm(a: number, b: number, c: number, d: number) {

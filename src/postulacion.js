@@ -12,7 +12,9 @@ export function initPostulacion() {
   renderForm(app);
 }
 
+let t0 = 0;
 function renderForm(app) {
+  t0 = Date.now();
   pantalla(app, '<p class="sub">Sumate a la flota</p>' +
   '<label class="f"><span>Nombre y apellido</span><input id="po_nombre"></label>' +
   '<label class="f"><span>Teléfono <small>con código de país, ej: +5491155551234</small></span><input id="po_tel" type="tel"></label>' +
@@ -20,6 +22,8 @@ function renderForm(app) {
   '<div id="po_otroBox" style="display:none"><label class="f"><span>¿Cuál?</span><input id="po_canalOtro"></label></div>' +
   '<label class="f"><span>Tipo de licencia</span><input id="po_licencia" placeholder="ej: B1, profesional..."></label>' +
   '<label class="f"><span>Experiencia previa como chofer</span><textarea id="po_experiencia"></textarea></label>' +
+  // Campo trampa para robots: oculto para las personas.
+  '<div style="position:absolute;left:-5000px" aria-hidden="true"><label>Web<input id="po_web" tabindex="-1" autocomplete="off"></label></div>' +
   '<button class="btn block" id="po_submit">Enviar</button>' +
   '<div id="po_err" class="small" style="margin-top:8px"></div>');
   const sel = document.getElementById('po_canal');
@@ -41,7 +45,7 @@ async function enviar(app) {
   const btn = document.getElementById('po_submit'); if (btn) btn.disabled = true;
   try {
     const body = {
-      nombre, tel,
+      nombre, tel, web: (document.getElementById('po_web') || {}).value || '', t0,
       canalOrigen: document.getElementById('po_canal').value,
       canalOrigenOtro: document.getElementById('po_canalOtro').value,
       tipoLicencia: document.getElementById('po_licencia').value.trim(),
@@ -54,7 +58,7 @@ async function enviar(app) {
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.ok) {
-      err.style.color = 'var(--bad)'; err.textContent = 'No se pudo enviar. Probá de nuevo en un rato.';
+      err.style.color = 'var(--bad)'; err.textContent = j.error || 'No se pudo enviar. Probá de nuevo en un rato.';
       if (btn) btn.disabled = false;
       return;
     }

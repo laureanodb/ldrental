@@ -7,6 +7,7 @@ import { toast, openModal } from './modal.js';
 import { TIPOS } from './constants.js';
 import { save } from './data.js';
 import { de } from './memo.js';
+import { urlPortal } from './forms/portal-ajustes.js';
 
 let renovando = false;
 
@@ -211,7 +212,7 @@ export async function compartirContrato(carId) {
 // firma desde su portal; la Edge Function portal-chofer guarda la firma, la
 // fecha y hora, el nombre y DNI que escribió y la IP.
 function linkPortal(d) {
-  return d.portalToken ? location.origin + location.pathname + '#/portal/' + d.id + '/' + d.portalToken : '';
+  return urlPortal(d);
 }
 export async function mandarContratoAFirmar(carId) {
   const c = carById(carId); if (!c || !c.choferId) { toast('Asigná un chofer al auto primero'); return; }

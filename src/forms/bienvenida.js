@@ -8,12 +8,13 @@ import { de } from '../memo.js';
 import { settings, saveSettings } from '../settings.js';
 import { waLink } from './choferes-extra.js';
 import { esMensual, montoMensual } from '../financiados.js';
+import { urlPortal, linkVencido, nuevoToken } from './portal-ajustes.js';
 
 const DIAS = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados'];
 export const TEXTO_BIENVENIDA = 'Hola {nombre}, ¡bienvenido a {empresa}! Ya tenés asignado el {auto} patente {patente}.\n\n' +
   '• Pagás {monto} por {periodo}, los {dia}.\n• En tu portal ves lo que debés, tus pagos, los papeles del auto y los avisos: {portal}\n• Emergencias: {emergencia}\n\n{reglas}\n\nCualquier duda, escribinos por acá.';
 const texto = () => settings.bienvenidaTexto || TEXTO_BIENVENIDA;
-const linkPortal = d => (d.portalToken ? location.origin + location.pathname + '#/portal/' + d.id + '/' + d.portalToken : '');
+const linkPortal = d => urlPortal(d);
 
 export function armarBienvenida(d, c) {
   const fin = c.tipo === 'financiado', mensual = esMensual(c);
@@ -32,8 +33,8 @@ export function armarBienvenida(d, c) {
 export async function bienvenidaForm(carId, volver) {
   const c = de('cars', 'id', carId)[0]; if (!c || !c.choferId) return;
   let d = de('drivers', 'id', c.choferId)[0]; if (!d) return;
-  if (!d.portalToken) {
-    const nuevo = Object.assign({}, d, { portalToken: uid() + uid() });
+  if (!d.portalToken || linkVencido(d)) {
+    const nuevo = Object.assign({}, d, nuevoToken());
     if (await save('drivers', nuevo)) d = nuevo;
   }
   const msg = armarBienvenida(d, c);

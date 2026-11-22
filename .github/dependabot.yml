@@ -1,0 +1,13 @@
+# Avisos automáticos cuando una librería de la app saca una actualización (sobre todo de seguridad).
+# Llegan como propuestas de cambio en GitHub para revisar; no se publica nada solo.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

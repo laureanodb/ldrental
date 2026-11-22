@@ -24,8 +24,9 @@ Deno.serve(async () => {
     webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
 
     const sb = createClient(supabaseUrl, serviceKey);
-    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-    const hoyIso = hoy.toISOString().slice(0, 10);
+    // Hoy en Argentina (el servidor corre en UTC).
+    const hoyIso = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+    const hoy = new Date(hoyIso + 'T00:00:00');
 
     const [{ data: carsRaw }, { data: paymentsRaw }, { data: multasRaw }] = await Promise.all([
       sb.from('cars').select('id,data'),

@@ -20,6 +20,7 @@ import { seccionManejoChofer } from './gps.js';
 import { fichaCompletaCard, camposChofer } from './ficha-completa.js';
 import { campoReferidoPor } from './referidos.js';
 import { normalizarTelAR, dniValido, mismoTel, mismoDni, avisarUnaVez } from '../validar.js';
+import { urlPortal, linkVencido, nuevoToken } from './portal-ajustes.js';
 
 function telRow(t) {
   t = t || {};
@@ -72,9 +73,10 @@ export function driverForm(id) {
     '</div>';
   }
   if (ex) {
-    const portalUrl = d.portalToken ? location.origin + location.pathname + '#/portal/' + d.id + '/' + d.portalToken : '';
+    const portalUrl = urlPortal(d);
     h += '<div class="card" style="margin-bottom:10px"><div class="small muted" style="margin-bottom:6px">Portal del chofer <small>link de solo lectura, sin login</small></div>' +
     (d.portalDesactivado ? '<div class="row between" style="margin-bottom:8px"><span class="small" style="color:var(--bad)">Acceso desactivado</span><button class="btn sec sm" onclick="togglePortalDesactivado(\'' + d.id + '\')">Reactivar</button></div>' : '') +
+    (portalUrl && linkVencido(d) ? '<div class="small" style="color:var(--warn);margin-bottom:6px">Este link venció: tocá Regenerar y mandale el nuevo.</div>' : '') +
     (portalUrl ? '<input readonly value="' + esc(portalUrl) + '" onclick="this.select()" style="margin-bottom:8px">' +
       '<div class="row"><button class="btn sec sm" onclick="copiarLinkPortal(\'' + esc(portalUrl) + '\')">Copiar</button>' +
       '<a class="btn sec sm" target="_blank" href="https://wa.me/' + (d.tel ? String(d.tel).replace(/\D/g, '') : '') + '?text=' + encodeURIComponent('Hola ' + (d.nombre || '').split(' ')[0] + ', acá podés ver tu estado de cuenta: ' + portalUrl) + '" onclick="marcarLinkEnviado(\'' + d.id + '\')">WhatsApp</a>' +
@@ -354,8 +356,7 @@ export async function borrarComunicacion(id, comId) {
 }
 export async function regenerarLinkPortal(id) {
   const d = de('drivers', 'id', id)[0]; if (!d) return;
-  const token = uid() + uid();
-  if (!(await save('drivers', Object.assign({}, d, { portalToken: token })))) return;
+  if (!(await save('drivers', Object.assign({}, d, nuevoToken())))) return;
   toast('Link generado'); driverForm(id);
 }
 export async function togglePortalDesactivado(id) {

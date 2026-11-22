@@ -41,15 +41,48 @@ export async function initPortal(driverId, token) {
   try {
     const url = SUPABASE_URL + '/functions/v1/portal-chofer?id=' + encodeURIComponent(driverId) + '&t=' + encodeURIComponent(token);
     const r = await fetch(url, { headers: { Authorization: 'Bearer ' + SUPABASE_KEY, apikey: SUPABASE_KEY } });
-    j = await r.json();
-    if (!r.ok || !j.ok) { pantalla(app, '<div class="card"><b>Link inválido o vencido</b><p class="small muted">Pedile a la empresa que te mande un link nuevo.</p></div>'); return; }
+    j = await r.json().catch(() => null);
+    if (!r.ok || !j || !j.ok) { pantalla(app, '<div class="card"><b>' + (j && j.cerrado ? 'Este link ya no funciona' : 'Link inválido o vencido') + '</b><p class="small muted">' + esc((j && j.error && j.cerrado) ? j.error : 'Pedile a la empresa que te mande un link nuevo.') + '</p>' + contactoGuardado() + '</div>'); return; }
   } catch (e) {
-    pantalla(app, '<div class="card"><b>No se pudo cargar</b><p class="small muted">Revisá tu conexión e intentá de nuevo.</p></div>');
+    pantalla(app, '<div class="card"><b>No se pudo cargar</b><p class="small muted">Puede ser la conexión o un problema de la página. Probá de nuevo en un rato.</p>' +
+      '<button class="btn sec block" style="margin-top:8px" onclick="location.reload()">Probar de nuevo</button>' + contactoGuardado() + '</div>');
     return;
   }
+  guardarContacto(j);
+  if (j.color) document.documentElement.style.setProperty('--btn', j.color);
   j.cotizacion = await cotizacionPortal(j.dolar);
   pantalla(app, '', j);
+  // Términos de uso: hay que aceptarlos la primera vez (y cuando cambian).
+  if (j.terminos && j.terminos.texto && j.terminosAceptados !== j.terminos.version) { pantallaTerminos(app, j); return; }
   renderPortal(app, j);
+}
+// Teléfono de atención guardado en el celular, para mostrarlo aunque la página no cargue.
+const CONTACTO_KEY = 'portal-contacto';
+function guardarContacto(j) {
+  try { localStorage.setItem(CONTACTO_KEY, JSON.stringify({ tel: (j.soporte && j.soporte.tel) || j.companyPhone || '', horario: (j.soporte && j.soporte.horario) || '', empresa: j.companyName || '' })); } catch (e) {}
+}
+function contactoGuardado() {
+  let c = null; try { c = JSON.parse(localStorage.getItem(CONTACTO_KEY) || 'null'); } catch (e) {}
+  const tel = (c && c.tel) || settings.companyPhone || '';
+  if (!tel) return '';
+  return '<div class="small" style="margin-top:10px">Si necesitás algo urgente, escribile a ' + esc((c && c.empresa) || 'la empresa') + ': <b>' + esc(tel) + '</b>' + (c && c.horario ? ' (' + esc(c.horario) + ')' : '') + '</div>' +
+    '<a class="btn sec block" style="margin-top:8px" target="_blank" rel="noopener" href="https://wa.me/' + esc(tel.replace(/\D/g, '')) + '">Escribir por WhatsApp</a>';
+}
+function pantallaTerminos(app, j) {
+  const box = app.querySelector('.login') || app;
+  box.insertAdjacentHTML('beforeend', '<div class="card"><b>Antes de entrar</b><div class="small muted" style="margin:4px 0 8px">Leé y aceptá los términos de uso del portal.</div>' +
+    '<div class="small" style="white-space:pre-wrap;max-height:50vh;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:10px">' + esc(j.terminos.texto) + '</div>' +
+    '<label class="chk" style="margin-top:10px"><input type="checkbox" id="tp_acepto"><span>Leí y acepto los términos</span></label>' +
+    '<button class="btn block" id="tp_btn" style="margin-top:8px">Aceptar y entrar</button><div class="small muted" id="tp_status" style="margin-top:6px"></div></div>');
+  document.getElementById('tp_btn').addEventListener('click', async () => {
+    const st = document.getElementById('tp_status');
+    if (!document.getElementById('tp_acepto').checked) { st.textContent = 'Tildá que leíste y aceptás los términos.'; return; }
+    st.textContent = 'Guardando…';
+    const r = await postPortal({ accion: 'aceptar_terminos', version: j.terminos.version });
+    if (!r.ok) { st.textContent = r.error || 'No se pudo guardar, probá de nuevo.'; return; }
+    j.terminosAceptados = j.terminos.version;
+    pantalla(app, '', j); renderPortal(app, j);
+  });
 }
 // Dólar del día con la misma cotización que eligió la empresa en Ajustes.
 async function cotizacionPortal(cfg) {
@@ -155,6 +188,10 @@ function renderPortal(app, j) {
     (telEmergencia ? '<a class="btn block" href="tel:' + esc(telEmergencia) + '">Llamar a ' + esc(telEmergencia) + '</a>' : '') +
     (protocolo ? '<div class="small" style="white-space:pre-wrap;margin-top:10px">' + esc(protocolo) + '</div>' : '') +
     '</div>';
+  }
+  if (j.soporte && (j.soporte.horario || j.soporte.tel)) {
+    h += '<div class="sec-t">Atención</div><div class="card" style="margin-bottom:14px">' + (j.soporte.horario ? '<div class="small">Horario: <b>' + esc(j.soporte.horario) + '</b></div>' : '') +
+      (j.soporte.tel ? '<div class="small muted" style="margin-top:4px">Consultas y pagos: ' + esc(j.soporte.tel) + '. Fuera de horario, solo emergencias.</div>' : '') + '</div>';
   }
   if (j.guias && j.guias.length) {
     h += '<div class="sec-t">Guías</div>' + j.guias.map(g => '<details class="card" style="margin-bottom:8px"><summary style="cursor:pointer"><b>' + esc(g.titulo) + '</b></summary><div class="small" style="white-space:pre-wrap;margin-top:8px">' + esc(g.texto) + '</div></details>').join('');

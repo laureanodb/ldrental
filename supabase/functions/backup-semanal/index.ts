@@ -30,7 +30,7 @@ Deno.serve(async () => {
     const payload: Record<string, unknown> = { app: 'mi-flota', version: 1, fecha: new Date().toISOString() };
     for (const col of COLS) payload[col] = await fetchAll(sb, col);
 
-    const filename = 'backups/copia-' + new Date().toISOString().slice(0, 10) + '-' + Date.now() + '.json';
+    const filename = 'backups/copia-' + new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10) + '-' + Date.now() + '.json';
     const body = new Blob([JSON.stringify(payload)], { type: 'application/json' });
     const up = await sb.storage.from(BUCKET).upload(filename, body, { upsert: false, contentType: 'application/json' });
     if (up.error) throw up.error;

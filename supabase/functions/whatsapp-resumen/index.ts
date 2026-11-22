@@ -28,7 +28,8 @@ Deno.serve(async () => {
     const waLang = Deno.env.get('WHATSAPP_TEMPLATE_LANG') || 'es_AR';
 
     const sb = createClient(supabaseUrl, serviceKey);
-    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    // Hoy en Argentina (el servidor corre en UTC).
+    const hoy = new Date(new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10) + 'T00:00:00');
     const haceSieteDias = new Date(hoy); haceSieteDias.setDate(haceSieteDias.getDate() - 7);
     const haceSieteDiasIso = haceSieteDias.toISOString().slice(0, 10);
 

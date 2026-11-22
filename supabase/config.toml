@@ -1,0 +1,30 @@
+# Configuración de las funciones de Supabase de LD Rental.
+# La usa el publicador automático (.github/workflows/funciones.yml).
+# verify_jwt = false: la función se usa sin usuario de la app (portal, postulantes, GPS)
+# y se protege sola (token del link, límites por día, clave del GPS).
+project_id = "ldrental"
+
+[functions.portal-chofer]
+verify_jwt = false
+
+[functions.postulacion]
+verify_jwt = false
+
+[functions.gps-webhook]
+verify_jwt = false
+
+# Estas solo las usan usuarios con sesión (o las tareas programadas con la clave de servicio).
+[functions.leer-documento]
+verify_jwt = true
+
+[functions.usuarios-admin]
+verify_jwt = true
+
+[functions.push-diario]
+verify_jwt = true
+
+[functions.push-semanal]
+verify_jwt = true
+
+[functions.backup-semanal]
+verify_jwt = true

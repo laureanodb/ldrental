@@ -85,10 +85,10 @@ export function viewMas() {
   ]);
   if (isAdmin() && !featureOculta('desafios')) h += grupo('Motivación', [['Desafío del mes', 'desafioMesForm()']]);
   h += grupo('Choferes', [['Premio por referido', 'referidosView()']]);
-  h += grupo('Comunicación', [['Mensaje a todos los choferes', 'mensajeATodosForm()'], ['Mensajes programados por WhatsApp', 'mensajesProgramadosView()'], ['Mensaje de bienvenida', 'bienvenidaConfigForm()'], ['Guías para el chofer (portal)', 'guiasView()'], ['Página de la empresa (web)', 'sitioEmpresaForm()']].concat(isAdmin() ? [['Tablón de anuncios (portal del chofer)', 'anunciosForm()']] : []));
+  h += grupo('Comunicación', [['Mensaje a todos los choferes', 'mensajeATodosForm()'], ['Mensajes programados por WhatsApp', 'mensajesProgramadosView()'], ['Mensaje de bienvenida', 'bienvenidaConfigForm()'], ['Portal del chofer: ajustes', 'portalAjustesForm()'], ['Guías para el chofer (portal)', 'guiasView()'], ['Página de la empresa (web)', 'sitioEmpresaForm()']].concat(isAdmin() ? [['Tablón de anuncios (portal del chofer)', 'anunciosForm()']] : []));
   const admin = [['Ajustes', "goMas('ajustes')"], ['Copia de seguridad', "goMas('backup')"], ['Google', "goMas('google')"], ['Salud de los datos', "goMas('saluddatos')"]];
   if (canVerFinanzas() && !featureOculta('autoseguro')) admin.push(['Fondo de autoseguro', 'autoseguroForm()']);
-  if (isAdmin()) admin.push(['Usuarios y permisos', 'usuariosView()'], ['Auditoría', 'auditoriaView()'], ['Bitácora de decisiones', 'bitacoraView()']);
+  if (isAdmin()) admin.push(['Usuarios y permisos', 'usuariosView()'], ['Auditoría', 'auditoriaView()'], ['Bitácora de decisiones', 'bitacoraView()'], ['Errores de la app', 'erroresView()']);
   const nPend = cantidadPendientes();
   if (isAdmin() || nPend) admin.unshift(['Gastos para aprobar' + (nPend ? ' (' + nPend + ')' : ''), 'aprobacionesView()']);
   admin.push(['Papelera (lo borrado en los últimos 30 días)', 'papeleraView()']);

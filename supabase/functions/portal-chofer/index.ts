@@ -18,6 +18,8 @@
 // - gasto: algo del auto que pagó el chofer (con foto del ticket) para que se lo descuenten.
 // - aviso_atraso: avisa que se atrasa con el pago y qué día paga.
 // - devolucion: avisa qué día devuelve el auto.
+// - aceptar_terminos: el chofer acepta los términos de uso del portal (fecha, hora e IP).
+// Cada acción tiene un límite por día, y el link deja de andar si el chofer está de baja o venció.
 // El GET también anota cuándo abrió el portal (para saber si vio el link que le mandaron).
 // Todo valida que el auto sea del chofer y avisa a la empresa con una notificación.
 // El token se genera y se puede regenerar desde la ficha del chofer en la app.
@@ -58,7 +60,9 @@ function diasEntre(fechaIso: string, hoy: Date): number {
   return Math.round((hoy.getTime() - new Date(fechaIso + 'T00:00:00').getTime()) / 86400000);
 }
 
-const hoyIso = () => new Date().toISOString().slice(0, 10);
+// Fecha de hoy en Argentina (UTC−3, sin horario de verano): el servidor corre en hora UTC.
+const fechaAR = (d = new Date()) => new Date(d.getTime() - 3 * 3600e3).toISOString().slice(0, 10);
+const hoyIso = () => fechaAR();
 const txt = (v: unknown, max = 300) => String(v || '').trim().slice(0, max);
 const nuevoId = () => crypto.randomUUID().replace(/-/g, '').slice(0, 16);
 // Sube una imagen en base64 al bucket y devuelve el path, o un error para el chofer.
@@ -112,6 +116,29 @@ async function guardarChofer(sb: any, driverId: string, patch: (d: any) => any) 
   if (!fresco || !fresco.data) return 'Chofer no encontrado';
   const upd = await sb.from('drivers').update({ data: Object.assign({}, fresco.data, patch(fresco.data)), updated_at: new Date().toISOString() }).eq('id', driverId);
   return upd.error ? upd.error.message : '';
+}
+const VERSION = '2026-11-22';
+// El link deja de andar si el chofer está dado de baja o si venció (Ajustes del portal → vigencia).
+async function motivoLinkCerrado(sb: any, d: any): Promise<string> {
+  if (d.inactivo) return 'Este link ya no está activo. Si volvés a trabajar con la empresa, pedí uno nuevo.';
+  const { data: row } = await sb.from('app_settings').select('data').eq('id', 'main').maybeSingle();
+  const dias = +((row && row.data && row.data.portalVigenciaDias) || 0);
+  if (dias > 0 && d.portalTokenCreado && diasEntre(String(d.portalTokenCreado).slice(0, 10), new Date(hoyIso() + 'T00:00:00')) > dias) return 'Este link venció. Pedile uno nuevo a la empresa.';
+  return '';
+}
+// Freno a los abusos: cuántas veces por día se puede hacer cada cosa desde el portal.
+const LIMITE_DIA: Record<string, number> = { reclamo: 5, gasto: 10, aviso_atraso: 3, comprobante: 10, documento: 6, problema: 5, auxilio: 5, service: 3, foto: 20, km: 10, tablero: 20, encuesta: 3, opinion: 10, actualizar_datos: 3, devolucion: 3, firmar_contrato: 5 };
+const LIMITE_TOTAL_DIA = 80;
+function excedeLimite(d: any, accion: string): string {
+  if (accion === 'aceptar_terminos') return '';
+  const uso = d.portalUso && d.portalUso.dia === hoyIso() ? d.portalUso : { dia: hoyIso(), n: {}, total: 0 };
+  if ((uso.total || 0) >= LIMITE_TOTAL_DIA) return 'Hiciste muchas cosas hoy desde el portal. Probá mañana o escribile a la empresa.';
+  if (LIMITE_DIA[accion] && ((uso.n || {})[accion] || 0) >= LIMITE_DIA[accion]) return 'Ya mandaste esto varias veces hoy. Si necesitás algo más, escribile a la empresa.';
+  return '';
+}
+function sumarUso(d: any, accion: string) {
+  const uso = d.portalUso && d.portalUso.dia === hoyIso() ? d.portalUso : { dia: hoyIso(), n: {}, total: 0 };
+  return { dia: uso.dia, total: (uso.total || 0) + 1, n: Object.assign({}, uso.n || {}, { [accion]: ((uso.n || {})[accion] || 0) + 1 }) };
 }
 const fechaValida = (v: unknown) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '');
 // Semanas seguidas (de la más reciente para atrás) en que lo pagado cubrió todo lo que correspondía.
@@ -203,8 +230,18 @@ Deno.serve(async (req) => {
       if (!driverRow || !driverRow.data || driverRow.data.portalToken !== token) return json({ ok: false, error: 'Link inválido' }, 403);
       const d = Object.assign({ id: driverRow.id }, driverRow.data);
       if (d.portalDesactivado) return json({ ok: false, error: 'El acceso al portal está desactivado temporalmente' }, 403);
+      const cerrado = await motivoLinkCerrado(sb, d);
+      if (cerrado) return json({ ok: false, error: cerrado }, 403);
       const accion = String(body.accion || '');
-      if (accion === 'service') {
+      const limite = excedeLimite(d, accion);
+      if (limite) return json({ ok: false, error: limite }, 429);
+      if (accion !== 'aceptar_terminos') await guardarChofer(sb, driverId, (x: any) => ({ portalUso: sumarUso(x, accion) })).catch(() => '');
+      if (accion === 'aceptar_terminos') {
+        const version = txt(body.version, 40);
+        const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim().slice(0, 60);
+        const err = await guardarChofer(sb, driverId, () => ({ terminosAceptados: { version, fecha: new Date().toISOString(), ip } }));
+        if (err) return json({ ok: false, error: 'No se pudo guardar: ' + err }, 500);
+      } else if (accion === 'service') {
         const row = await autoDelChofer(sb, driverId, String(body.carId || ''), txt(body.patente, 20));
         if (!row) return json({ ok: false, error: 'Elegí tu auto' }, 400);
         const motivo = txt(body.motivo);
@@ -341,7 +378,7 @@ Deno.serve(async (req) => {
         const comentario = String(body.comentario || '').trim().slice(0, 300);
         await sb.from('encuestas').insert({
           id: crypto.randomUUID(),
-          data: { choferId: driverId, rating, comentario, fecha: new Date().toISOString().slice(0, 10) },
+          data: { choferId: driverId, rating, comentario, fecha: hoyIso() },
         });
         await avisarPush(sb, 'Encuesta de satisfacción', (d.nombre || 'Chofer') + ' · ' + rating + '/5' + (comentario ? ' — ' + comentario : ''));
       } else if (accion === 'foto') {
@@ -359,7 +396,7 @@ Deno.serve(async (req) => {
         const up = await sb.storage.from(BUCKET).upload(path, bytes, { contentType, upsert: false });
         if (up.error) return json({ ok: false, error: 'No se pudo subir: ' + up.error.message }, 500);
         const c = Object.assign({ id: carRow.id }, carRow.data);
-        const files = (c.files || []).concat([{ id: path, name: 'foto-chofer-' + new Date().toISOString().slice(0, 10) + '.' + ext, cat: 'fotos', type: contentType, size: bytes.byteLength, fecha: new Date().toISOString().slice(0, 10), subidoPorChofer: true }]);
+        const files = (c.files || []).concat([{ id: path, name: 'foto-chofer-' + hoyIso() + '.' + ext, cat: 'fotos', type: contentType, size: bytes.byteLength, fecha: hoyIso(), subidoPorChofer: true }]);
         const upd = await sb.from('cars').update({ data: Object.assign({}, c, { files }) }).eq('id', carId);
         if (upd.error) return json({ ok: false, error: 'No se pudo guardar: ' + upd.error.message }, 500);
         await avisarPush(sb, 'Foto subida por ' + (d.nombre || 'un chofer'), c.patente ? 'Auto ' + c.patente : 'Foto nueva en un auto');
@@ -375,7 +412,7 @@ Deno.serve(async (req) => {
         const path = new Date().getFullYear() + '/comprobante-' + crypto.randomUUID() + '.' + ext;
         const up = await sb.storage.from(BUCKET).upload(path, bytes, { contentType, upsert: false });
         if (up.error) return json({ ok: false, error: 'No se pudo subir: ' + up.error.message }, 500);
-        const comprobantes = (driverRow.data.comprobantesPortal || []).concat([{ id: path, carId, type: contentType, size: bytes.byteLength, fecha: new Date().toISOString().slice(0, 10) }]);
+        const comprobantes = (driverRow.data.comprobantesPortal || []).concat([{ id: path, carId, type: contentType, size: bytes.byteLength, fecha: hoyIso() }]);
         const upd = await sb.from('drivers').update({ data: Object.assign({}, driverRow.data, { comprobantesPortal: comprobantes }) }).eq('id', driverId);
         if (upd.error) return json({ ok: false, error: 'No se pudo guardar: ' + upd.error.message }, 500);
         await avisarPush(sb, 'Comprobante subido por ' + (d.nombre || 'un chofer'), 'Revisalo en la ficha del chofer');
@@ -394,7 +431,7 @@ Deno.serve(async (req) => {
         const path = new Date().getFullYear() + '/doc-' + tipo + '-' + crypto.randomUUID() + '.' + ext;
         const up = await sb.storage.from(BUCKET).upload(path, bytes, { contentType, upsert: false });
         if (up.error) return json({ ok: false, error: 'No se pudo subir: ' + up.error.message }, 500);
-        const fecha = new Date().toISOString().slice(0, 10);
+        const fecha = hoyIso();
         const actual = driverRow.data;
         const files = (actual.files || []).concat([{ id: path, name: DOCS_CHOFER[tipo].archivo + '-' + fecha + '.' + ext, cat: tipo, type: contentType, size: bytes.byteLength, fecha, subidoPorChofer: true }]);
         const docsPortal = (actual.docsPortal || []).concat([{ id: path, tipo, fecha, venceInformado: vence, type: contentType }]);
@@ -446,6 +483,8 @@ Deno.serve(async (req) => {
     }
     const d = Object.assign({ id: driverRow.id }, driverRow.data);
     if (d.portalDesactivado) return json({ ok: false, error: 'El acceso al portal está desactivado temporalmente' }, 403);
+    const cerrado = await motivoLinkCerrado(sb, d);
+    if (cerrado) return json({ ok: false, error: cerrado, cerrado: true }, 403);
     // Anota la visita (como mucho una vez cada 10 minutos) para que la empresa sepa si vio el link.
     if (!d.portalVisto || Date.now() - Date.parse(d.portalVisto) > 10 * 60 * 1000) {
       await guardarChofer(sb, driverId, (x: any) => ({ portalVisto: new Date().toISOString(), portalVisitas: (+x.portalVisitas || 0) + 1 })).catch(() => '');
@@ -479,7 +518,8 @@ Deno.serve(async (req) => {
       .reduce((a: number, g: any) => a + (+g.costo || 0), 0);
     const seguroPagado = payments.filter((p: any) => p.tipo === 'seguro').reduce((a: number, p: any) => a + (+p.monto || 0), 0);
 
-    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    // Medianoche (UTC) del día de hoy en Argentina, igual que las fechas AAAA-MM-DD que se comparan con diasEntre.
+    const hoy = new Date(hoyIso() + 'T00:00:00');
     let adelantoRestante = saldoSemanaAdelantadaTotal;
 
     const autos = cars.map((c: any) => {
@@ -585,6 +625,11 @@ Deno.serve(async (req) => {
       companyName: cfg.companyName || '', companyLogo: cfg.companyLogo || '', companyPhone: cfg.companyPhone || '',
       telefonoEmergencia: cfg.telefonoEmergencia || '', protocoloEmergencia: cfg.protocoloEmergencia || '', anuncios: cfg.anuncios || [],
       guias: (Array.isArray(cfg.guiasChofer) ? cfg.guiasChofer : []).slice(0, 20).map((g: any) => ({ titulo: txt(g.titulo, 120), texto: txt(g.texto, 4000) })),
+      version: VERSION,
+      soporte: { tel: txt(cfg.soporteTel || cfg.companyPhone, 40), horario: txt(cfg.soporteHorario, 160) },
+      color: /^#[0-9a-fA-F]{6}$/.test(String(cfg.colorPortal || '')) ? cfg.colorPortal : '',
+      terminos: cfg.terminosPortal && cfg.terminosPortal.texto ? { texto: txt(cfg.terminosPortal.texto, 20000), version: txt(cfg.terminosPortal.version, 40) } : null,
+      terminosAceptados: (d.terminosAceptados && d.terminosAceptados.version) || '',
     });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
