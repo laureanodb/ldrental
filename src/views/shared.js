@@ -14,6 +14,7 @@ import { pushSoportado, pushConfigurado, pushEstadoCache, refrescarPushEstado } 
 import { canVerFinanzas } from '../roles.js';
 import { biometricSoportado, biometricRegistrado } from '../biometric.js';
 import { modoConsultaActivo, modoConsultaHasta, activarModoConsulta, desactivarModoConsulta } from '../consulta.js';
+import { cbuValido, cuitValido, avisarUnaVez } from '../validar.js';
 
 export function saludDatosCard() {
   if (!isAdmin()) return '';
@@ -178,6 +179,9 @@ function datosPagoCard() {
 export function guardarDatosPago() {
   const cbu = val('a_pagoCbu').replace(/\D/g, '');
   if (cbu && cbu.length !== 22) { toast('El CBU/CVU tiene que tener 22 números', 'error'); return; }
+  if (cbu && !cbuValido(cbu) && avisarUnaVez('cbu', 'El CBU/CVU no pasa el control de dígitos: revisá que esté bien copiado.', toast)) return;
+  const cuit = val('a_pagoCuit').replace(/\D/g, '');
+  if (cuit && !cuitValido(cuit) && avisarUnaVez('cuit', 'El CUIT no es válido (el último número no coincide).', toast)) return;
   saveSettings({ pagoAlias: val('a_pagoAlias').trim(), pagoCbu: cbu, pagoTitular: val('a_pagoTitular').trim(), pagoCuit: val('a_pagoCuit').replace(/\D/g, ''), pagoBanco: val('a_pagoBanco').trim(), pagoNota: val('a_pagoNota').trim() });
   toast('Datos de pago guardados'); render();
 }

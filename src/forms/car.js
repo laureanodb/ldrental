@@ -18,6 +18,7 @@ import { inflacionAcumulada } from '../inflacion.js';
 import { settings, featureOculta } from '../settings.js';
 import { leerDocumento, archivoADataUrl } from '../ia.js';
 import { avisoAlquilerBajo } from './corregir-montos.js';
+import { patenteValida, avisarUnaVez } from '../validar.js';
 import { fichaCompletaCard, camposAuto } from './ficha-completa.js';
 import { seccionPatenteAuto } from './consulta-patente.js';
 import { bienvenidaForm } from './bienvenida.js';
@@ -744,6 +745,7 @@ let saveCarAvisoArmed = null;
 export async function saveCar(btn, id) {
   const patente = val('c_patente').toUpperCase();
   if (!patente) { toast('Falta la patente'); return; }
+  if (!patenteValida(patente) && avisarUnaVez('pat' + id, 'La patente no tiene el formato de siempre (AB 123 CD o ABC 123).', toast)) return;
   if (S.cars.some(x => x.id !== id && String(x.patente || '').toUpperCase() === patente)) { toast('Ya existe un auto con esa patente'); return; }
   const numFlota = val('c_numflota');
   if (numFlota && S.cars.some(x => x.id !== id && String(x.numeroFlota || '').trim() === numFlota)) { toast('Ya existe un auto con ese número de flota'); return; }

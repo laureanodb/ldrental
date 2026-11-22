@@ -5,6 +5,7 @@ import { openModal, toast } from '../modal.js';
 import { save } from '../data.js';
 import { carForm } from './car.js';
 import { driverForm } from './driver.js';
+import { normalizarTelAR, mismoTel, patenteValida, avisarUnaVez } from '../validar.js';
 import { botonTituloAuto, adjuntarTituloPendiente, descartarTituloPendiente, datosTituloPendiente, normalizarCilindrada } from './titulo-auto.js';
 
 export function altaRapidaAutoForm() {
@@ -34,6 +35,7 @@ let sinCilindradaOk = false;
 export async function guardarAltaRapidaAuto() {
   const patente = val('nr_patente').toUpperCase();
   if (!patente) { toast('Falta la patente'); return; }
+  if (!patenteValida(patente) && avisarUnaVez('patnr', 'La patente no tiene el formato de siempre (AB 123 CD o ABC 123).', toast)) return;
   if (S.cars.some(x => String(x.patente || '').toUpperCase() === patente)) { toast('Ya existe un auto con esa patente'); return; }
   const marca = val('nr_marca').trim(), modelo = val('nr_modelo').trim(), anioTxt = val('nr_anio').trim(), cilindrada = normalizarCilindrada(val('nr_cilindrada'));
   if (!marca || !modelo) { toast('Completá la marca y el modelo'); return; }
@@ -68,9 +70,10 @@ export function altaRapidaChoferForm() {
 export async function guardarAltaRapidaChofer() {
   const nombre = val('nr_nombre').trim();
   if (!nombre) { toast('Falta el nombre'); return; }
-  const tel = val('nr_tel').trim();
+  const tel = normalizarTelAR(val('nr_tel'));
   if (tel && !/^\+?[\d\s()-]{6,}$/.test(tel)) { toast('El teléfono no parece válido. Usá solo números, espacios, +, - o paréntesis'); return; }
-  if (tel && S.drivers.some(x => String(x.tel || '').trim() === tel)) { toast('Ya existe un chofer con ese teléfono'); return; }
+  const rep = tel && S.drivers.find(x => mismoTel(x.tel, tel));
+  if (rep) { toast('Ya existe un chofer con ese teléfono: ' + rep.nombre + (rep.inactivo ? ' (inactivo)' : '')); return; }
   const o = { id: uid(), nombre, tel, docs: {} };
   if (await save('drivers', o)) { toast('Chofer creado. Completá el resto cuando quieras'); driverForm(o.id); }
 }

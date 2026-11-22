@@ -19,6 +19,7 @@ import { estadoPortalVisto } from './mensajes.js';
 import { seccionManejoChofer } from './gps.js';
 import { fichaCompletaCard, camposChofer } from './ficha-completa.js';
 import { campoReferidoPor } from './referidos.js';
+import { normalizarTelAR, dniValido, mismoTel, mismoDni, avisarUnaVez } from '../validar.js';
 
 function telRow(t) {
   t = t || {};
@@ -253,28 +254,33 @@ export function driverForm(id) {
 export async function saveDriver(id) {
   const nombre = val('d_nombre');
   if (!nombre) { toast('Falta el nombre'); return; }
-  const dni = val('d_dni');
-  if (dni && S.drivers.some(x => x.id !== id && String(x.dni || '').trim() === dni)) { toast('Ya existe un chofer con ese DNI'); return; }
-  const tel = val('d_tel');
+  const dni = val('d_dni').replace(/\D/g, '');
+  const repDni = dni && S.drivers.find(x => x.id !== id && mismoDni(x.dni, dni));
+  if (repDni) { toast('Ya existe un chofer con ese DNI: ' + repDni.nombre + (repDni.inactivo ? ' (inactivo)' : '')); return; }
+  if (dni && !dniValido(dni) && avisarUnaVez('dni' + id, 'El DNI tiene que tener 7 u 8 números.', toast)) return;
+  // Teléfonos siempre en formato de WhatsApp (+549…), así los links nunca fallan.
+  const tel = normalizarTelAR(val('d_tel'));
   if (tel && !/^\+?[\d\s()-]{6,}$/.test(tel)) { toast('El teléfono no parece válido. Usá solo números, espacios, +, - o paréntesis'); return; }
-  if (tel && S.drivers.some(x => x.id !== id && String(x.tel || '').trim() === tel)) { toast('Ya existe un chofer con ese teléfono'); return; }
+  const repTel = tel && S.drivers.find(x => x.id !== id && mismoTel(x.tel, tel));
+  if (repTel) { toast('Ya existe un chofer con ese teléfono: ' + repTel.nombre + (repTel.inactivo ? ' (inactivo)' : '')); return; }
+  if (tel && !tel.startsWith('+') && avisarUnaVez('tel' + id, 'No pude pasar el teléfono al formato de WhatsApp (+54 9 …). Revisá el código de área.', toast)) return;
   const docs = {}; DOCS.forEach(x => { docs[x[0]] = document.getElementById('dc_' + x[0]).checked; });
   const onboarding = {}; ONBOARDING_ITEMS.forEach(x => { onboarding[x[0]] = document.getElementById('ob_' + x[0]).checked; });
   const otrosTelefonos = [...document.querySelectorAll('.d-tel')].map(row => ({
-    etiqueta: row.querySelector('.d-tel-etq').value.trim(), tel: row.querySelector('.d-tel-num').value.trim()
+    etiqueta: row.querySelector('.d-tel-etq').value.trim(), tel: normalizarTelAR(row.querySelector('.d-tel-num').value)
   })).filter(t => t.tel);
   const ex = de('drivers', 'id', id)[0];
   // Se parte del registro guardado para no perder lo que no está en el formulario
   // (link del portal, comprobantes, comunicaciones, adelantos, etc.).
   const o = Object.assign({}, ex || {}, {
-    id: id || uid(), nombre, dni: val('d_dni'), licVenc: val('d_lic'), tipoLicencia: val('d_tipoLicencia'), antecedentesVenc: val('d_antecedentesVenc'), tel: val('d_tel'), domicilio: val('d_dom'), notas: val('d_notas'), docs,
+    id: id || uid(), nombre, dni, licVenc: val('d_lic'), tipoLicencia: val('d_tipoLicencia'), antecedentesVenc: val('d_antecedentesVenc'), tel, domicilio: val('d_dom'), notas: val('d_notas'), docs,
     fechaNacimiento: val('d_nac'), fechaIngreso: val('d_ingreso'), rating: val('d_rating'),
     domicilioMaps: val('d_domMaps'), nacionalidad: val('d_nacionalidad'), estadoCivil: val('d_estadoCivil'),
-    referenciaNombre: val('d_refNombre'), referenciaTel: val('d_refTel'), nivelEstudios: val('d_estudios'),
+    referenciaNombre: val('d_refNombre'), referenciaTel: normalizarTelAR(val('d_refTel')), nivelEstudios: val('d_estudios'),
     otrosIngresos: val('d_otrosIngresos'), ocupacionAnterior: val('d_ocupacion'), experienciaChofer: val('d_experiencia'),
     aptoFinanciar: document.getElementById('d_apto').checked, depositoObjetivo: +val('d_depositoObjetivo') || 0, depositoFechaObjetivo: val('d_depositoFechaObjetivo'),
-    garanteNombre: val('d_garanteNombre'), garanteTel: val('d_garanteTel'),
-    contactoEmergencia: { nombre: val('d_emerg_nombre'), tel: val('d_emerg_tel') },
+    garanteNombre: val('d_garanteNombre'), garanteTel: normalizarTelAR(val('d_garanteTel')),
+    contactoEmergencia: { nombre: val('d_emerg_nombre'), tel: normalizarTelAR(val('d_emerg_tel')) },
     otrosTelefonos, inactivo: (ex || {}).inactivo || false, favorito: (ex || {}).favorito || false, prospecto: document.getElementById('d_prospecto').checked,
     etapaProspecto: val('d_etapaProspecto'), referidoPor: val('d_referidoPor'), referidoPorId: val('d_referidoPorId'), onboarding,
     canalOrigen: val('d_canalOrigen'), canalOrigenOtro: val('d_canalOrigenOtro'),

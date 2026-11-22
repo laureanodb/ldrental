@@ -214,6 +214,8 @@ export async function savePay(btn, otro) {
   const comp = comprobantePortal;
   if (comp) o.files = [{ id: comp.id, name: (comp.driverId ? 'comprobante-portal-' : 'comprobante-') + comp.fecha + '.' + (String(comp.type || '').split('/')[1] || 'jpg').replace('jpeg', 'jpg'), cat: 'comprobante', type: comp.type, size: comp.size, fecha: comp.fecha }];
   if (comprobanteRef) o.comprobanteRef = comprobanteRef;
+  // Dólar del día guardado en cada cuota, para que los números viejos no cambien con el dólar de hoy.
+  if (tipo === 'cuota' && cotizacion()) { o.cotizacionDia = cotizacion().valor; o.cotizacionDiaNombre = textoCotizacion(); }
   if (tipo === 'cuota' && +val('p_pesos') > 0 && +val('p_cot') > 0) { o.pesos = +val('p_pesos'); o.cotizacion = +val('p_cot'); o.cotizacionNombre = (cotizacion() && +val('p_cot') === cotizacion().valor) ? textoCotizacion() : 'Dólar a mano'; }
   const km = val('p_km');
   if (!(await save('payments', o))) return;

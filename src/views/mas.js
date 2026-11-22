@@ -69,7 +69,7 @@ export function viewMas() {
     ['Cómo salió cada compra (por vendedor)', 'comprasPorVendedorView()'],
     ['Mantenimiento preventivo en lote', 'mantenimientoLoteForm()'],
   ]);
-  if (canVerFinanzas()) h += grupo('Cobros', [['Cruzar con el resumen de Mercado Pago o del banco', "goMas('cruce')"], ['Corregir montos cargados sin los ceros', 'corregirMontosView()']]);
+  if (canVerFinanzas()) h += grupo('Cobros', [['Cruzar con el resumen de Mercado Pago o del banco', "goMas('cruce')"], ['Corregir montos cargados sin los ceros', 'corregirMontosView()']].concat(isAdmin() ? [['Cierre de mes', 'cierreMesView()']] : []));
   h += grupo('Plata del negocio', [['Caja chica del equipo', 'cajaChicaView(\'\')']].concat(canVerFinanzas() ? [['Patrimonio de la empresa', 'patrimonioView()']] : []));
   h += grupo('Análisis', [['Cobranza de la semana (meta)', 'metaSemanalView()'], ['Pantalla para la oficina (TV)', 'pantallaOficina()'], ['Chequeo trimestral del negocio (IA)', 'chequeoView()'], ['Cuánto tardás en resolver cada cosa', 'tiemposRespuestaView()'], ['Km de la flota por semana', 'kmFlotaView()'], ['Services hechos a tiempo', 'servicesATiempoView()'], ['Cuánto duran los choferes (edad y experiencia)', 'duracionChoferesView()'], ['Tablero semanal por auto', "goMas('tablero')"], ['Reportes', "goMas('reportes')"], ['Reporte personalizado', 'reportePersonalizadoForm()'], ['Metas de la flota', 'metasForm()']].concat(canVerFinanzas() ? [['Rendimiento de las financiaciones', 'rankingFinanciacionesView()']] : []));
   h += grupo('Herramientas', [
@@ -95,7 +95,7 @@ export function viewMas() {
   h += grupo('Administración', admin);
   h += '<div class="sec-t">Tamaño de letra <span class="small muted" style="font-weight:400">en este celular</span></div><div class="row" style="gap:8px;margin-bottom:6px">' +
     TAMANOS_LETRA.map(([k, l]) => '<button class="btn ' + (tamanoLetra() === k ? '' : 'sec ') + 'sm grow" onclick="elegirLetra(\'' + k + '\');render()">' + l + '</button>').join('') + '</div>';
-  h += grupo('Cuenta', [['Cambiar mi contraseña', 'cambiarMiContrasenaForm()'], ['Cerrar sesión (' + esc(S.user && S.user.email || '') + ')', 'logout()']]);
+  h += grupo('Cuenta', [['Cambiar mi contraseña', 'cambiarMiContrasenaForm()'], ['Cerrar mi sesión en todos los dispositivos', 'cerrarSesionGlobal()'], ['Cerrar sesión (' + esc(S.user && S.user.email || '') + ')', 'logout()']]);
   const ver = typeof __VERSION__ !== 'undefined' ? __VERSION__ : '';
   h += '<div class="small muted" style="text-align:center;margin:18px 0 6px">' + (ver ? 'Versión del ' + esc(ver.slice(8, 10) + '/' + ver.slice(5, 7) + ' ' + ver.slice(11)) + ' · ' : '') + '<a class="tap" style="text-decoration:underline" onclick="buscarActualizacion()">Buscar actualización</a> · <a class="tap" style="text-decoration:underline" onclick="go(\'panel\');setTimeout(()=>recorridoApp(true),300)">Ver cómo usar la app</a></div>';
   return h;

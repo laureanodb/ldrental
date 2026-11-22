@@ -4,6 +4,7 @@
 import { S, sb } from '../state.js';
 import { esc } from '../utils.js';
 import { openModal, closeModal, toast } from '../modal.js';
+import { settings, saveSettings } from '../settings.js';
 import { SUPABASE_URL, SUPABASE_KEY } from '../config.js';
 
 const MIN = 8;
@@ -115,4 +116,29 @@ export async function guardarContrasenaUsuario(id) {
     estado('✓ Listo. La contraseña nueva es: ' + password + ' — pasásela y pedile que la cambie.', 'var(--ok)');
     if (btn) btn.style.display = 'none';
   } finally { if (btn) btn.disabled = false; }
+}
+
+/* ---------- Cerrar sesión en todos lados ---------- */
+// La propia: corta la sesión en todos los celulares y compus donde esté abierta.
+export async function cerrarSesionGlobal() {
+  try { localStorage.removeItem('flota-biometria'); } catch (e) {}
+  const r = await sb.auth.signOut({ scope: 'global' });
+  if (r && r.error) toast('No se pudo cerrar en todos lados: ' + r.error.message);
+}
+// La de otro usuario (admin): queda anotada la hora y su app se cierra sola la próxima vez que abra o vuelva a la app.
+export function cerrarSesionDe(email) {
+  const e = String(email || '').toLowerCase(); if (!e) return;
+  saveSettings({ cierresSesion: Object.assign({}, settings.cierresSesion || {}, { [e]: new Date().toISOString() }) });
+  toast('Listo: la sesión de ' + e.split('@')[0] + ' se cierra en todos sus dispositivos apenas abran la app');
+}
+// Se llama al abrir la app y al volver a ella.
+export async function verificarCierreForzado() {
+  if (!S.user || !S.user.email) return;
+  const t = (settings.cierresSesion || {})[S.user.email.toLowerCase()];
+  const ingreso = Date.parse(S.user.last_sign_in_at || '');
+  if (t && ingreso && ingreso < Date.parse(t)) {
+    toast('Un administrador cerró tu sesión. Volvé a entrar con tu contraseña.');
+    try { localStorage.removeItem('flota-biometria'); } catch (e) {}
+    await sb.auth.signOut();
+  }
 }

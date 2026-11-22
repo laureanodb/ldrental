@@ -17,6 +17,8 @@ import { biometricRegistrado } from './biometric.js';
 import { tocarDatos } from './memo.js';
 import { nuevaContrasenaForm } from './forms/contrasena.js';
 import { ejecutarAtajo } from './atajos.js';
+import { verificarCierreForzado } from './forms/contrasena.js';
+import { cargarSensibles } from './sensibles.js';
 
 export function viewSetup() {
   return '<div class="login">' + brandH1() + '<div class="card"><b>Falta configurar la conexión</b><p class="small muted">Completá VITE_SUPABASE_URL y VITE_SUPABASE_KEY en el archivo .env, con los datos de tu proyecto de Supabase.</p></div></div>';
@@ -43,6 +45,7 @@ export async function logout() {
   await sb.auth.signOut();
 }
 const PRIORITY_COLS = ['cars', 'drivers', 'payments'];
+let vigilandoVuelta = false;
 export async function start() {
   S.ready = false;
   render();
@@ -57,7 +60,17 @@ export async function start() {
   checkChangelog();
   ejecutarAtajo();
   iniciarAlertasSupervisor();
-  cargarSettingsServidor().then(changed => { if (changed) render(); });
+  cargarSettingsServidor().then(changed => { if (changed) render(); verificarCierreForzado(); });
+  cargarSensibles().then(hay => { if (hay) render(); });
+  if (!vigilandoVuelta) {
+    vigilandoVuelta = true;
+    // Al volver a la app: ajustes nuevos (cierres de sesión, meses cerrados) y cambios para revisar.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible' || !S.user) return;
+      cargarSettingsServidor().then(changed => { if (changed) render(); verificarCierreForzado(); });
+      cargarSensibles().then(hay => { if (hay) render(); });
+    });
+  }
   cargarDolar().then(() => render());
   const resto = COLS.filter(c => !PRIORITY_COLS.includes(c));
   Promise.all(resto.map(load)).then(() => { render(); generarGastosRecurrentes(); });
